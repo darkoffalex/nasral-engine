@@ -34,8 +34,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
         // TODO: Инициализация движка
 
         // Таймер
-        utils::FpsCounter fps;
-        fps.set_fps_refresh_fn([&window](const unsigned fps){
+        utils::FpsCounter fps_counter;
+        fps_counter.set_fps_refresh_fn([&window](const unsigned fps){
             std::string title = WINDOW_TITLE;
             title.append(" (").append(std::to_string(fps)).append(" FPS)");
             glfwSetWindowTitle(window, title.c_str());
@@ -47,8 +47,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // Опрос событий GLFW
             glfwPollEvents();
 
-            // Обновление таймера
-            fps.update();
+            // Обновление FPS счетчика
+            fps_counter.update();
 
             // TODO: Работа с движком
         }
