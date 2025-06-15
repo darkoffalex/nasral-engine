@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "utils/frame_timer.hpp"
+#include "utils/fps_counter.hpp"
 
 constexpr int WINDOW_WIDTH = 800;
 constexpr int WINDOW_HEIGHT = 600;
@@ -34,8 +34,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
         // TODO: Инициализация движка
 
         // Таймер
-        utils::FrameTimer timer;
-        timer.set_fps_refresh_fn([&window](const unsigned fps){
+        utils::FpsCounter fps;
+        fps.set_fps_refresh_fn([&window](const unsigned fps){
             std::string title = WINDOW_TITLE;
             title.append(" (").append(std::to_string(fps)).append(" FPS)");
             glfwSetWindowTitle(window, title.c_str());
@@ -48,7 +48,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             glfwPollEvents();
 
             // Обновление таймера
-            timer.update();
+            fps.update();
 
             // TODO: Работа с движком
         }

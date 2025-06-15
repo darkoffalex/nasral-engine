@@ -3,11 +3,17 @@ glfw/3.4
 glm/1.0.1
 imgui/1.91.4
 stb/cci.20240531
+
 [generators]
 CMakeDeps
 CMakeToolchain
+
 [layout]
 cmake_layout
+
 [options]
+glfw*:shared=False
+imgui*:shared=False
+
 [imports]
 bin, *.dll -> ./bin

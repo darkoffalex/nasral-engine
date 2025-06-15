@@ -1,6 +1,7 @@
 # Основная цель сборки (объектная библиотека)
 file(GLOB_RECURSE ENGINE_SOURCES *.cpp)
 add_library(Engine OBJECT ${ENGINE_SOURCES})
+add_default_configurations(Engine demo_app)
 
 # Текущий каталог как каталог включаемых фйлов.
 # Для более удобного подключения пред-компилированного заголовка

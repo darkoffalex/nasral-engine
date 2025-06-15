@@ -4,10 +4,10 @@ namespace utils
 {
     using namespace std::chrono;
 
-    class FrameTimer
+    class FpsCounter
     {
     public:
-        FrameTimer()
+        FpsCounter()
         : on_fps_refreshed_(nullptr)
         , prev_frame_(steady_clock::now())
         , delta_(0.0f)
@@ -16,7 +16,7 @@ namespace utils
         , last_fps_(0)
         {}
 
-        ~FrameTimer() = default;
+        ~FpsCounter() = default;
 
         void update()
         {
