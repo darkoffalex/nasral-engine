@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "utils/fps_counter.hpp"
 
+#include <nasral/engine.h>
+
 constexpr int WINDOW_WIDTH = 800;
 constexpr int WINDOW_HEIGHT = 600;
 constexpr auto WINDOW_TITLE = "Demo";
@@ -31,7 +33,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             throw std::runtime_error("Failed to create GLFW window");
         }
 
-        // TODO: Инициализация движка
+        // Конфигурация движка
+        nasral::EngineConfig config;
+        config.log_config.log_file = "engine.log";
+        config.log_config.log_to_console = true;
+
+        // TODO: Прочая конфигурация
+
+        // Инициализировать движок
+        nasral::Engine engine;
+        engine.initialize(config);
 
         // Таймер
         utils::FpsCounter fps_counter;

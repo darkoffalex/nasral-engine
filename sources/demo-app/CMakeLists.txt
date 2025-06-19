@@ -1,6 +1,9 @@
 # Основная цель сборки
-file(GLOB_RECURSE DEMO_APP_SOURCES *.cpp)
-add_executable(DemoApp ${DEMO_APP_SOURCES})
+add_executable(DemoApp
+        pch.h
+        main.cpp
+        utils/fps_counter.hpp
+)
 add_default_configurations(DemoApp demo_app)
 
 # Текущий каталог как каталог включаемых фйлов.
