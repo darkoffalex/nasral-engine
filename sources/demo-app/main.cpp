@@ -64,6 +64,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // TODO: Работа с движком
         }
 
+        // Завершение работы с движком
+        engine.shutdown();
+
         // Завершение работы с GLFW
         glfwTerminate();
     }

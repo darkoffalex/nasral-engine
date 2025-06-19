@@ -36,8 +36,10 @@ namespace nasral::logging
         if (console_out_){
             if (level == Level::eError){
                 std::cerr << log_str;
+                std::flush(std::cerr);
             }else{
                 std::cout << log_str;
+                std::flush(std::cout);
             }
         }
 
