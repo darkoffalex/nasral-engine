@@ -11,6 +11,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <mutex>
 #include <shared_mutex>

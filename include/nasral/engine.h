@@ -1,6 +1,7 @@
 #pragma once
 #include <nasral/core_types.h>
 #include <nasral/logging/logger.h>
+#include <nasral/resources/resource_manager.h>
 
 namespace nasral
 {
@@ -20,5 +21,6 @@ namespace nasral
 
     private:
         std::unique_ptr<logging::Logger> logger_;
+        std::unique_ptr<resources::ResourceManager> resource_manager_;
     };
 }
