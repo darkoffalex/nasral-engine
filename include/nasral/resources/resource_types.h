@@ -18,6 +18,7 @@ namespace nasral::resources
     enum class ErrorCode : unsigned
     {
         eNoError = 0,
+        eLoadingError,
         eUnknownResource,
         eCannotOpenFile,
         eMemoryAllocationFailed,
@@ -30,7 +31,7 @@ namespace nasral::resources
         eTexture,
         eMesh,
         eShader,
-        eMaterial,
+        eShaderPipeline,
         TOTAL
     };
 

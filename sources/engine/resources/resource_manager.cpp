@@ -7,7 +7,11 @@ namespace nasral::resources
     ResourceManager::ResourceManager()
         : slots_({})
     {
-        // Создать пустые слоты
+        // Подготовить память массивов
+        free_slots_.reserve(MAX_RESOURCE_COUNT);
+        active_slots_.reserve(MAX_RESOURCE_COUNT);
+
+        // Список доступных слотов (от большего к меньшему)
         for (size_t i = MAX_RESOURCE_COUNT; i > 0; --i){
             free_slots_.push_back(i - 1);
         }
@@ -37,7 +41,6 @@ namespace nasral::resources
         resource.reset();
         info.type = type;
         info.path.assign(path);
-        info.deps = {};
         refs.count.store(0, std::memory_order_release);
         refs.has_unhandled.store(false, std::memory_order_release);
         refs.unhandled = {};
@@ -46,6 +49,8 @@ namespace nasral::resources
 
         // Связать путь-строку с индексом
         indices_[info.path.view()] = index;
+        // Добавить в список активных слотов
+        active_slots_.push_back(index);
     }
 
     void ResourceManager::remove_unsafe(const std::string& path){
@@ -71,8 +76,16 @@ namespace nasral::resources
             indices_.erase(info.path.view());
             info.path.assign("");
 
-            // Добавить в список свободных слотов
+            // Добавить назад в список свободных слотов
             free_slots_.push_back(index.value());
+            // Убрать из списка активных слотов
+            for (size_t i = 0; i < active_slots_.size(); ++i) {
+                if (active_slots_[i] == index.value()) {
+                    std::swap(active_slots_[i], active_slots_.back());
+                    active_slots_.pop_back();
+                    break;
+                }
+            }
         }
     }
 
@@ -97,6 +110,7 @@ namespace nasral::resources
             free_slots_.push_back(i - 1);
         }
         indices_.clear();
+        active_slots_.clear();
     }
 
     std::optional<size_t> ResourceManager::res_index(const std::string_view& path){
@@ -116,14 +130,15 @@ namespace nasral::resources
         // Увеличить счетчик, отметить что есть необработанные ссылки
         auto& slot = slots_[index.value()];
         slot.refs.count.fetch_add(1, std::memory_order_release);
-        slot.refs.has_unhandled.store(true, std::memory_order_release);
 
         // Добавить в список необработанных ссылок
         if (!unsafe){
             std::lock_guard lock_guard(slot.refs.mutex);
             slot.refs.unhandled.push_back(ref);
+            slot.refs.has_unhandled.store(true, std::memory_order_release);
         }else{
             slot.refs.unhandled.push_back(ref);
+            slot.refs.has_unhandled.store(true, std::memory_order_release);
         }
     }
 
@@ -167,11 +182,6 @@ namespace nasral::resources
                 res = std::make_unique<File>(slot.info.path.view());
                 break;
             }
-        case Type::eMaterial:
-            {
-                // TODO: Создать объект, передав в конструктор slot.dependencies
-                break;
-            }
         default:
             {
                 res = std::make_unique<File>(slot.info.path.view());
@@ -185,35 +195,32 @@ namespace nasral::resources
     }
 
     void ResourceManager::await_all_tasks() const{
-        for (auto& slot : slots_){
-            if (!slot.is_used) continue;;
-            if (slot.loading.task.valid()){
+        for (const size_t index : active_slots_){
+            if (auto& slot = slots_[index]; slot.loading.task.valid()){
                 slot.loading.task.wait();
             }
         }
     }
 
     void ResourceManager::update([[maybe_unused]] float delta){
-        for (auto& slot : slots_){
-            // Пропуск не используемых слотов
-            if (!slot.is_used) continue;
+        for (const size_t index : active_slots_){
+            auto& slot = slots_[index];
 
             // Если загрузка была завершена (успешно, либо нет) а также есть необработанные запросы
             if (slot.resource &&
                 slot.resource->status_ != Status::eUnloaded &&
                 slot.refs.has_unhandled.load(std::memory_order_acquire))
             {
-                // Необработанных запросов больше нет
-                slot.refs.has_unhandled.store(false, std::memory_order_release);
-                // Вызвать функции-обработчики готовности
                 std::lock_guard lock(slot.refs.mutex);
-                for (const auto* ref : slot.refs.unhandled) {
-                    if (ref->on_ready_) {
-                        ref->on_ready_(slot.resource.get());
+                if (!slot.refs.unhandled.empty()){
+                    for (const auto* ref : slot.refs.unhandled) {
+                        if (ref->on_ready_) {
+                            ref->on_ready_(slot.resource.get());
+                        }
                     }
+                    slot.refs.unhandled.clear();
                 }
-                // Очищаем список обработанных ссылок
-                slot.refs.unhandled.clear();
+                slot.refs.has_unhandled.store(false, std::memory_order_release);
             }
 
             // Инициирование загрузки, если ресурс требуется, но не создан
@@ -231,7 +238,12 @@ namespace nasral::resources
                     slot.loading.in_progress.store(true, std::memory_order_release);
                     slot.resource = make_resource(slot);
                     slot.loading.task = std::async(std::launch::async, [this, &slot]() {
-                        slot.resource->load();
+                        try {
+                            slot.resource->load();
+                        } catch(std::exception&){
+                            slot.resource->status_ = Status::eError;
+                            slot.resource->err_code_ = ErrorCode::eLoadingError;
+                        }
                         slot.loading.in_progress.store(false,std::memory_order_release);
                     });
                 }

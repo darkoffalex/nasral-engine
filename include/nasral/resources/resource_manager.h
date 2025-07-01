@@ -17,7 +17,6 @@ namespace nasral::resources
             struct Info {
                 Type type = Type::eFile;                  // Тип ресурса
                 FixedPath path = {};                      // Путь к файлу ресурса
-                std::vector<std::string> deps = {};       // Пути к файлам-зависимостям (должны быть в списке)
             } info;
 
             struct Refs {
@@ -54,8 +53,9 @@ namespace nasral::resources
         void await_all_tasks() const;
 
     private:
-        std::array<Slot, MAX_RESOURCE_COUNT> slots_;
-        std::vector<size_t> free_slots_;
-        std::unordered_map<std::string_view, size_t> indices_;
+        std::array<Slot, MAX_RESOURCE_COUNT> slots_;            // Фиксированный массив слотов ресурсов
+        std::vector<size_t> free_slots_;                        // Индексы свободных (не задействованных) слотов
+        std::vector<size_t> active_slots_;                      // Индексы активных (задействованных) слотов
+        std::unordered_map<std::string_view, size_t> indices_;  // Карта "путь" -> "индекс", для доступа по пути
     };
 }
