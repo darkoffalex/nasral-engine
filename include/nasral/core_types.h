@@ -14,12 +14,15 @@ namespace nasral
 
     struct EngineConfig
     {
-        struct LogConfig
+        struct Log
         {
-            std::string log_file;
-            bool log_to_console = false;
-        };
+            std::string file;
+            bool console_out = false;
+        } log;
 
-        LogConfig log_config;
+        struct Resources
+        {
+            std::string content_dir;
+        } resources;
     };
 }

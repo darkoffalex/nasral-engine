@@ -2,11 +2,18 @@
 #include <nasral/resources/resource_manager.h>
 #include <nasral/resources/file.h>
 
+namespace fs = std::filesystem;
 namespace nasral::resources
 {
-    ResourceManager::ResourceManager()
-        : slots_({})
+    ResourceManager::ResourceManager(std::string content_dir)
+        : content_dir_(std::move(content_dir))
+        , slots_({})
     {
+        // Проверка доступности директории контента
+        if (!content_dir_.empty() && !fs::exists(content_dir_)){
+            throw std::invalid_argument("Content directory does not exist");
+        }
+
         // Подготовить память массивов
         free_slots_.reserve(MAX_RESOURCE_COUNT);
         active_slots_.reserve(MAX_RESOURCE_COUNT);
@@ -179,12 +186,12 @@ namespace nasral::resources
         {
         case Type::eFile:
             {
-                res = std::make_unique<File>(slot.info.path.view());
+                res = std::make_unique<File>(this, slot.info.path.view());
                 break;
             }
         default:
             {
-                res = std::make_unique<File>(slot.info.path.view());
+                res = std::make_unique<File>(this, slot.info.path.view());
                 res->status_ = Status::eError;
                 res->err_code_ = ErrorCode::eUnknownResource;
                 break;
@@ -200,6 +207,11 @@ namespace nasral::resources
                 slot.loading.task.wait();
             }
         }
+    }
+
+    std::string ResourceManager::full_path(const std::string& path) const{
+        const fs::path full = fs::path(content_dir_) / path;
+        return fs::canonical(full).string();
     }
 
     void ResourceManager::update([[maybe_unused]] float delta){

@@ -6,7 +6,6 @@ namespace nasral::resources
 {
     Ref::Ref(ResourceManager* manager, const Type type, const std::string& path)
         : type_(type)
-        , path_(path)
         , resource_index_(std::nullopt)
         , is_requested_(false)
         , manager_(manager)
@@ -15,6 +14,8 @@ namespace nasral::resources
         if (manager_ == nullptr){
             throw std::invalid_argument("Resource manager is null");
         }
+
+        path_.assign(path);
     }
 
     Ref::~Ref(){

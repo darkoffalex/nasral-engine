@@ -32,7 +32,7 @@ namespace nasral::resources
             } loading;
         };
 
-        ResourceManager();
+        explicit ResourceManager(std::string content_dir);
         ~ResourceManager();
 
         ResourceManager(const ResourceManager&) = delete;
@@ -41,18 +41,20 @@ namespace nasral::resources
         void add_unsafe(Type type, const std::string& path);
         void remove_unsafe(const std::string& path);
         void remove_all_unsafe();
-
         void update(float delta);
+
+        std::string full_path(const std::string& path) const;
 
     protected:
         [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path);
-        [[nodiscard]] static IResource::Ptr make_resource(const Slot& slot);
+        [[nodiscard]] IResource::Ptr make_resource(const Slot& slot);
 
         void request(Ref* ref, bool unsafe = false);
         void release(const Ref* ref, bool unsafe = false);
         void await_all_tasks() const;
 
     private:
+        std::string content_dir_;                               // Путь к директории ресурсов
         std::array<Slot, MAX_RESOURCE_COUNT> slots_;            // Фиксированный массив слотов ресурсов
         std::vector<size_t> free_slots_;                        // Индексы свободных (не задействованных) слотов
         std::vector<size_t> active_slots_;                      // Индексы активных (задействованных) слотов

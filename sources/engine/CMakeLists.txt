@@ -4,6 +4,7 @@ add_library(Engine OBJECT
         engine.cpp
         logging/logger.cpp
         resources/ref.cpp
+        resources/file.cpp
         resources/resource_manager.cpp
 )
 add_default_configurations(Engine demo_app)

@@ -35,6 +35,7 @@ namespace nasral::resources
         TOTAL
     };
 
+    class ResourceManager;
     class IResource
     {
     public:
@@ -51,6 +52,7 @@ namespace nasral::resources
         Type type_ = Type::eFile;
         Status status_ = Status::eUnloaded;
         ErrorCode err_code_ = ErrorCode::eNoError;
+        ResourceManager* resource_manager_ = nullptr;
     };
 
     struct FixedPath

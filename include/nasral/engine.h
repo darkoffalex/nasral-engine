@@ -15,6 +15,7 @@ namespace nasral
         Engine& operator=(const Engine&) = delete;
 
         bool initialize(const EngineConfig& config);
+        void update(float delta) const;
         void shutdown();
 
         [[nodiscard]] EngineContext context() const;

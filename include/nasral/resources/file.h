@@ -6,7 +6,7 @@ namespace nasral::resources
     class File final : public IResource
     {
     public:
-        explicit File(const std::string_view& path);
+        explicit File(ResourceManager* manager, const std::string_view& path);
         ~File() override;
 
         void load() override;

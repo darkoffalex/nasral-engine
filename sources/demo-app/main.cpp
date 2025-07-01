@@ -35,14 +35,21 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
 
         // Конфигурация движка
         nasral::EngineConfig config;
-        config.log_config.log_file = "engine.log";
-        config.log_config.log_to_console = true;
-
-        // TODO: Прочая конфигурация
+        config.log.file = "engine.log";
+        config.log.console_out = true;
+        config.resources.content_dir = "../../content/";
 
         // Инициализировать движок
         nasral::Engine engine;
         engine.initialize(config);
+
+        // Сформировать список ресурсов (временно, для теста)
+        auto* m = engine.context().resource_manager;
+        m->add_unsafe(nasral::resources::Type::eFile, "textures/checkerboard.png");
+
+        // TODO: Загрузка других ресурсов (тест)
+        // TODO: Создать ссылки на ресурсы (тест)
+        // TODO: Запросить ресурсы и обработать загрузку (тест)
 
         // Таймер
         utils::FpsCounter fps_counter;
@@ -61,7 +68,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // Обновление FPS счетчика
             fps_counter.update();
 
-            // TODO: Работа с движком
+            // Обновление движка
+            engine.update(fps_counter.delta());
         }
 
         // Завершение работы с движком

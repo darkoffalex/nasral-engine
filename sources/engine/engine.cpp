@@ -11,11 +11,14 @@ namespace nasral
 
     bool Engine::initialize(const EngineConfig& config){
         try{
-            const auto& [log_file, log_to_console] = config.log_config;
+            const auto& [log_file, log_to_console] = config.log;
             logger_ = std::make_unique<logging::Logger>(log_file, log_to_console);
-            resource_manager_ = std::make_unique<resources::ResourceManager>();
+            LOG_INFO(context(), "Logger initialized.");
 
-            LOG_INFO(context(), "Engine initialized.");
+            const auto& [content_dir] = config.resources;
+            resource_manager_ = std::make_unique<resources::ResourceManager>(content_dir);
+            LOG_INFO(context(), "Resource manager initialized.");
+
             return true;
         }
         catch(const std::exception& e){
@@ -24,15 +27,27 @@ namespace nasral
         }
     }
 
+    void Engine::update(const float delta) const {
+        assert(logger_ != nullptr);
+        assert(resource_manager_ != nullptr);
+
+        try{
+            resource_manager_->update(delta);
+        }
+        catch(const std::exception& e){
+            LOG_ERROR(context(), e.what());
+        }
+    }
+
     void Engine::shutdown(){
         try{
             if (resource_manager_){
-                logger_->info("Destroying resource manager.");
                 resource_manager_.reset();
+                LOG_INFO(context(), "Resource manager destroyed.");
             }
 
             if (logger_){
-                logger_->info("Destroying logger.");
+                LOG_INFO(context(), "Destroying logger.");
                 logger_.reset();
             }
         }
@@ -44,6 +59,7 @@ namespace nasral
     EngineContext Engine::context() const {
         EngineContext context{};
         context.logger = logger_.get();
+        context.resource_manager = resource_manager_.get();
         return context;
     }
 }
