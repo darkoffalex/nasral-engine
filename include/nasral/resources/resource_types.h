@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <array>
 
 #define MAX_RESOURCE_COUNT 100
 #define DEFAULT_REFS_COUNT 10

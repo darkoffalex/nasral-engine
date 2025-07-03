@@ -7,7 +7,7 @@ namespace nasral::resources
 {
     ResourceManager::ResourceManager(std::string content_dir)
         : content_dir_(std::move(content_dir))
-        , slots_({})
+        , slots_()
     {
         // Проверка доступности директории контента
         if (!content_dir_.empty() && !fs::exists(content_dir_)){
@@ -51,6 +51,7 @@ namespace nasral::resources
         refs.count.store(0, std::memory_order_release);
         refs.has_unhandled.store(false, std::memory_order_release);
         refs.unhandled = {};
+        refs.unhandled.reserve(DEFAULT_REFS_COUNT);
         loading.in_progress.store(false, std::memory_order_release);
         loading.task = {};
 
@@ -97,30 +98,33 @@ namespace nasral::resources
     }
 
     void ResourceManager::remove_all_unsafe(){
-        for (auto& [is_used, resource, info, refs, loading] : slots_) {
-            if (is_used) {
-                if (loading.task.valid()) {
-                    loading.task.wait();
-                }
-                is_used = false;
-                resource.reset();
-                refs.unhandled.clear();
-                refs.has_unhandled.store(false, std::memory_order_release);
-                refs.count.store(0, std::memory_order_release);
-                loading.in_progress.store(false, std::memory_order_release);
-                loading.task = {};
-                info.path.assign("");
+        for (const size_t index : active_slots_){
+            auto& slot = slots_[index];
+
+            if(slot.loading.task.valid()){
+                slot.loading.task.wait();
+                slot.loading.task = {};
             }
+
+            slot.is_used = false;
+            slot.resource.reset();
+            slot.refs.unhandled.clear();
+            slot.refs.has_unhandled.store(false, std::memory_order_release);
+            slot.refs.count.store(0, std::memory_order_release);
+            slot.loading.in_progress.store(false, std::memory_order_release);
+            slot.info.path.assign("");
         }
+
         free_slots_.clear();
         for (size_t i = MAX_RESOURCE_COUNT; i > 0; --i) {
             free_slots_.push_back(i - 1);
         }
+
         indices_.clear();
         active_slots_.clear();
     }
 
-    std::optional<size_t> ResourceManager::res_index(const std::string_view& path){
+    std::optional<size_t> ResourceManager::res_index(const std::string_view& path) const{
         if (indices_.count(path) > 0) return indices_.at(path);
         return std::nullopt;
     }
@@ -134,7 +138,7 @@ namespace nasral::resources
         // Обновить индекс у ссылки
         ref->resource_index_ = index;
 
-        // Увеличить счетчик, отметить что есть необработанные ссылки
+        // Увеличить счетчик, отметить, что есть необработанные ссылки
         auto& slot = slots_[index.value()];
         slot.refs.count.fetch_add(1, std::memory_order_release);
 
@@ -214,6 +218,15 @@ namespace nasral::resources
         return fs::canonical(full).string();
     }
 
+    size_t ResourceManager::ref_count(const std::string &path) const {
+        auto index = res_index(std::string_view(path));
+        if(index.has_value()){
+            auto& slot = slots_[index.value()];
+            return slot.refs.count.load(std::memory_order_acquire);
+        }
+        return 0;
+    }
+
     void ResourceManager::update([[maybe_unused]] float delta){
         for (const size_t index : active_slots_){
             auto& slot = slots_[index];
@@ -249,14 +262,14 @@ namespace nasral::resources
                 if (!slot.loading.task.valid()) {
                     slot.loading.in_progress.store(true, std::memory_order_release);
                     slot.resource = make_resource(slot);
-                    slot.loading.task = std::async(std::launch::async, [this, &slot]() {
+                    slot.loading.task = std::async(std::launch::async, [&slot]() {
                         try {
                             slot.resource->load();
                         } catch(std::exception&){
                             slot.resource->status_ = Status::eError;
                             slot.resource->err_code_ = ErrorCode::eLoadingError;
                         }
-                        slot.loading.in_progress.store(false,std::memory_order_release);
+                        slot.loading.in_progress.store(false, std::memory_order_release);
                     });
                 }
             }

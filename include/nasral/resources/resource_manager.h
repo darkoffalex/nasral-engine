@@ -41,17 +41,18 @@ namespace nasral::resources
         void add_unsafe(Type type, const std::string& path);
         void remove_unsafe(const std::string& path);
         void remove_all_unsafe();
+        void await_all_tasks() const;
         void update(float delta);
 
-        std::string full_path(const std::string& path) const;
+        [[nodiscard]] size_t ref_count(const std::string& path) const;
+        [[nodiscard]] std::string full_path(const std::string& path) const;
 
     protected:
-        [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path);
-        [[nodiscard]] IResource::Ptr make_resource(const Slot& slot);
-
         void request(Ref* ref, bool unsafe = false);
         void release(const Ref* ref, bool unsafe = false);
-        void await_all_tasks() const;
+
+        [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path) const;
+        [[nodiscard]] IResource::Ptr make_resource(const Slot& slot);
 
     private:
         std::string content_dir_;                               // Путь к директории ресурсов
