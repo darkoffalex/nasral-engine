@@ -1,12 +1,14 @@
 #include "pch.h"
+#include <nasral/engine.h>
 #include <nasral/resources/resource_manager.h>
 #include <nasral/resources/file.h>
 
 namespace fs = std::filesystem;
 namespace nasral::resources
 {
-    ResourceManager::ResourceManager(std::string content_dir)
-        : content_dir_(std::move(content_dir))
+    ResourceManager::ResourceManager(Engine* engine, std::string content_dir)
+        : engine_(engine)
+        , content_dir_(std::move(content_dir))
         , slots_()
     {
         // Проверка доступности директории контента
@@ -225,6 +227,12 @@ namespace nasral::resources
             return slot.refs.count.load(std::memory_order_acquire);
         }
         return 0;
+    }
+
+    const logging::Logger *ResourceManager::logger() const{
+        assert(engine_ != nullptr);
+        assert(engine_->logger() != nullptr);
+        return engine_ ? engine_->logger() : nullptr;
     }
 
     void ResourceManager::update([[maybe_unused]] float delta){

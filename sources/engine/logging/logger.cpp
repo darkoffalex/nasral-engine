@@ -17,12 +17,12 @@ namespace nasral::logging
         }
     }
 
-    void Logger::log(const Level level, const std::string& message){
+    void Logger::log(const Level level, const std::string& message) const{
         std::lock_guard<std::mutex> lock(mutex_);
         log_unsafe(level, message);
     }
 
-    void Logger::log_unsafe(const Level level, const std::string& message){
+    void Logger::log_unsafe(const Level level, const std::string& message) const{
         std::string level_str;
         switch (level){
             case Level::eDebug: level_str = "DEBUG"; break;
@@ -49,19 +49,19 @@ namespace nasral::logging
         }
     }
 
-    void Logger::debug(const std::string& message){
+    void Logger::debug(const std::string& message) const{
         log(Level::eDebug, message);
     }
 
-    void Logger::info(const std::string& message){
+    void Logger::info(const std::string& message) const{
         log(Level::eInfo, message);
     }
 
-    void Logger::warning(const std::string& message){
+    void Logger::warning(const std::string& message) const{
         log(Level::eWarning, message);
     }
 
-    void Logger::error(const std::string& message){
+    void Logger::error(const std::string& message) const{
         log(Level::eError, message);
     }
 }

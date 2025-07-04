@@ -1,28 +1,29 @@
 #pragma once
 #include <string>
 
-namespace nasral::logging { class Logger; }
-namespace nasral::resources { class ResourceManager; }
-
 namespace nasral
 {
-    struct EngineContext
-    {
-        logging::Logger* logger = nullptr;
-        resources::ResourceManager* resource_manager = nullptr;
-    };
-
     struct EngineConfig
     {
-        struct Log
-        {
+        struct Log {
             std::string file;
             bool console_out = false;
         } log;
 
-        struct Resources
-        {
+        struct Resources {
             std::string content_dir;
         } resources;
+    };
+
+    template<typename T>
+    class SafeHandle
+    {
+    public:
+        explicit SafeHandle(T* ptr) : ptr_(ptr) { assert(ptr_ != nullptr); }
+        T* get() const { return ptr_; }
+        T& operator*() const { assert(ptr_ != nullptr); return *ptr_; }
+        T* operator->() const { assert(ptr_ != nullptr); return ptr_; }
+    private:
+        T* ptr_ = nullptr;
     };
 }

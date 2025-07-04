@@ -48,6 +48,7 @@ namespace nasral::resources
         [[nodiscard]] Status status() const { return status_; }
         [[nodiscard]] ErrorCode err_code() const { return err_code_; }
         [[nodiscard]] Type type() const { return type_; }
+        [[nodiscard]] const ResourceManager* manager() const { return resource_manager_; }
 
     protected:
         Type type_ = Type::eFile;

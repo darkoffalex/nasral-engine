@@ -18,10 +18,12 @@ namespace nasral
         void update(float delta) const;
         void shutdown();
 
-        [[nodiscard]] EngineContext context() const;
+        [[nodiscard]] const logging::Logger* logger() const {
+            return logger_.get();
+        }
 
     private:
-        std::unique_ptr<logging::Logger> logger_;
-        std::unique_ptr<resources::ResourceManager> resource_manager_;
+        logging::Logger::Ptr logger_;
+        resources::ResourceManager::Ptr resource_manager_;
     };
 }
