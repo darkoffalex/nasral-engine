@@ -1,4 +1,5 @@
 #pragma once
+#include <nasral/logging/logging_types.h>
 
 namespace nasral::logging
 {
@@ -14,7 +15,7 @@ namespace nasral::logging
             eError
         };
 
-        explicit Logger(const std::string& log_file = "engine.log", bool console_out = true);
+        explicit Logger(const LoggingConfig& config);
         ~Logger();
 
         Logger(const Logger&) = delete;

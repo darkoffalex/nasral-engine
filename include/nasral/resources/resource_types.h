@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <array>
+#include <nasral/core_types.h>
 
 #define MAX_RESOURCE_COUNT 100
 #define DEFAULT_REFS_COUNT 10
@@ -48,13 +49,13 @@ namespace nasral::resources
         [[nodiscard]] Status status() const { return status_; }
         [[nodiscard]] ErrorCode err_code() const { return err_code_; }
         [[nodiscard]] Type type() const { return type_; }
-        [[nodiscard]] const ResourceManager* manager() const { return resource_manager_; }
+        [[nodiscard]] const SafeHandle<const ResourceManager>& manager() const { return resource_manager_; }
 
     protected:
         Type type_ = Type::eFile;
         Status status_ = Status::eUnloaded;
         ErrorCode err_code_ = ErrorCode::eNoError;
-        ResourceManager* resource_manager_ = nullptr;
+        SafeHandle<const ResourceManager> resource_manager_;
     };
 
     struct FixedPath
@@ -91,5 +92,10 @@ namespace nasral::resources
         bool operator==(const FixedPath& other) const {
             return view() == other.view();
         }
+    };
+
+    struct ResourceConfig
+    {
+        std::string content_dir;
     };
 }

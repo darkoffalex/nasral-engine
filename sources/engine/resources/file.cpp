@@ -1,15 +1,13 @@
 #include "pch.h"
 #include <nasral/resources/file.h>
-
-#include "nasral/resources/resource_manager.h"
+#include <nasral/resources/resource_manager.h>
 
 namespace nasral::resources
 {
     File::File(ResourceManager* manager, const std::string_view& path)
         : path_(path)
     {
-        assert(manager != nullptr);
-        resource_manager_ = manager;
+        resource_manager_ = SafeHandle<const ResourceManager>(manager);
         status_ = Status::eUnloaded;
         err_code_ = ErrorCode::eNoError;
         type_ = Type::eFile;
@@ -22,7 +20,7 @@ namespace nasral::resources
     }
 
     void File::load(){
-        const auto path = resource_manager_->full_path(path_.data());
+        const auto path = manager()->full_path(path_.data());
         file_.open(path, std::ios::binary);
         if (!file_.is_open()) {
             status_ = Status::eError;

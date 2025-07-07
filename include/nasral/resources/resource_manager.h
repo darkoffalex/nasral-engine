@@ -1,5 +1,6 @@
 #pragma once
 #include <future>
+#include <nasral/core_types.h>
 #include <nasral/resources/resource_types.h>
 #include <nasral/resources/ref.h>
 
@@ -35,7 +36,7 @@ namespace nasral::resources
             } loading;
         };
 
-        explicit ResourceManager(Engine* engine, std::string content_dir);
+        explicit ResourceManager(Engine* engine, const ResourceConfig& config);
         ~ResourceManager();
 
         ResourceManager(const ResourceManager&) = delete;
@@ -49,7 +50,7 @@ namespace nasral::resources
 
         [[nodiscard]] size_t ref_count(const std::string& path) const;
         [[nodiscard]] std::string full_path(const std::string& path) const;
-        [[nodiscard]] const Engine* engine() const { return engine_; }
+        [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }
 
     protected:
         void request(Ref* ref, bool unsafe = false);
@@ -60,7 +61,7 @@ namespace nasral::resources
         [[nodiscard]] const logging::Logger* logger() const;
 
     private:
-        Engine* engine_;                                        // Указатель на владельца (корневой объект)
+        SafeHandle<const Engine> engine_;                       // Указатель на владельца (корневой объект)
         std::string content_dir_;                               // Путь к директории ресурсов
         std::array<Slot, MAX_RESOURCE_COUNT> slots_;            // Фиксированный массив слотов ресурсов
         std::vector<size_t> free_slots_;                        // Индексы свободных (не задействованных) слотов

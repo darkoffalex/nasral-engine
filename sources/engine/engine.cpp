@@ -9,14 +9,12 @@ namespace nasral
         shutdown();
     }
 
-    bool Engine::initialize(const EngineConfig& config){
+    bool Engine::initialize(const Config& config){
         try{
-            const auto& [log_file, log_to_console] = config.log;
-            logger_ = std::make_unique<logging::Logger>(log_file, log_to_console);
+            logger_ = std::make_unique<logging::Logger>(config.log);
             logger()->info("Logger initialized.");
 
-            const auto& [content_dir] = config.resources;
-            resource_manager_ = std::make_unique<resources::ResourceManager>(this, content_dir);
+            resource_manager_ = std::make_unique<resources::ResourceManager>(this, config.resources);
             logger()->info("Resource manager initialized.");
 
             return true;
@@ -30,6 +28,7 @@ namespace nasral
     void Engine::update(const float delta) const {
         assert(logger_ != nullptr);
         assert(resource_manager_ != nullptr);
+        assert(renderer_ != nullptr);
 
         try{
             resource_manager_->update(delta);

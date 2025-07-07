@@ -6,6 +6,7 @@ add_library(Engine OBJECT
         resources/ref.cpp
         resources/file.cpp
         resources/resource_manager.cpp
+        rendering/renderer.cpp
 )
 add_default_configurations(Engine demo_app)
 

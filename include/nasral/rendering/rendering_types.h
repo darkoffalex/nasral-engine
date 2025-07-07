@@ -1,0 +1,28 @@
+#pragma once
+#include <glm/glm.hpp>
+#include <vulkan/vulkan.hpp>
+
+namespace nasral::rendering
+{
+    class VkSurfaceProvider
+    {
+    public:
+        VkSurfaceProvider() = default;
+        virtual ~VkSurfaceProvider() = default;
+        virtual VkSurfaceKHR create_surface(const vk::Instance& instance) = 0;
+    };
+
+    struct RenderingConfig
+    {
+        std::shared_ptr<VkSurfaceProvider> surface_provider;                // Указатель на объект получения поверхности
+        std::optional<glm::uvec2> rendering_resolution;                     // Целевое разрешение рендеринга
+        vk::Format color_format = vk::Format::eB8G8R8A8Unorm;               // Формат цветовых вложений
+        vk::Format depth_stencil_format = vk::Format::eD32SfloatS8Uint;     // Формат вложений глубины и трафарета
+        vk::ColorSpaceKHR color_space = vk::ColorSpaceKHR::eSrgbNonlinear;  // Цветовое пространство
+        vk::PresentModeKHR present_mode = vk::PresentModeKHR::eFifo;        // Режим представления
+        bool use_opengl_style = true;                                       // Входные данные в стиле OpenGL
+        bool use_validation_layers = false;                                 // Использовать слои валидации
+        uint32_t max_frames_in_flight = 2;                                  // Кол-во единовременно обрабатываемых кадров
+        uint32_t swap_chain_image_count = 3;                                // Кол-во изображений в цепочке свопинга
+    };
+}

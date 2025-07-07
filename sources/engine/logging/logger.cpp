@@ -3,11 +3,11 @@
 
 namespace nasral::logging
 {
-    Logger::Logger(const std::string& log_file, const bool console_out)
-        : console_out_(console_out)
+    Logger::Logger(const LoggingConfig& config)
+        : console_out_(config.console_out)
     {
-        if (!log_file.empty()){
-            fs_.open(log_file, std::ios::out | std::ios::app);
+        if (!config.file.empty()){
+            fs_.open(config.file, std::ios::out | std::ios::app);
         }
     }
 
