@@ -5,19 +5,20 @@
  * @date 2025
  * @copyright MIT License
  *
- * Этот файл содержит реализацию класса Image, который инкапсулирует работу
+ * Файл содержит реализацию класса Image, который инкапсулирует работу
  * с изображениями Vulkan, включая их создание, управление памятью и представлениями.
  */
 
 #pragma once
 #include <vector>
+#include <cmath>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/utils/device.hpp>
 
 namespace vk::utils
 {
     /**
-     * @brief RAII обертка для управления изображениями Vulkan
+     * @brief RAII обертка для управления изображениями Vulkan.
      *
      * Предоставляет высокоуровневый интерфейс для:
      *  создания изображений различных типов (1D, 2D, 3D, кубических),
@@ -31,7 +32,7 @@ namespace vk::utils
         typedef std::unique_ptr<Image> Ptr;
 
         /**
-         * @brief Тип изображения
+         * @brief Тип изображения.
          *
          * Определяет базовую размерность и организацию изображения
          */
@@ -70,7 +71,7 @@ namespace vk::utils
          * @param mip_levels Количество уровней мип-уровней (0 для автоматического расчета)
          * @param array_layers Количество слоев для массивов изображений
          * @param queue_family_indices Индексы семейств очередей для shared/concurrent доступа
-         * @throw std::runtime_error при ошибках создания или выделения памяти
+         * @throw std::runtime_error При ошибках создания или выделения памяти
          */
         Image(const Device::Ptr& device,
               const Type& type,
@@ -116,7 +117,7 @@ namespace vk::utils
             }
 
             // Режим доступа (будут ли разные семейства обращаться к изображению)
-            auto sharing_mode = queue_family_indices.size() > 1 ?
+            const auto sharing_mode = queue_family_indices.size() > 1 ?
                     vk::SharingMode::eConcurrent :
                     vk::SharingMode::eExclusive;
 
@@ -284,6 +285,7 @@ namespace vk::utils
                     return vk::ImageType::e3D;
                 }
             }
+            return vk::ImageType::e2D;
         }
 
         /**
@@ -312,6 +314,7 @@ namespace vk::utils
                     return vk::ImageViewType::e3D;
                 }
             }
+            return vk::ImageViewType::e2D;
         }
 
     private:

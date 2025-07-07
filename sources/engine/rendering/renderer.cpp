@@ -4,8 +4,13 @@
 
 namespace nasral::rendering
 {
-    Renderer::Renderer(nasral::Engine *engine, const RenderingConfig &config)
+    Renderer::Renderer(const Engine *engine, RenderingConfig config)
         : engine_(engine)
+        , config_(std::move(config))
+        , is_rendering_(false)
+        , surface_refresh_required_(false)
+        , current_frame_(0)
+        , available_image_index_(0)
     {
 
     }

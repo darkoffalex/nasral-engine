@@ -1,7 +1,7 @@
 #pragma once
+#include <vulkan/vulkan.hpp>
 #include <nasral/core_types.h>
 #include <nasral/rendering/rendering_types.h>
-#include <vulkan/vulkan.hpp>
 #include <vulkan/utils/framebuffer.hpp>
 
 namespace nasral{class Engine;}
@@ -14,7 +14,7 @@ namespace nasral::rendering
         typedef std::unique_ptr<Renderer> Ptr;
         typedef vk::UniqueHandle<vk::DebugReportCallbackEXT, vk::detail::DispatchLoaderDynamic> DebugReportCallback;
 
-        Renderer(nasral::Engine* engine, const RenderingConfig& config);
+        Renderer(const Engine* engine, RenderingConfig config);
         ~Renderer();
 
         [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }

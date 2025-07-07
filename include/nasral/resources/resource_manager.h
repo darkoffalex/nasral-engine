@@ -36,7 +36,7 @@ namespace nasral::resources
             } loading;
         };
 
-        explicit ResourceManager(Engine* engine, const ResourceConfig& config);
+        explicit ResourceManager(const Engine* engine, const ResourceConfig& config);
         ~ResourceManager();
 
         ResourceManager(const ResourceManager&) = delete;

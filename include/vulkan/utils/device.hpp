@@ -5,7 +5,7 @@
  * @date 2025
  * @copyright MIT License
  *
- * Этот файл содержит реализацию класса Device, который инкапсулирует работу
+ * Файл содержит реализацию класса Device, который инкапсулирует работу
  * с физическим и логическим устройствами Vulkan, а также управляет группами
  * очередей команд и их командными пулами.
  */
@@ -20,7 +20,7 @@
 namespace vk::utils
 {
     /**
-     * @brief RAII обертка для управления Vulkan устройством
+     * @brief RAII обертка для управления Vulkan устройством.
      *
      * Предоставляет высокоуровневый интерфейс для:
      *  выбора подходящего физического устройства,
@@ -34,29 +34,26 @@ namespace vk::utils
         typedef std::unique_ptr<Device> Ptr;
 
         /**
-         * @brief Запрос на создание группы очередей
-         *
-         * @var queue_flags Требуемые флаги очередей
-         * @var require_present Требуется ли поддержка представления (показа)
-         * @var queue_count Количество очередей в группе
+         * @brief Запрос на создание группы очередей.
          */
         struct QueueGroupRequest
         {
-            vk::QueueFlags  queue_flags     = vk::QueueFlagBits::eGraphics;
-            uint32_t        queue_count     = 1;
-            bool            require_present = false;
-            uint32_t        pool_count      = 1;
+            vk::QueueFlags  queue_flags     = vk::QueueFlagBits::eGraphics;  ///< Требуемые флаги очередей
+            bool            require_present = false;                         ///< Требуется ли поддержка представления (показа)
+            uint32_t        queue_count     = 1;                             ///< Количество очередей в группе
+            uint32_t        pool_count      = 1;                             ///< Количество командных пулов
 
             /**
              * @brief Создает запрос для очередей графических команд
              * @param queue_count Количество очередей
+             * @param present Требуется ли представление
              * @return Сконфигурированный запрос
              */
-            static QueueGroupRequest graphics(uint32_t queue_count = 1, bool present = true) {
+            static QueueGroupRequest graphics(const uint32_t queue_count = 1, const bool present = true) {
                 return {
-                    .queue_flags        = vk::QueueFlagBits::eGraphics,
-                    .queue_count        = queue_count,
-                    .require_present    = present
+                    vk::QueueFlagBits::eGraphics,
+                    present,
+                    queue_count
                 };
             }
 
@@ -65,10 +62,11 @@ namespace vk::utils
              * @param queue_count Количество очередей
              * @return
              */
-            static QueueGroupRequest transfer(uint32_t queue_count = 1) {
+            static QueueGroupRequest transfer(const uint32_t queue_count = 1) {
                 return {
-                    .queue_flags        = vk::QueueFlagBits::eTransfer,
-                    .queue_count        = queue_count
+                    vk::QueueFlagBits::eTransfer,
+                    false,
+                    queue_count
                 };
             }
 
@@ -77,10 +75,11 @@ namespace vk::utils
              * @param queue_count Количество очередей
              * @return Сконфигурированный запрос
              */
-            static QueueGroupRequest compute(uint32_t queue_count = 1) {
+            static QueueGroupRequest compute(const uint32_t queue_count = 1) {
                 return {
-                    .queue_flags        = vk::QueueFlagBits::eCompute,
-                    .queue_count        = queue_count
+                    vk::QueueFlagBits::eCompute,
+                    false,
+                    queue_count
                 };
             }
         };
@@ -107,13 +106,13 @@ namespace vk::utils
          * @param req_queue_groups Запросы на создание групп очередей
          * @param req_extensions Требуемые расширения устройства
          * @param allow_integrated_device Разрешить использование интегрированного GPU
-         * @throw std::runtime_error если не удалось создать подходящее устройство
+         * @throw std::runtime_error Если не удалось создать подходящее устройство
          */
         Device(const vk::UniqueInstance& instance,
                const vk::UniqueSurfaceKHR& surface,
                const std::vector<QueueGroupRequest>& req_queue_groups,
                const std::vector<const char*>& req_extensions,
-               bool allow_integrated_device = true) : Device()
+               const bool allow_integrated_device = true) : Device()
         {
             // Поиск подходящего физ устройства
             pick_physical_device(instance,
@@ -138,7 +137,7 @@ namespace vk::utils
 
         /**
          * @brief Проверяет инициализировано ли устройство
-         * @return true если устройство успешно создано
+         * @return True, если устройство успешно создано
          */
         explicit operator bool() const {
             return static_cast<bool>(physical_device_) && static_cast<bool>(device_);
@@ -174,7 +173,7 @@ namespace vk::utils
          * @brief Проверяет поддержку формата поверхности
          * @param format Проверяемый формат
          * @param surface Поверхность для проверки
-         * @return true если формат поддерживается
+         * @return True, если формат поддерживается
          */
         [[nodiscard]] bool supports(const vk::Format& format, const vk::UniqueSurfaceKHR& surface) const
         {
@@ -194,7 +193,7 @@ namespace vk::utils
          * @brief Проверяет поддержку формата и цветового пространства поверхности
          * @param format Проверяемый формат с цветовым пространством
          * @param surface Поверхность для проверки
-         * @return true если формат поддерживается
+         * @return True, если формат поддерживается
          */
         [[nodiscard]] bool supports(const vk::SurfaceFormatKHR& format, const vk::UniqueSurfaceKHR& surface) const
         {
@@ -213,7 +212,7 @@ namespace vk::utils
         /**
          * @brief Проверяет поддержку формата для глубины
          * @param format Проверяемый формат
-         * @return true если формат поддерживается для буфера глубины
+         * @return True, если формат поддерживается для буфера глубины
          */
         [[nodiscard]] bool supports_depth(const ::vk::Format& format) const
         {
@@ -224,25 +223,25 @@ namespace vk::utils
         /**
          * @brief Проверяет принадлежность групп очередей к одному семейству
          * @param indices Индексы проверяемых групп
-         * @return true если все группы принадлежат одному семейству
+         * @return True, если все группы принадлежат одному семейству
          */
         [[nodiscard]] bool is_same_family(const std::vector<size_t>& indices) const {
             if (indices.empty()) return true;
 
             if (std::any_of(indices.begin(), indices.end(),
-                [this](size_t idx) { return idx >= queue_groups_.size(); })) {
+                [this](const size_t idx) { return idx >= queue_groups_.size(); })) {
                 return false;
             }
 
             return std::adjacent_find(indices.begin(), indices.end(),
-                [this](size_t i1, size_t i2) {
+                [this](const size_t i1, const size_t i2) {
                     return queue_groups_[i1].family_index != queue_groups_[i2].family_index;
                 }) == indices.end();
         }
 
         /**
          * @brief Получает индексы семейств очередей для указанных групп
-         * @details Поскольку на несколько групп может приходится одно семейство, может быть меньше чем групп
+         * @details Поскольку на несколько групп может приходиться одно семейство, может быть меньше чем групп
          * @param group_indices Индексы групп
          * @return Массив индексов очередей
          */
@@ -289,7 +288,7 @@ namespace vk::utils
          * @param index Индекс группы
          * @return Ссылка на группу очередей
          */
-        [[nodiscard]] QueueGroup& queue_group(size_t index) {
+        [[nodiscard]] QueueGroup& queue_group(const size_t index) {
             assert(index < queue_groups_.size());
             return queue_groups_[index];
         }
@@ -297,7 +296,7 @@ namespace vk::utils
         /**
          * @brief Проверяет поддержку расширения устройства
          * @param extension Имя проверяемого расширения
-         * @return true если расширение поддерживается
+         * @return True, если расширение поддерживается
          */
         [[nodiscard]] bool supports_extension(const char* extension) const {
             const auto extensions = physical_device_.enumerateDeviceExtensionProperties();
@@ -315,7 +314,7 @@ namespace vk::utils
          * @param req_queue_groups Требуемые группы очередей
          * @param req_extensions Требуемые расширения
          * @param allow_integrated_device Разрешить интегрированное GPU
-         * @throw std::runtime_error если не найдено подходящее устройство
+         * @throw std::runtime_error Если не найдено подходящее устройство
          */
         void pick_physical_device(const vk::UniqueInstance& instance,
                                   const vk::UniqueSurfaceKHR& surface,
@@ -368,10 +367,7 @@ namespace vk::utils
                         // Проверка поддержки требуемых типов команд.
                         // Если команды поддерживаются - добавляем семейство в список подходящих
                         if(req_queue_groups[i].queue_flags & available[family_index].queueFlags){
-                            //queue_groups_[i].family_index = static_cast<uint32_t>(family_index);
                             suitable.push_back(static_cast<uint32_t>(family_index));
-                        }else{
-                            continue;
                         }
                     }
 
@@ -379,9 +375,9 @@ namespace vk::utils
                     if(!suitable.empty()){
                         // Отсортировать подходящие очереди по возрастанию количества использований
                         std::sort(suitable.begin(), suitable.end(),
-                            [&family_usage_count](uint32_t a, uint32_t b) {
-                                uint32_t count_a = family_usage_count.count(a) ? family_usage_count[a] : 0;
-                                uint32_t count_b = family_usage_count.count(b) ? family_usage_count[b] : 0;
+                            [&family_usage_count](const uint32_t a, const uint32_t b) {
+                                const uint32_t count_a = family_usage_count.count(a) ? family_usage_count[a] : 0;
+                                const uint32_t count_b = family_usage_count.count(b) ? family_usage_count[b] : 0;
                                 return count_a < count_b;
                             });
 
@@ -443,7 +439,7 @@ namespace vk::utils
          * @brief Инициализирует логическое устройство
          * @param req_queue_groups Требуемые группы очередей
          * @param req_extensions Требуемые расширения
-         * @throw std::runtime_error если не удалось создать устройство
+         * @throw std::runtime_error Если не удалось создать устройство
          */
         void init_logical_device(const std::vector<QueueGroupRequest>& req_queue_groups,
                                  const std::vector<const char*>& req_extensions)
@@ -460,10 +456,10 @@ namespace vk::utils
             for(size_t i = 0; i < req_queue_groups.size(); ++i)
             {
                 auto& qg = queue_groups_[i];
-                auto& family_index = qg.family_index.value();
+                const auto& family_index = qg.family_index.value();
 
                 // TODO: Вынести приоритеты в QueueGroupRequest
-                auto priorities = std::vector<float>(req_queue_groups[i].queue_count, 1.0f);
+                auto priorities = std::vector(req_queue_groups[i].queue_count, 1.0f);
 
                 queue_create_infos.emplace_back(
                         vk::DeviceQueueCreateInfo()
@@ -493,11 +489,11 @@ namespace vk::utils
                 auto& queues = qg.queues;
                 auto& command_pools = qg.command_pools;
 
-                for(auto q = 0; q < req_queue_groups[i].queue_count; ++q){
+                for(uint32_t q = 0; q < req_queue_groups[i].queue_count; ++q){
                     queues.emplace_back(device_->getQueue(family_index, q));
                 }
 
-                for(auto p = 0; p < req_queue_groups[i].pool_count; ++p){
+                for(uint32_t p = 0; p < req_queue_groups[i].pool_count; ++p){
                     command_pools.emplace_back(device_->createCommandPoolUnique(
                             vk::CommandPoolCreateInfo()
                             .setQueueFamilyIndex(family_index)

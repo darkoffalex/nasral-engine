@@ -6,10 +6,9 @@
 namespace fs = std::filesystem;
 namespace nasral::resources
 {
-    ResourceManager::ResourceManager(Engine* engine, const ResourceConfig& config)
+    ResourceManager::ResourceManager(const Engine* engine, const ResourceConfig& config)
         : engine_(engine)
         , content_dir_(config.content_dir)
-        , slots_()
     {
         // Проверка доступности директории контента
         if (!content_dir_.empty() && !fs::exists(content_dir_)){
@@ -101,20 +100,20 @@ namespace nasral::resources
 
     void ResourceManager::remove_all_unsafe(){
         for (const size_t index : active_slots_){
-            auto& slot = slots_[index];
+            auto& [is_used, resource, info, refs, loading] = slots_[index];
 
-            if(slot.loading.task.valid()){
-                slot.loading.task.wait();
-                slot.loading.task = {};
+            if(loading.task.valid()){
+                loading.task.wait();
+                loading.task = {};
             }
 
-            slot.is_used = false;
-            slot.resource.reset();
-            slot.refs.unhandled.clear();
-            slot.refs.has_unhandled.store(false, std::memory_order_release);
-            slot.refs.count.store(0, std::memory_order_release);
-            slot.loading.in_progress.store(false, std::memory_order_release);
-            slot.info.path.assign("");
+            is_used = false;
+            resource.reset();
+            refs.unhandled.clear();
+            refs.has_unhandled.store(false, std::memory_order_release);
+            refs.count.store(0, std::memory_order_release);
+            loading.in_progress.store(false, std::memory_order_release);
+            info.path.assign("");
         }
 
         free_slots_.clear();
@@ -221,8 +220,7 @@ namespace nasral::resources
     }
 
     size_t ResourceManager::ref_count(const std::string &path) const {
-        auto index = res_index(std::string_view(path));
-        if(index.has_value()){
+        if(const auto index = res_index(std::string_view(path)); index.has_value()){
             auto& slot = slots_[index.value()];
             return slot.refs.count.load(std::memory_order_acquire);
         }
