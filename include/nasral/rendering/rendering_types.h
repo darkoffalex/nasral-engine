@@ -7,14 +7,20 @@ namespace nasral::rendering
     class VkSurfaceProvider
     {
     public:
+        typedef std::shared_ptr<VkSurfaceProvider> Ptr;
+
         VkSurfaceProvider() = default;
         virtual ~VkSurfaceProvider() = default;
         virtual VkSurfaceKHR create_surface(const vk::Instance& instance) = 0;
+        virtual const std::vector<const char*>& surface_extensions() = 0;
     };
 
     struct RenderingConfig
     {
+        std::string app_name;                                               // Имя приложения
+        std::string engine_name;                                            // Имя движка
         std::shared_ptr<VkSurfaceProvider> surface_provider;                // Указатель на объект получения поверхности
+        PFN_vkGetInstanceProcAddr pfn_vk_get_proc_addr;                     // Указатель на функцию получения адресов функций
         std::optional<glm::uvec2> rendering_resolution;                     // Целевое разрешение рендеринга
         vk::Format color_format = vk::Format::eB8G8R8A8Unorm;               // Формат цветовых вложений
         vk::Format depth_stencil_format = vk::Format::eD32SfloatS8Uint;     // Формат вложений глубины и трафарета

@@ -112,7 +112,7 @@ namespace vk::utils
                const vk::UniqueSurfaceKHR& surface,
                const std::vector<QueueGroupRequest>& req_queue_groups,
                const std::vector<const char*>& req_extensions,
-               const bool allow_integrated_device = true) : Device()
+               const bool allow_integrated_device = false) : Device()
         {
             // Поиск подходящего физ устройства
             pick_physical_device(instance,
@@ -158,8 +158,8 @@ namespace vk::utils
             const auto m_props = physical_device_.getMemoryProperties();
 
             for(uint32_t i = 0; i < m_props.memoryTypeCount; ++i){
-                bool type_supported = ((type_bits & (1 << i)) > 0);
-                bool prop_supported = (m_props.memoryTypes[i].propertyFlags & m_prop_flag) == m_prop_flag;
+                const bool type_supported = ((type_bits & (1 << i)) > 0);
+                const bool prop_supported = (m_props.memoryTypes[i].propertyFlags & m_prop_flag) == m_prop_flag;
                 if(type_supported && prop_supported){
                     index = i;
                     break;
@@ -175,7 +175,7 @@ namespace vk::utils
          * @param surface Поверхность для проверки
          * @return True, если формат поддерживается
          */
-        [[nodiscard]] bool supports(const vk::Format& format, const vk::UniqueSurfaceKHR& surface) const
+        [[nodiscard]] bool supports_color(const vk::Format& format, const vk::UniqueSurfaceKHR& surface) const
         {
             const auto sfs = physical_device_.getSurfaceFormatsKHR(surface.get());
             if(sfs.empty()) return false;
@@ -195,7 +195,7 @@ namespace vk::utils
          * @param surface Поверхность для проверки
          * @return True, если формат поддерживается
          */
-        [[nodiscard]] bool supports(const vk::SurfaceFormatKHR& format, const vk::UniqueSurfaceKHR& surface) const
+        [[nodiscard]] bool supports_format(const vk::SurfaceFormatKHR& format, const vk::UniqueSurfaceKHR& surface) const
         {
             const auto sfs = physical_device_.getSurfaceFormatsKHR(surface.get());
             if(sfs.empty()) return false;
@@ -299,6 +299,7 @@ namespace vk::utils
          * @return True, если расширение поддерживается
          */
         [[nodiscard]] bool supports_extension(const char* extension) const {
+            assert(physical_device_);
             const auto extensions = physical_device_.enumerateDeviceExtensionProperties();
             return std::any_of(extensions.begin(), extensions.end(),
                 [extension](const auto& ext) {
@@ -306,7 +307,7 @@ namespace vk::utils
                 });
         }
 
-    protected:
+    private:
         /**
          * @brief Выбирает подходящее физическое устройство
          * @param instance Экземпляр Vulkan
@@ -398,9 +399,17 @@ namespace vk::utils
                 }
 
                 // Пропустить устройство без поддержки необходимых расширений
+                auto supports_ext = [&](const char* extension){
+                    const auto extensions = device.enumerateDeviceExtensionProperties();
+                    return std::any_of(extensions.begin(), extensions.end(),
+                        [extension](const auto& ext) {
+                            return strcmp(ext.extensionName, extension) == 0;
+                        });
+                };
+
                 if (!std::all_of(req_extensions.begin(),
-                                 req_extensions.end(),
-                                 [this](const char* required_ext){return supports_extension(required_ext);}))
+                    req_extensions.end(),
+                    [this, supports_ext](const char* required_ext){return supports_ext(required_ext);}))
                 {
                     continue;
                 }
@@ -502,7 +511,7 @@ namespace vk::utils
             }
         }
 
-    private:
+    protected:
         /// Физическое устройство
         vk::PhysicalDevice physical_device_;
         /// Логическое устройство

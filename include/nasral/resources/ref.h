@@ -25,7 +25,7 @@ namespace nasral::resources
         [[nodiscard]] const std::optional<size_t>& index() const { return resource_index_; }
         [[nodiscard]] bool is_requested() const { return is_requested_; }
 
-    private:
+    protected:
         Type type_;
         FixedPath path_;
         std::optional<size_t> resource_index_;

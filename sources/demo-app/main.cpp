@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "utils/fps_counter.hpp"
+#include "utils/surface_provider.hpp"
 
 #include <nasral/engine.h>
-#include <nasral/resources/file.h>
 
 constexpr int kWindowWidth = 800;
 constexpr int kWindowHeight = 600;
@@ -19,8 +19,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
     try
     {
         // Инициализация GLFW
-        if (glfwInit() != GLFW_TRUE)
-        {
+        if (glfwInit() != GLFW_TRUE){
             throw std::runtime_error("Failed to initialize GLFW");
         }
 
@@ -29,16 +28,33 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
 
         // Создать окно
         GLFWwindow* window = glfwCreateWindow(kWindowWidth, kWindowHeight, kWindowTitle, nullptr, nullptr);
-        if (window == nullptr)
-        {
+        if (window == nullptr){
             throw std::runtime_error("Failed to create GLFW window");
         }
 
-        // Конфигурация движка
-        nasral::EngineConfig config;
-        config.log.file = "engine.log";
-        config.log.console_out = true;
-        config.resources.content_dir = "../../content/";
+        // Конфигурация
+        nasral::Engine::Config config;
+        {
+            // Логирование
+            config.log.file = "engine.log";
+            config.log.console_out = true;
+            // Ресурсы
+            config.resources.content_dir = "../../content/";
+            // Рендеринг
+            config.rendering.app_name = "engine-demo";
+            config.rendering.engine_name = "nasral-engine";
+            config.rendering.surface_provider = std::make_shared<utils::GlfwSurfaceProvider>(window);
+            config.rendering.pfn_vk_get_proc_addr = glfwGetInstanceProcAddress;
+            config.rendering.rendering_resolution = {}; // На текущий момент не используется
+            config.rendering.color_format = vk::Format::eB8G8R8A8Unorm;
+            config.rendering.depth_stencil_format = vk::Format::eD32SfloatS8Uint;
+            config.rendering.color_space = vk::ColorSpaceKHR::eSrgbNonlinear;
+            config.rendering.present_mode = vk::PresentModeKHR::eFifo;
+            config.rendering.use_opengl_style = true;
+            config.rendering.use_validation_layers = true;
+            config.rendering.max_frames_in_flight = 2;
+            config.rendering.swap_chain_image_count = 3;
+        }
 
         // Инициализировать движок
         nasral::Engine engine;

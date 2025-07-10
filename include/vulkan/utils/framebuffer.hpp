@@ -152,7 +152,7 @@ namespace vk::utils
             return attachments_;
         }
 
-    private:
+    protected:
         vk::Extent2D extent_;                    ///< Размеры фрейм-буфера
         vk::UniqueFramebuffer framebuffer_;      ///< Handle фрейм-буфера
         std::vector<Image::Ptr> attachments_;    ///< Список вложений

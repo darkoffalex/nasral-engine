@@ -20,4 +20,5 @@ target_link_libraries(DemoApp PRIVATE Engine)
 target_link_libraries(DemoApp PRIVATE
         glfw
         Vulkan::Vulkan
+        glm::glm
 )

@@ -1,5 +1,4 @@
 #pragma once
-#include <nasral/core_types.h>
 #include <nasral/logging/logger.h>
 #include <nasral/resources/resource_manager.h>
 #include <nasral/rendering/renderer.h>

@@ -12,12 +12,431 @@ namespace nasral::rendering
         , current_frame_(0)
         , available_image_index_(0)
     {
+        init_vk_instance();
+        logger()->info("Vulkan: Instance created");
 
+        init_vk_loader();
+        logger()->info("Vulkan: Loader created");
+
+        init_vk_debug_callback();
+        logger()->info("Vulkan: Debug callback created");
+
+        init_vk_surface();
+        logger()->info("Vulkan: Surface created");
+
+        init_vk_device();
+        const auto device_name = std::string(vk_device_->physical_device().getProperties().deviceName);
+        logger()->info("Vulkan: Device initialized (" + device_name + ")");
+
+        init_vk_render_passes();
+        logger()->info("Vulkan: Render passes created");
+
+        init_vk_swap_chain();
+        logger()->info("Vulkan: Swap chain created");
+
+        init_vk_framebuffers();
+        logger()->info("Vulkan: Frame buffers created");
+
+        init_vk_command_buffers();
+        logger()->info("Vulkan: Command buffers created");
+
+        init_vk_sync_objects();
+        logger()->info("Vulkan: Sync primitives created");
     }
 
     Renderer::~Renderer() = default;
 
+    VkBool32 Renderer::vk_debug_report_callback(
+        [[maybe_unused]] vk::Flags<vk::DebugReportFlagBitsEXT> flags,
+        [[maybe_unused]] vk::DebugReportObjectTypeEXT object_type,
+        [[maybe_unused]] uint64_t obj,
+        [[maybe_unused]] size_t location,
+        [[maybe_unused]] int32_t code,
+        const char* layer_prefix,
+        const char* msg,
+        void* user_data)
+    {
+        const auto* logger = static_cast<logging::Logger*>(user_data);
+        const std::string msg_str = "Vulkan validation: " + std::string(layer_prefix) + " | " + std::string(msg) + "\n";
+        logger->warning(msg_str);
+        return VK_FALSE;
+    }
+
     const logging::Logger* Renderer::logger() const{
         return engine()->logger();
+    }
+
+    void Renderer::init_vk_instance()
+    {
+        // Требуемые расширения и слои
+        std::vector<const char*> req_extensions = config_.surface_provider->surface_extensions();
+        std::vector<const char*> req_layers = {};
+
+        // Если нужна валидация
+        if (config_.use_validation_layers){
+            req_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+            req_layers.push_back("VK_LAYER_KHRONOS_validation");
+        }
+
+        // Информация о приложении
+        const auto app_info = vk::ApplicationInfo()
+            .setPApplicationName(config_.app_name.c_str())
+            .setPEngineName(config_.engine_name.c_str())
+            .setApiVersion(VK_API_VERSION_1_4)
+            .setApplicationVersion(VK_MAKE_VERSION(1, 0, 0))
+            .setEngineVersion(VK_MAKE_VERSION(1, 0, 0));
+
+        // Создать сущность Vulkan
+        vk_instance_ = vk::createInstanceUnique(vk::InstanceCreateInfo()
+            .setPEnabledExtensionNames(req_extensions)
+            .setPEnabledLayerNames(req_layers)
+            .setPApplicationInfo(&app_info));
+    }
+
+    void Renderer::init_vk_loader(){
+        assert(vk_instance_);
+        vk_dispatch_loader_ = vk::detail::DispatchLoaderDynamic(vk_instance_.get(), config_.pfn_vk_get_proc_addr);
+        vk_dispatch_loader_.init(vk_instance_.get());
+    }
+
+    void Renderer::init_vk_debug_callback(){
+        if (!config_.use_validation_layers) return;
+        assert(vk_instance_);
+
+        // Используем статический метод vk_debug_report_callback для логирования предупреждений и ошибок от слоев.
+        // Передаем logger как пользовательский указатель
+        vk_debug_callback_ = vk_instance_->createDebugReportCallbackEXTUnique(
+            vk::DebugReportCallbackCreateInfoEXT()
+                .setFlags(vk::DebugReportFlagBitsEXT::eError|vk::DebugReportFlagBitsEXT::eWarning)
+                .setPfnCallback(reinterpret_cast<vk::PFN_DebugReportCallbackEXT>(vk_debug_report_callback))
+                .setPUserData(const_cast<logging::Logger*>(logger())),
+            nullptr,
+            vk_dispatch_loader_);
+    }
+
+    void Renderer::init_vk_surface(){
+        assert(vk_instance_);
+        // Поверхность создается вне системы рендеринга (на стороне приложения, например, при помощи GLFW)
+        const vk::SurfaceKHR surface = config_.surface_provider->create_surface(*vk_instance_);
+
+        // Поскольку был создан "голый" handler, нужно обернуть его в unique pointer
+        // Также нужно предоставить функтор удаления (второй аргумент, используем стандартный)
+        vk_surface_ = vk::UniqueSurfaceKHR(
+            surface,
+            ::vk::detail::ObjectDestroy<::vk::Instance, ::vk::detail::DispatchLoaderStatic>(vk_instance_.get()));
+    }
+
+    void Renderer::init_vk_device(){
+        assert(vk_instance_);
+        assert(vk_surface_);
+
+        // Требуемые расширения (поддержка своп-чейна и выделенных аллокаций памяти)
+        const std::vector req_extensions{
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME
+        };
+
+        // Требования к очередям
+        std::vector<vk::utils::Device::QueueGroupRequest> req_queues(to<size_t>(CommandGroup::TOTAL));
+        req_queues[to<size_t>(CommandGroup::eGraphicsAndPresent)] = vk::utils::Device::QueueGroupRequest::graphics(1, true),
+        req_queues[to<size_t>(CommandGroup::eTransfer)] = vk::utils::Device::QueueGroupRequest::transfer(1),
+
+        // Создать устройство
+        vk_device_ = std::make_unique<vk::utils::Device>(
+            vk_instance_,
+            vk_surface_,
+            req_queues,
+            req_extensions);
+    }
+
+    void Renderer::init_vk_render_passes(){
+        assert(vk_instance_);
+        assert(vk_surface_);
+        assert(vk_device_);
+
+        if (!vk_device_->supports_color(config_.color_format, vk_surface_)){
+            throw std::runtime_error("Color format is not supported by the device");
+        }
+
+        if (!vk_device_->supports_depth(config_.depth_stencil_format)){
+            throw std::runtime_error("Depth stencil format is not supported by the device");
+        }
+
+        /**
+         * Общая теория:
+         *
+         * В отличии от OpenGL, где проход редеринга абстракция чисто програмная, в Vulkan проход это отдельный объект.
+         * Он описывает как ведет себя память вложений (цвет, глубина) на разных этапах конвейера рендеринга. У каждого
+         * прохода есть свои под-проходы, они позволяют более оптимально работать с вложениями (например, получать к ним
+         * доступ в шейдере до его записи в кадровый буер) за счет быстрой памяти устройство (своего рода кэш). Но стоит
+         * также учитывать ограничения: при таких эффектах как размытие некоторые из тайлов могут быть не готовы, и их
+         * данные будут недоступны. Под-проходы идеально подходят для реализации таких концепций как G-буфер, отложенный
+         * рендеринг и прочие аналогичные техники. Каждому под-проходу может соответствовать свой отдельный конвейер
+         * с шейдерами.
+         */
+
+        // Описания вложений.
+        // Предполагается использование двух вложений - цвета и глубины/трафарета.
+        // Вложение - изображение, в которое производится запись на стороне shader'а.
+        // Вложение также может быть прочитано в другом под-проходе (например, для легкой пост-обработки)
+        std::vector<::vk::AttachmentDescription> attachment_descriptions{};
+
+        // Цвет
+        attachment_descriptions.push_back(
+            vk::AttachmentDescription()
+            .setFormat(config_.color_format)
+            .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
+            .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
+            .setStoreOp(vk::AttachmentStoreOp::eStore)                      // Хранить для показа (один под-проход)
+            .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (цветовое вложение)
+            .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (цветовое вложение)
+            .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
+            .setFinalLayout(vk::ImageLayout::ePresentSrcKHR)                // В конце - отправка на экран (один под-проход)
+        );
+
+        // Глубина/трафарет
+        attachment_descriptions.push_back(
+            vk::AttachmentDescription()
+            .setFormat(config_.depth_stencil_format)
+            .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
+            .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
+            .setStoreOp(vk::AttachmentStoreOp::eDontCare)                   // Хранить для показа не нужно (не показываем)
+            .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (только глубина)
+            .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (только глубина)
+            .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
+            .setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)); // В конце - использование в качестве вложения глубины/трафарета
+
+        // Ссылки на вложения.
+        // Указываем, какие вложения из ранее описанных (и в качестве чего) будет использовать под-проход.
+        // На данный момент: 1 проход с 1 под-проходом (с последующим выводом изображения в кадровый буфер).
+        std::vector<vk::AttachmentReference> color_attachment_refs{};
+        std::vector<vk::AttachmentReference> depth_attachment_refs{};
+
+        color_attachment_refs.push_back(
+            vk::AttachmentReference()
+            .setAttachment(0)
+            .setLayout(vk::ImageLayout::eColorAttachmentOptimal));
+
+        depth_attachment_refs.push_back(
+            vk::AttachmentReference()
+            .setAttachment(1)
+            .setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal));
+
+        // Под-проходы (1 под проход на текущий момент)
+        std::vector<vk::SubpassDescription> subpass_descriptions{};
+        subpass_descriptions.push_back(
+            vk::SubpassDescription().
+            setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+            .setColorAttachments(color_attachment_refs)
+            .setPDepthStencilAttachment(&depth_attachment_refs[0]));
+
+        // Зависимости под-проходов.
+        // Указываем, на каких стадиях конвейера какой будет доступ к вложениям под-проходов
+        std::vector<vk::SubpassDependency> subpass_dependencies{};
+
+        // Переход из внешнего (неявного) в основной (первый/нулевой)
+        subpass_dependencies.push_back(
+            vk::SubpassDependency()
+            .setSrcSubpass(VK_SUBPASS_EXTERNAL)                                   // Исходный под-проход (внешний)
+            .setDstSubpass(0)                                                     // Целевой (первый)
+            .setSrcStageMask(vk::PipelineStageFlagBits::eTopOfPipe)               // Этап ожидания операций
+            .setSrcAccessMask(vk::AccessFlagBits::eNone)                          // Нет операций для ожидания (вложение очищается)
+            .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап выполнения операций целевого под-прохода
+            .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции целевого под-прохода
+            .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
+        );
+
+        // Переход из основного во внешний (неявный)
+        subpass_dependencies.push_back(
+            vk::SubpassDependency()
+            .setSrcSubpass(0)                                                     // Исходный под-проход (первый)
+            .setDstSubpass(VK_SUBPASS_EXTERNAL)                                   // Целевой (внешний)
+            .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап ожидания операций (вывод)
+            .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции записи
+            .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап выполнения операций целевого под-прохода
+            .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead)           // Операции чтения (swap chain)
+            .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
+        );
+
+        // Создать проход
+        vk_render_pass_ = vk_device_->logical_device().createRenderPassUnique(
+            vk::RenderPassCreateInfo()
+            .setAttachments(attachment_descriptions)
+            .setSubpasses(subpass_descriptions)
+            .setDependencies(subpass_dependencies));
+    }
+
+    void Renderer::init_vk_swap_chain(){
+        assert(vk_instance_);
+        assert(vk_surface_);
+        assert(vk_device_);
+
+        // Проверка формата поверхности
+        const vk::SurfaceFormatKHR surface_format = {config_.color_format, config_.color_space};
+        if (!vk_device_->supports_format(surface_format, vk_surface_)){
+            throw std::runtime_error("Surface format is not supported by the device");
+        }
+
+        // Проверка поддержки нужного кол-ва изображений
+        const auto surface_capabilities = vk_device_->physical_device().getSurfaceCapabilitiesKHR(*vk_surface_);
+        if (config_.swap_chain_image_count > surface_capabilities.maxImageCount){
+            throw std::runtime_error("Swap chain image count is greater than the maximum supported by the device");
+        }
+
+        // Проверка поддержки нужного режима представления (показа)
+        const auto present_modes = vk_device_->physical_device().getSurfacePresentModesKHR(*vk_surface_);
+        if (std::find(present_modes.begin(), present_modes.end(), config_.present_mode) == present_modes.end()){
+            throw std::runtime_error("Present mode is not supported by the device");
+        }
+
+        // Старый swap-chain (может быть нужен в случае пере-создания)
+        const vk::SwapchainKHR old_swap_chain = vk_swap_chain_ ? *vk_swap_chain_ : nullptr;
+
+        // Индексы семейств очередей рендеринга и показа
+        // На текущий момент выделяется одна группа очередей с поддержкой обеих команд (одно семейство)
+        const std::vector family_indices = {
+            vk_device_->queue_group(to<size_t>(CommandGroup::eGraphicsAndPresent)).family_index.value(),
+        };
+
+        // Используется ли одно и то же семейство для показа и рендеринга
+        bool same_family = true;
+        for (const auto& queue_family_index : family_indices){
+            if (queue_family_index != family_indices[0]){
+                same_family = false;
+                break;
+            }
+        }
+
+        // Инициализация swap chain
+        auto create_info = vk::SwapchainCreateInfoKHR()
+        .setSurface(vk_surface_.get())
+        .setMinImageCount(config_.swap_chain_image_count)
+        .setImageFormat(surface_format.format)
+        .setImageColorSpace(surface_format.colorSpace)
+        .setImageExtent(surface_capabilities.currentExtent)
+        .setImageArrayLayers(1)
+        .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
+        .setImageSharingMode(same_family ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent)
+        .setPreTransform(surface_capabilities.currentTransform)
+        .setClipped(true)
+        .setOldSwapchain(old_swap_chain);
+
+        if (!same_family){
+            create_info.setQueueFamilyIndices(family_indices);
+        }
+
+        // Если swap chain уже существует - лишить владения указатель
+        if (vk_swap_chain_){
+            vk_swap_chain_.release();
+        }
+
+        // Создать новый swap chain
+        vk_swap_chain_ = vk_device_->logical_device().createSwapchainKHRUnique(create_info);
+
+        // Уничтожить старый swap chain
+        if (old_swap_chain){
+            vk_device_->logical_device().destroySwapchainKHR(old_swap_chain);
+        }
+    }
+
+    void Renderer::init_vk_framebuffers(){
+        assert(vk_instance_);
+        assert(vk_surface_);
+        assert(vk_device_);
+        assert(vk_swap_chain_);
+
+        // Получить изображения swap chain
+        const auto swap_chain_images = vk_device_->logical_device().getSwapchainImagesKHR(*vk_swap_chain_);
+        assert(!swap_chain_images.empty());
+
+        // Получить размеры кадрового буфера
+        const auto swap_chain_extent = vk_device_->physical_device().getSurfaceCapabilitiesKHR(*vk_surface_).currentExtent;
+
+        // Проход по изображениям swap-chain
+        for (const auto& sci : swap_chain_images)
+        {
+            // Описать вложения кадрового буфера
+            std::vector<vk::utils::Framebuffer::AttachmentInfo> attachments{};
+
+            // Вложение цвета (используем изображение из swap-chain)
+            vk::utils::Framebuffer::AttachmentInfo color{};
+            color.image = sci;
+            color.format = config_.color_format;
+            color.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+            color.aspect = vk::ImageAspectFlagBits::eColor;
+            attachments.push_back(color);
+
+            // Для вложения глубины-трафарета изображения не создано (swap-chain создает только показываемые изображения)
+            // НЕ указываем ничего в поле image (оно будет создано внутри кадрового буфера)
+            vk::utils::Framebuffer::AttachmentInfo depth{};
+            depth.format = config_.depth_stencil_format;
+            depth.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+            depth.aspect = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+            attachments.push_back(depth);
+
+            // Создать и добавить кадровый буфер
+            vk_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
+                vk_device_,
+                vk_render_pass_.get(),
+                swap_chain_extent,
+                attachments));
+        }
+    }
+
+    void Renderer::init_vk_command_buffers(){
+        assert(vk_instance_);
+        assert(vk_device_);
+
+        // Выделяем столько командных буферов, сколько предполагается активных кадров
+        auto& pool = vk_device_->queue_group(to<size_t>(CommandGroup::eGraphicsAndPresent)).command_pools[0];
+        vk_command_buffers_ = vk_device_->logical_device().allocateCommandBuffersUnique(
+            vk::CommandBufferAllocateInfo()
+            .setCommandPool(pool.get())
+            .setLevel(vk::CommandBufferLevel::ePrimary)
+            .setCommandBufferCount(config_.max_frames_in_flight));
+    }
+
+    void Renderer::init_vk_sync_objects(){
+        assert(vk_instance_);
+        assert(vk_device_);
+
+        // Создать необходимые примитивы синхронизации для каждого активного кадра
+        const auto& ld = vk_device_->logical_device();
+        for (size_t i = 0; i < config_.max_frames_in_flight; ++i)
+        {
+            // Семафор, который будет ожидаться конвейером перед выполнением команд рендеринга
+            vk_render_available_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
+            // Семафор, который будет сигнализировать о готовности к показу изображения (для команд показа)
+            vk_render_finished_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
+            // Барьеры, которые показывают, что буфер был выполнен и готов к использованию
+            vk_frame_fence_.emplace_back(ld.createFenceUnique(vk::FenceCreateInfo{vk::FenceCreateFlagBits::eSignaled}));
+        }
+    }
+
+    void Renderer::refresh_vk_surface(){
+        assert(vk_instance_);
+        assert(vk_surface_);
+        assert(vk_device_);
+
+        // Ожидать завершения всех команд
+        vk_device_->logical_device().waitIdle();
+
+        // Отключить рендеринг и сбросить кадр
+        is_rendering_ = false;
+        current_frame_ = 0;
+
+        // Очистить командные буферы
+        vk_command_buffers_.clear();
+        // Уничтожить кадровые буферы
+        vk_framebuffers_.clear();
+        // Пере-создать swap-chain (старый будет задействован при создании нового, затем удален)
+        init_vk_swap_chain();
+        // Создать новые кадровые буферы
+        init_vk_framebuffers();
+        // Создать новые командные буферы
+        init_vk_command_buffers();
+
+        // Включить рендеринг
+        is_rendering_ = true;
     }
 }

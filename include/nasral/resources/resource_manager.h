@@ -52,7 +52,7 @@ namespace nasral::resources
         [[nodiscard]] std::string full_path(const std::string& path) const;
         [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }
 
-    protected:
+    private:
         void request(Ref* ref, bool unsafe = false);
         void release(const Ref* ref, bool unsafe = false);
 
@@ -60,7 +60,7 @@ namespace nasral::resources
         [[nodiscard]] IResource::Ptr make_resource(const Slot& slot);
         [[nodiscard]] const logging::Logger* logger() const;
 
-    private:
+    protected:
         SafeHandle<const Engine> engine_;                       // Указатель на владельца (корневой объект)
         std::string content_dir_;                               // Путь к директории ресурсов
         std::array<Slot, MAX_RESOURCE_COUNT> slots_;            // Фиксированный массив слотов ресурсов

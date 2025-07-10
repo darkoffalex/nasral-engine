@@ -14,16 +14,55 @@ namespace nasral::rendering
         typedef std::unique_ptr<Renderer> Ptr;
         typedef vk::UniqueHandle<vk::DebugReportCallbackEXT, vk::detail::DispatchLoaderDynamic> DebugReportCallback;
 
+        enum class CommandGroup : size_t
+        {
+            eGraphicsAndPresent = 0,
+            eTransfer,
+            TOTAL
+        };
+
         Renderer(const Engine* engine, RenderingConfig config);
         ~Renderer();
 
         [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }
         [[nodiscard]] const RenderingConfig& config() const { return config_; }
 
-    protected:
-        [[nodiscard]] const logging::Logger* logger() const;
+        static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
+            vk::Flags<vk::DebugReportFlagBitsEXT> flags,
+            vk::DebugReportObjectTypeEXT object_type,
+            uint64_t obj,
+            size_t location,
+            int32_t code,
+            const char* layer_prefix,
+            const char* msg,
+            void* user_data);
 
     private:
+        [[nodiscard]] const logging::Logger* logger() const;
+
+        void init_vk_instance();
+
+        void init_vk_loader();
+
+        void init_vk_debug_callback();
+
+        void init_vk_surface();
+
+        void init_vk_device();
+
+        void init_vk_render_passes();
+
+        void init_vk_swap_chain();
+
+        void init_vk_framebuffers();
+
+        void init_vk_command_buffers();
+
+        void init_vk_sync_objects();
+
+        void refresh_vk_surface();
+
+    protected:
         SafeHandle<const Engine> engine_;
         RenderingConfig config_;
 
@@ -32,7 +71,7 @@ namespace nasral::rendering
         std::atomic<bool> surface_refresh_required_;
 
         // Основные сущности Vulkan (включая кастомные RAII обертки)
-        vk::Instance vk_instance_;
+        vk::UniqueInstance vk_instance_;
         DebugReportCallback vk_debug_callback_;
         vk::detail::DispatchLoaderDynamic vk_dispatch_loader_;
         vk::UniqueSurfaceKHR vk_surface_;
@@ -41,11 +80,10 @@ namespace nasral::rendering
         vk::UniqueSwapchainKHR vk_swap_chain_;
         std::vector<vk::utils::Framebuffer::Ptr> vk_framebuffers_;
 
-        // Синхронизация и команды
-        // Кол-во примитивов соответствует кол-ву активных кадров - RenderingConfig.max_frames_in_flight
+        // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
         size_t current_frame_;
         uint32_t available_image_index_;
-        std::vector<vk::CommandBuffer> vk_command_buffers_;
+        std::vector<vk::UniqueCommandBuffer> vk_command_buffers_;
         std::vector<vk::UniqueSemaphore> vk_render_available_semaphore_;
         std::vector<vk::UniqueSemaphore> vk_render_finished_semaphore_;
         std::vector<vk::UniqueFence> vk_frame_fence_;

@@ -12,7 +12,7 @@ namespace nasral::resources
         void load() override;
         bool read(void* buffer, size_t size);
 
-    private:
+    protected:
         std::string_view path_;
         std::ifstream file_;
     };

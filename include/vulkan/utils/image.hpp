@@ -144,7 +144,7 @@ namespace vk::utils
 
             // Свойства памяти
             const auto mem_reqs = device->logical_device().getImageMemoryRequirements(own_image_.get());
-            const auto mem_type_index = device->find_memory_type_index(mem_reqs.memoryTypeBits, memory_properties);
+            const auto mem_type_index = device->find_memory_type_index(mem_reqs, memory_properties);
             if(!mem_type_index.has_value()){
                 throw std::runtime_error("Failed to find suitable memory type for image");
             }
@@ -264,7 +264,7 @@ namespace vk::utils
             return own_image_memory_.get();
         }
 
-    protected:
+    private:
         /**
          * @brief Преобразует тип изображения в VkImageType
          * @param type Тип изображения
@@ -317,7 +317,7 @@ namespace vk::utils
             return vk::ImageViewType::e2D;
         }
 
-    private:
+    protected:
         /// Handle внешнего изображения
         vk::Image image_;
         /// Представление изображения (для доступа/просмотра изображения)

@@ -2,6 +2,11 @@
 
 namespace nasral
 {
+    template<typename T, typename E>
+    T to(E value){
+        return static_cast<T>(value);
+    }
+
     template<typename T>
     class SafeHandle
     {
