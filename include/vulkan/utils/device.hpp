@@ -462,23 +462,25 @@ namespace vk::utils
 
             // Подготовить информацию для выделения очередей
             std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
+            std::vector<std::vector<float>> queue_priorities;
+
             for(size_t i = 0; i < req_queue_groups.size(); ++i)
             {
                 auto& qg = queue_groups_[i];
                 const auto& family_index = qg.family_index.value();
 
                 // TODO: Вынести приоритеты в QueueGroupRequest
-                auto priorities = std::vector(req_queue_groups[i].queue_count, 1.0f);
+                queue_priorities.emplace_back(req_queue_groups[i].queue_count, 1.0f);
 
                 queue_create_infos.emplace_back(
                         vk::DeviceQueueCreateInfo()
                         .setQueueFamilyIndex(family_index)
                         .setQueueCount(req_queue_groups[i].queue_count)
-                        .setQueuePriorities(priorities));
+                        .setQueuePriorities(queue_priorities.back()));
             }
 
             // Особенности
-            auto features = vk::PhysicalDeviceFeatures()
+            constexpr auto features = vk::PhysicalDeviceFeatures()
                     .setSamplerAnisotropy(true)
                     .setGeometryShader(true)
                     .setMultiViewport(true);

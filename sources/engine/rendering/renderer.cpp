@@ -12,36 +12,43 @@ namespace nasral::rendering
         , current_frame_(0)
         , available_image_index_(0)
     {
-        init_vk_instance();
-        logger()->info("Vulkan: Instance created");
+        try {
+            init_vk_instance();
+            logger()->info("Vulkan: Instance created");
 
-        init_vk_loader();
-        logger()->info("Vulkan: Loader created");
+            init_vk_loader();
+            logger()->info("Vulkan: Loader created");
 
-        init_vk_debug_callback();
-        logger()->info("Vulkan: Debug callback created");
+            init_vk_debug_callback();
+            logger()->info("Vulkan: Debug callback created");
 
-        init_vk_surface();
-        logger()->info("Vulkan: Surface created");
+            init_vk_surface();
+            logger()->info("Vulkan: Surface created");
 
-        init_vk_device();
-        const auto device_name = std::string(vk_device_->physical_device().getProperties().deviceName);
-        logger()->info("Vulkan: Device initialized (" + device_name + ")");
+            init_vk_device();
+            const auto device_name = vk_device_->physical_device().getProperties().deviceName;
+            const auto device_name_str = std::string(device_name.data(), strlen(device_name.data()));
+            logger()->info("Vulkan: Device initialized (" + device_name_str + ")");
 
-        init_vk_render_passes();
-        logger()->info("Vulkan: Render passes created");
+            init_vk_render_passes();
+            logger()->info("Vulkan: Render passes created");
 
-        init_vk_swap_chain();
-        logger()->info("Vulkan: Swap chain created");
+            init_vk_swap_chain();
+            logger()->info("Vulkan: Swap chain created");
 
-        init_vk_framebuffers();
-        logger()->info("Vulkan: Frame buffers created");
+            init_vk_framebuffers();
+            logger()->info("Vulkan: Frame buffers created");
 
-        init_vk_command_buffers();
-        logger()->info("Vulkan: Command buffers created");
+            init_vk_command_buffers();
+            logger()->info("Vulkan: Command buffers created");
 
-        init_vk_sync_objects();
-        logger()->info("Vulkan: Sync primitives created");
+            init_vk_sync_objects();
+            logger()->info("Vulkan: Sync primitives created");
+        }
+        catch (const std::exception& e) {
+            logger()->error("Failed to initialize renderer: " + std::string(e.what()));
+            throw;
+        }
     }
 
     Renderer::~Renderer() = default;
