@@ -37,7 +37,9 @@ namespace nasral::rendering
             logger()->info("Vulkan: Swap chain created");
 
             init_vk_framebuffers();
-            logger()->info("Vulkan: Frame buffers created");
+            const auto extent = vk_framebuffers_[0]->extent();
+            const std::string extent_str = std::to_string(extent.width) + "x" + std::to_string(extent.height);
+            logger()->info("Vulkan: Frame buffers created (" + extent_str + ")");
 
             init_vk_command_buffers();
             logger()->info("Vulkan: Command buffers created");

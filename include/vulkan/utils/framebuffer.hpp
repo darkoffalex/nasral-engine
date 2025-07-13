@@ -64,10 +64,11 @@ namespace vk::utils
                     const vk::Extent2D& extent,
                     const std::vector<AttachmentInfo>& attachment_infos,
                     const std::vector<size_t>& queue_grough_indices = {})
+        : extent_(extent)
         {
             assert(device);
             assert(render_pass);
-            assert(extent.width > 0 && extent.height > 0);
+            assert(extent_.width > 0 && extent_.height > 0);
             assert(!attachment_infos.empty());
 
             // Получить индексы задействованных для работы с фрейм-буфером очередей
@@ -93,7 +94,7 @@ namespace vk::utils
                             device,
                             Image::Type::e2D,
                             info.format,
-                            vk::Extent3D{extent.width, extent.height, 1},
+                            vk::Extent3D{extent_.width, extent_.height, 1},
                             info.usage,
                             vk::ImageTiling::eOptimal,
                             info.aspect,
@@ -114,8 +115,8 @@ namespace vk::utils
                     vk::FramebufferCreateInfo()
                     .setRenderPass(render_pass)
                     .setAttachments(attachment_views)
-                    .setWidth(extent.width)
-                    .setHeight(extent.height)
+                    .setWidth(extent_.width)
+                    .setHeight(extent_.height)
                     .setLayers(1));
         }
 
