@@ -74,7 +74,7 @@ namespace nasral::rendering
         const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
 
         // Размеры области рендеринга
-        const auto& extent = vk_framebuffers_[0]->extent();
+        const auto& extent = vk_framebuffers_[frame_index]->extent();
         const auto& width = extent.width;
         const auto& height = extent.height;
 
@@ -113,7 +113,7 @@ namespace nasral::rendering
 
             // Начать работу с буфером команд
             cmd_buffer->reset();
-            cmd_buffer->begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
+            cmd_buffer->begin(vk::CommandBufferBeginInfo());
 
             // Начать проход рендеринга, используя полученный ранее кадровый буфер
             cmd_buffer->beginRenderPass(
@@ -587,14 +587,25 @@ namespace nasral::rendering
 
         // Очистить командные буферы
         vk_command_buffers_.clear();
+        logger()->info("Vulkan: cleared command buffers");
+        
         // Уничтожить кадровые буферы
         vk_framebuffers_.clear();
+        logger()->info("Vulkan: cleared framebuffers");
+
         // Пере-создать swap-chain (старый будет задействован при создании нового, затем удален)
         init_vk_swap_chain();
+        logger()->info("Vulkan: recreated swap chain");
+
         // Создать новые кадровые буферы
         init_vk_framebuffers();
+        const auto extent = vk_framebuffers_[0]->extent();
+        const std::string extent_str = std::to_string(extent.width) + "x" + std::to_string(extent.height);
+        logger()->info("Vulkan: recreated framebuffers (" + extent_str + ")");
+
         // Создать новые командные буферы
         init_vk_command_buffers();
+        logger()->info("Vulkan: recreated command buffers");
 
         // Включить рендеринг
         is_rendering_ = true;
