@@ -20,6 +20,7 @@ namespace nasral::rendering
         std::string app_name;                                               // Имя приложения
         std::string engine_name;                                            // Имя движка
         std::shared_ptr<VkSurfaceProvider> surface_provider;                // Указатель на объект получения поверхности
+        std::array<float, 4> clear_color = {0.0f, 0.0f, 0.0f, 1.0f};        // Цвет очистки
         PFN_vkGetInstanceProcAddr pfn_vk_get_proc_addr;                     // Указатель на функцию получения адресов функций
         std::optional<glm::uvec2> rendering_resolution;                     // Целевое разрешение рендеринга
         vk::Format color_format = vk::Format::eB8G8R8A8Unorm;               // Формат цветовых вложений

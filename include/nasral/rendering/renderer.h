@@ -24,6 +24,11 @@ namespace nasral::rendering
         Renderer(const Engine* engine, RenderingConfig config);
         ~Renderer();
 
+        void cmd_begin_frame();
+        void cmd_end_frame();
+        void cmd_wait_for_frame() const;
+        void request_surface_refresh();
+
         [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }
         [[nodiscard]] const RenderingConfig& config() const { return config_; }
 
@@ -41,25 +46,15 @@ namespace nasral::rendering
         [[nodiscard]] const logging::Logger* logger() const;
 
         void init_vk_instance();
-
         void init_vk_loader();
-
         void init_vk_debug_callback();
-
         void init_vk_surface();
-
         void init_vk_device();
-
         void init_vk_render_passes();
-
         void init_vk_swap_chain();
-
         void init_vk_framebuffers();
-
         void init_vk_command_buffers();
-
         void init_vk_sync_objects();
-
         void refresh_vk_surface();
 
     protected:

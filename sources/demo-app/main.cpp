@@ -44,6 +44,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.rendering.app_name = "engine-demo";
             config.rendering.engine_name = "nasral-engine";
             config.rendering.surface_provider = std::make_shared<utils::GlfwSurfaceProvider>(window);
+            config.rendering.clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
             config.rendering.pfn_vk_get_proc_addr = glfwGetInstanceProcAddress;
             config.rendering.rendering_resolution = {}; // На текущий момент не используется
             config.rendering.color_format = vk::Format::eB8G8R8A8Unorm;
@@ -52,8 +53,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.rendering.present_mode = vk::PresentModeKHR::eFifo;
             config.rendering.use_opengl_style = true;
             config.rendering.use_validation_layers = true;
-            config.rendering.max_frames_in_flight = 2;
-            config.rendering.swap_chain_image_count = 3;
+            config.rendering.max_frames_in_flight = 3;
+            config.rendering.swap_chain_image_count = 6;
         }
 
         // Инициализировать движок

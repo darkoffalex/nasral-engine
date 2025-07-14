@@ -141,7 +141,7 @@ namespace vk::utils
          * @brief Возвращает handle фрейм-буфера
          * @return Константная ссылка на фрейм-буфер Vulkan
          */
-        [[nodiscard]] const vk::Framebuffer& framebuffer() const {
+        [[nodiscard]] const vk::Framebuffer& vk_framebuffer() const {
             return framebuffer_.get();
         }
 

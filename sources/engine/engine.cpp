@@ -34,6 +34,17 @@ namespace nasral
         assert(renderer_ != nullptr);
 
         try{
+            // Обработка событий
+            // TODO: Обработка событий
+
+            // Обработка сцены
+            // TODO: Обработка сцены
+
+            // Тестирование рендеринга
+            renderer_->cmd_begin_frame();
+            renderer_->cmd_end_frame();
+
+            // Обновление состояния ресурсов
             resource_manager_->update(delta);
         }
         catch(const std::exception& e){

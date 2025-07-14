@@ -46,6 +46,8 @@ namespace nasral::rendering
 
             init_vk_sync_objects();
             logger()->info("Vulkan: Sync primitives created");
+
+            is_rendering_ = true;
         }
         catch (const std::exception& e) {
             logger()->error("Failed to initialize renderer: " + std::string(e.what()));
@@ -53,7 +55,156 @@ namespace nasral::rendering
         }
     }
 
-    Renderer::~Renderer() = default;
+    Renderer::~Renderer()
+    {
+        is_rendering_ = false;
+        cmd_wait_for_frame();
+    }
+
+    void Renderer::cmd_begin_frame(){
+        // Если требуется обновить поверхность и связанные с ней кадровые буферы
+        if (surface_refresh_required_.exchange(false, std::memory_order_acquire)){
+            refresh_vk_surface();
+        }
+
+        // Если рендеринг отключен
+        if (!is_rendering_) return;
+
+        // Текущий индекс кадра
+        const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
+
+        // Размеры области рендеринга
+        const auto& extent = vk_framebuffers_[0]->extent();
+        const auto& width = extent.width;
+        const auto& height = extent.height;
+
+        // Описываем очистку вложений кадрового буфера (цвет, глубина/трафарет)
+        std::array<vk::ClearValue, 2> clear_values{};
+        clear_values[0].color = vk::ClearColorValue(config_.clear_color);
+        clear_values[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
+
+        // Ожидаем завершения кадра с текущим индексом (на случай если он еще не готов)
+        // Функция блокирует поток при ожидании барьера
+        (void)vk_device_->logical_device().waitForFences(
+            1u,
+            &vk_frame_fence_[frame_index].get(),
+            VK_TRUE,
+            std::numeric_limits<uint64_t>::max());
+
+        // Сброс барьера кадра
+        (void)vk_device_->logical_device().resetFences(
+            1u,
+            &vk_frame_fence_[frame_index].get());
+
+        // Получить доступное изображение swap-chain
+        // Функция блокирует поток до получения доступного изображения.
+        const auto result = vk_device_->logical_device().acquireNextImageKHR(
+            vk_swap_chain_.get(),
+            std::numeric_limits<uint64_t>::max(),
+            vk_render_available_semaphore_[frame_index].get(),
+            VK_NULL_HANDLE,
+            &available_image_index_);
+
+        // Если изображение было получено
+        if (result == vk::Result::eSuccess){
+            // Получить буфер кадра и команд
+            auto& cmd_buffer = vk_command_buffers_[frame_index];
+            auto& frame_buffer = vk_framebuffers_[available_image_index_]->vk_framebuffer();
+
+            // Начать работу с буфером команд
+            cmd_buffer->reset();
+            cmd_buffer->begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
+
+            // Начать проход рендеринга, используя полученный ранее кадровый буфер
+            cmd_buffer->beginRenderPass(
+                vk::RenderPassBeginInfo()
+                .setRenderPass(vk_render_pass_.get())
+                .setFramebuffer(frame_buffer)
+                .setRenderArea(vk::Rect2D(
+                    vk::Offset2D(0, 0),
+                    vk::Extent2D(width, height)))
+                .setClearValues(clear_values),
+                vk::SubpassContents::eInline);
+        }
+        // Возможно требуется пересоздание swap-chain
+        else if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR){
+            request_surface_refresh();
+        }
+    }
+
+    void Renderer::cmd_end_frame(){
+        // Если рендеринг отключен
+        if (!is_rendering_) return;
+
+        // Текущий индекс кадра
+        const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
+
+        // Получить буфер команд
+        auto& cmd_buffer = vk_command_buffers_[frame_index];
+
+        // Завершение прохода (неявное преобразование кадра в VK_IMAGE_LAYOUT_PRESENT_SRC_KHR для представления)
+        cmd_buffer->endRenderPass();
+
+        // Завершения командного буфера
+        cmd_buffer->end();
+
+        // Семафоры, ожидаемые для исполнения команд рендеринга
+        std::array<vk::Semaphore, 1> wait_semaphores{
+            vk_render_available_semaphore_[frame_index].get()
+        };
+
+        // Семафоры, сигнализирующие готовность к показу
+        std::array<vk::Semaphore, 1> signal_semaphores{
+            vk_render_finished_semaphore_[frame_index].get()
+        };
+
+        // Стадии, на которых конвейер будет ждать wait_semaphores
+        std::array<vk::PipelineStageFlags, 1> wait_stages{
+            vk::PipelineStageFlagBits::eColorAttachmentOutput
+        };
+
+        // Отправить командные буферы на исполнение
+        const auto& group = vk_device_->queue_group(to<size_t>(CommandGroup::eGraphicsAndPresent));
+        auto& queue = group.queues[0];
+
+        // Подача команд рендеринга в очередь
+        queue.submit(vk::SubmitInfo()
+            .setCommandBuffers(cmd_buffer.get())
+            .setWaitSemaphores(wait_semaphores)
+            .setWaitDstStageMask(wait_stages)
+            .setSignalSemaphores(signal_semaphores),
+            vk_frame_fence_[frame_index].get());
+
+        // В случае ошибки показа - вероятно требуется пересоздание swap-chain
+        try
+        {
+            // Подача команд показа в очередь
+            const auto result = queue.presentKHR(vk::PresentInfoKHR()
+                .setSwapchains(vk_swap_chain_.get())
+                .setWaitSemaphores(signal_semaphores)
+                .setImageIndices(available_image_index_));
+
+            if (result == vk::Result::eErrorOutOfDateKHR){
+                request_surface_refresh();
+                return;
+            }
+        }
+        catch(const ::vk::OutOfDateKHRError&){
+            request_surface_refresh();
+            return;
+        }
+
+        // Инкремент счетчика кадров
+        current_frame_++;
+    }
+
+    void Renderer::cmd_wait_for_frame() const{
+        vk_device_->logical_device().waitIdle();
+    }
+
+    void Renderer::request_surface_refresh(){
+        surface_refresh_required_.store(true, std::memory_order_release);
+    }
 
     VkBool32 Renderer::vk_debug_report_callback(
         [[maybe_unused]] vk::Flags<vk::DebugReportFlagBitsEXT> flags,
