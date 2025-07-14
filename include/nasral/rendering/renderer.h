@@ -31,6 +31,8 @@ namespace nasral::rendering
 
         [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }
         [[nodiscard]] const RenderingConfig& config() const { return config_; }
+        [[nodiscard]] const vk::Instance& vk_instance() const { return *vk_instance_; }
+        [[nodiscard]] const vk::utils::Device::Ptr& vk_device() const { return vk_device_; }
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
             vk::Flags<vk::DebugReportFlagBitsEXT> flags,

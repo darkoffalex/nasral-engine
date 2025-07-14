@@ -29,6 +29,14 @@ namespace nasral
             return logger_.get();
         }
 
+        [[nodiscard]] const resources::ResourceManager* resource_manager() const {
+            return resource_manager_.get();
+        }
+
+        [[nodiscard]] const rendering::Renderer* renderer() const {
+            return renderer_.get();
+        }
+
     private:
         logging::Logger::Ptr logger_;
         resources::ResourceManager::Ptr resource_manager_;

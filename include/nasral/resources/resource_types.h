@@ -33,7 +33,7 @@ namespace nasral::resources
         eTexture,
         eMesh,
         eShader,
-        eShaderPipeline,
+        eMaterial,
         TOTAL
     };
 

@@ -5,6 +5,7 @@ add_library(Engine OBJECT
         logging/logger.cpp
         resources/ref.cpp
         resources/file.cpp
+        resources/shader.cpp
         resources/resource_manager.cpp
         rendering/renderer.cpp
 )
