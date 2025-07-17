@@ -19,14 +19,13 @@ namespace nasral::resources
         }
     }
 
-    void File::load(){
+    void File::load() noexcept{
         const auto path = manager()->full_path(path_.data());
         file_.open(path, std::ios::binary);
         if (!file_.is_open()) {
             status_ = Status::eError;
             err_code_ = ErrorCode::eCannotOpenFile;
-            const auto error_message = "Failed to open file: " + std::string(path_);
-            throw std::runtime_error(error_message);
+            return;
         }
         status_ = Status::eLoaded;
     }

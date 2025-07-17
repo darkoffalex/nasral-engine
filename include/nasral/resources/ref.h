@@ -18,19 +18,22 @@ namespace nasral::resources
 
         void request();
         void release();
+        void set_path(const std::string& path);
         void set_callback(const std::function<void(IResource*)>& callback);
 
         [[nodiscard]] Type type() const { return type_; }
         [[nodiscard]] const FixedPath& path() const { return path_; }
         [[nodiscard]] const std::optional<size_t>& index() const { return resource_index_; }
         [[nodiscard]] bool is_requested() const { return is_requested_; }
+        [[nodiscard]] bool is_handled() const { return is_handled_; }
 
     protected:
         Type type_;
         FixedPath path_;
         std::optional<size_t> resource_index_;
         bool is_requested_;
-        ResourceManager* manager_ = nullptr;
+        bool is_handled_;
+        SafeHandle<ResourceManager> manager_;
         std::function<void(IResource*)> on_ready_;
     };
 }

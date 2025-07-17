@@ -30,6 +30,7 @@ find_package(glm REQUIRED)
 find_package(imgui REQUIRED)
 find_package(stb REQUIRED)
 find_package(Vulkan REQUIRED)
+find_package(pugixml REQUIRED)
 
 # Заголовочные файлы проекта
 include_directories(BEFORE include)

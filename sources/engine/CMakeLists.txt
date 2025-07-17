@@ -6,6 +6,7 @@ add_library(Engine OBJECT
         resources/ref.cpp
         resources/file.cpp
         resources/shader.cpp
+        resources/material.cpp
         resources/resource_manager.cpp
         rendering/renderer.cpp
 )
@@ -24,5 +25,6 @@ target_link_libraries(Engine PRIVATE
         imgui::imgui
         glm::glm
         stb::stb
+        pugixml::pugixml
         Vulkan::Vulkan
 )

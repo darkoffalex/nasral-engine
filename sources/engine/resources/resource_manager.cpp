@@ -242,9 +242,10 @@ namespace nasral::resources
             {
                 std::lock_guard lock(slot.refs.mutex);
                 if (!slot.refs.unhandled.empty()){
-                    for (const auto* ref : slot.refs.unhandled) {
+                    for (auto* ref : slot.refs.unhandled) {
                         if (ref->on_ready_) {
                             ref->on_ready_(slot.resource.get());
+                            ref->is_handled_ = true;
                         }
                     }
                     slot.refs.unhandled.clear();
@@ -267,12 +268,7 @@ namespace nasral::resources
                     slot.loading.in_progress.store(true, std::memory_order_release);
                     slot.resource = make_resource(slot);
                     slot.loading.task = std::async(std::launch::async, [&slot]() {
-                        try {
-                            slot.resource->load();
-                        } catch(std::exception&){
-                            slot.resource->status_ = Status::eError;
-                            slot.resource->err_code_ = ErrorCode::eLoadingError;
-                        }
+                        slot.resource->load();
                         slot.loading.in_progress.store(false, std::memory_order_release);
                     });
                 }

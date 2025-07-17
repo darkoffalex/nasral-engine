@@ -1,8 +1,6 @@
 #include "pch.h"
 #include <nasral/resources/shader.h>
-#include <nasral/resources/resource_manager.h>
 #include <nasral/engine.h>
-#include <nasral/rendering/renderer.h>
 
 namespace nasral::resources
 {
@@ -17,22 +15,21 @@ namespace nasral::resources
 
     Shader::~Shader() = default;
 
-    void Shader::load(){
+    void Shader::load() noexcept{
         std::ifstream file;
         const auto path = manager()->full_path(path_.data());
         file.open(path, std::ios::binary);
         if (!file.is_open()) {
             status_ = Status::eError;
             err_code_ = ErrorCode::eCannotOpenFile;
-            const auto error_message = "Failed to open file: " + std::string(path_);
-            throw std::runtime_error(error_message);
+            return;
         }
 
-        std::streamsize size = file.seekg(0, std::ios::end).tellg();
+        const std::streamsize size = file.seekg(0, std::ios::end).tellg();
         if (size == 0 || size % 4 != 0) {
             status_ = Status::eError;
             err_code_ = ErrorCode::eLoadingError;
-            throw std::runtime_error("Invalid shader file size: " + path);
+            return;
         }
 
         std::vector<std::uint32_t> shader_code(size / 4);
@@ -43,22 +40,16 @@ namespace nasral::resources
         try{
             const auto& vd = resource_manager_->engine()->renderer()->vk_device();
             vk_shader_module_ = vd->logical_device().createShaderModuleUnique(
-                vk::ShaderModuleCreateInfo(
-                    vk::ShaderModuleCreateFlags(),
-                    static_cast<std::uint32_t>(shader_code.size()),
-                    shader_code.data()
-                ));
+                vk::ShaderModuleCreateInfo()
+                .setPCode(shader_code.data())
+                .setCodeSize(shader_code.size() * sizeof(std::uint32_t)));
         }
-        catch(const std::exception& e){
+        catch([[maybe_unused]] const std::exception& e){
             status_ = Status::eError;
-            err_code_ = ErrorCode::eLoadingError;
-            throw std::runtime_error("Failed to create shader module: " + std::string(e.what()));
+            err_code_ = ErrorCode::eVulkanError;
+            return;
         }
 
         status_ = Status::eLoaded;
-    }
-
-    const vk::ShaderModule& Shader::vk_shader_module() const{
-        return vk_shader_module_.get();
     }
 }

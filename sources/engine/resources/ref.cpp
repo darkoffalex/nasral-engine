@@ -8,13 +8,10 @@ namespace nasral::resources
         : type_(type)
         , resource_index_(std::nullopt)
         , is_requested_(false)
+        , is_handled_(false)
         , manager_(manager)
         , on_ready_(nullptr)
     {
-        if (manager_ == nullptr){
-            throw std::invalid_argument("Resource manager is null");
-        }
-
         path_.assign(path);
     }
 
@@ -32,6 +29,11 @@ namespace nasral::resources
         if (!is_requested_) return;
         manager_->release(this);
         is_requested_ = false;
+    }
+
+    void Ref::set_path(const std::string& path){
+        if (is_requested_) return;
+        path_.assign(path);
     }
 
     void Ref::set_callback(const std::function<void(IResource*)>& callback){

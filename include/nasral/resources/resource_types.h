@@ -24,6 +24,8 @@ namespace nasral::resources
         eUnknownResource,
         eCannotOpenFile,
         eMemoryAllocationFailed,
+        eVulkanError,
+        eBadFormat,
         TOTAL
     };
 
@@ -44,7 +46,7 @@ namespace nasral::resources
         friend class ResourceManager;
         typedef std::unique_ptr<IResource> Ptr;
         virtual ~IResource() = default;
-        virtual void load() = 0;
+        virtual void load() noexcept = 0;
 
         [[nodiscard]] Status status() const { return status_; }
         [[nodiscard]] ErrorCode err_code() const { return err_code_; }

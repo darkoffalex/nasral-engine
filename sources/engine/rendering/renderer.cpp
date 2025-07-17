@@ -41,6 +41,9 @@ namespace nasral::rendering
             const std::string extent_str = std::to_string(extent.width) + "x" + std::to_string(extent.height);
             logger()->info("Vulkan: Frame buffers created (" + extent_str + ")");
 
+            init_vk_descriptor_pool();
+            logger()->info("Vulkan: Descriptor pool created");
+
             init_vk_command_buffers();
             logger()->info("Vulkan: Command buffers created");
 
@@ -204,6 +207,11 @@ namespace nasral::rendering
 
     void Renderer::request_surface_refresh(){
         surface_refresh_required_.store(true, std::memory_order_release);
+    }
+
+    vk::Extent2D Renderer::get_rendering_resolution() const{
+        assert(!vk_framebuffers_.empty());
+        return vk_framebuffers_[0]->extent();
     }
 
     VkBool32 Renderer::vk_debug_report_callback(
@@ -541,6 +549,33 @@ namespace nasral::rendering
                 swap_chain_extent,
                 attachments));
         }
+    }
+
+    void Renderer::init_vk_descriptor_pool(){
+        assert(vk_instance_);
+        assert(vk_device_);
+
+        // Описываем размер дескрипторного пула.
+        // На данном этапе нас не интересует структура самих дескрипторных наборов.
+        // Важно лишь количество дескрипторов конкретного типа, что можно выделить из пула.
+        std::array<::vk::DescriptorPoolSize, 2> pool_sizes{
+            // Для камеры будет использован статический буфер
+            vk::DescriptorPoolSize()
+                .setType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorCount(MAX_CAMERAS),
+            vk::DescriptorPoolSize()
+                .setType(vk::DescriptorType::eUniformBufferDynamic)
+                .setDescriptorCount(1),
+        };
+
+        // Мы можем использовать разные наборы дескрипторов для камеры и для объектов
+        // На текущий момент используем 2 набора (камеры + объекты).
+        // Для объектов будет создан один большой uniform буфер, который буфер привязываться со смещением
+        vk_descriptor_pool_ = vk_device_->logical_device().createDescriptorPoolUnique(
+            vk::DescriptorPoolCreateInfo()
+            .setMaxSets(2)
+            .setPoolSizes(pool_sizes)
+            .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet));
     }
 
     void Renderer::init_vk_command_buffers(){

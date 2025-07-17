@@ -2,6 +2,10 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 
+#define MAX_CAMERAS 1
+#define MAX_OBJECTS 1000
+#define MAX_LIGHTS 100
+
 namespace nasral::rendering
 {
     class VkSurfaceProvider
@@ -31,5 +35,13 @@ namespace nasral::rendering
         bool use_validation_layers = false;                                 // Использовать слои валидации
         uint32_t max_frames_in_flight = 2;                                  // Кол-во единовременно обрабатываемых кадров
         uint32_t swap_chain_image_count = 3;                                // Кол-во изображений в цепочке свопинга
+    };
+
+    struct Vertex
+    {
+        glm::vec3 pos;
+        glm::vec3 normal;
+        glm::vec2 uv;
+        glm::vec4 color;
     };
 }
