@@ -11,15 +11,16 @@ namespace nasral::resources
     public:
         friend class ResourceManager;
         Ref(ResourceManager* manager, Type type, const std::string& path);
+        Ref(const Ref& other);
+        Ref& operator=(const Ref& other);
         ~Ref();
-
-        Ref(const Ref&) = delete;
-        Ref& operator=(const Ref&) = delete;
 
         void request();
         void release();
         void set_path(const std::string& path);
         void set_callback(const std::function<void(IResource*)>& callback);
+
+        [[nodiscard]] const IResource* resource() const;
 
         [[nodiscard]] Type type() const { return type_; }
         [[nodiscard]] const FixedPath& path() const { return path_; }

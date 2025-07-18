@@ -1,42 +1,39 @@
 #include "pch.h"
-#include <pugixml.hpp>
 #include <nasral/engine.h>
 #include <nasral/resources/material.h>
 #include <nasral/resources/shader.h>
-#include <nasral/resources/resource_manager.h>
 
 
 namespace nasral::resources
 {
     Material::Material(ResourceManager* manager, const std::string_view& path)
-        : path_(path)
+        : IResource(Type::eMaterial, manager, manager->engine()->logger())
+        , path_(path)
         , vert_shader_res_(manager, Type::eShader, "")
         , frag_shader_res_(manager, Type::eShader, "")
         , vk_vert_shader_(std::nullopt)
         , vk_frag_shader_(std::nullopt)
-    {
-        resource_manager_ = SafeHandle<const ResourceManager>(manager);
-        status_ = Status::eUnloaded;
-        err_code_ = ErrorCode::eNoError;
-        type_ = Type::eMaterial;
-    }
+    {}
 
     Material::~Material() = default;
 
     void Material::load() noexcept {
+        if (status_ == Status::eLoaded) return;
         const auto path = manager()->full_path(path_.data());
 
         pugi::xml_document doc;
         if (!doc.load_file(path.c_str())){
             status_ = Status::eError;
             err_code_ = ErrorCode::eLoadingError;
+            logger()->error("Can't load material: " + path);
             return;
         }
 
-        const auto shaders_conf = doc.child("Shaders");
+        const auto shaders_conf = doc.child("Material").child("Shaders");
         if (shaders_conf.empty()){
             status_ = Status::eError;
             err_code_ = ErrorCode::eBadFormat;
+            logger()->error("Wrong format of material: " + path + ". Shaders section is missing.");
             return;
         }
 
@@ -80,6 +77,7 @@ namespace nasral::resources
         if (!vk_vert_shader_.has_value() || !vk_frag_shader_.has_value()){
             status_ = Status::eError;
             err_code_ = ErrorCode::eLoadingError;
+            logger()->error("Can't init vulkan graphics pipeline. Some shader modules are missing.");
             return;
         }
 
@@ -136,6 +134,7 @@ namespace nasral::resources
         catch([[maybe_unused]] std::exception& e){
             status_ = Status::eError;
             err_code_ = ErrorCode::eVulkanError;
+            logger()->error("Can't create vulkan pipeline layout: " + std::string(e.what()));
             return;
         }
 
@@ -339,6 +338,7 @@ namespace nasral::resources
         catch([[maybe_unused]] std::exception& e){
             status_ = Status::eError;
             err_code_ = ErrorCode::eVulkanError;
+            logger()->error(e.what());
             return;
         }
 

@@ -49,6 +49,7 @@ namespace nasral::resources
         void update(float delta);
 
         [[nodiscard]] size_t ref_count(const std::string& path) const;
+        [[nodiscard]] Ref make_ref(Type type, const std::string& path) const;
         [[nodiscard]] std::string full_path(const std::string& path) const;
         [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }
 
@@ -58,6 +59,7 @@ namespace nasral::resources
 
         [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path) const;
         [[nodiscard]] IResource::Ptr make_resource(const Slot& slot);
+        [[nodiscard]] const IResource* get_resource(size_t index) const;
         [[nodiscard]] const logging::Logger* logger() const;
 
     protected:

@@ -7,6 +7,11 @@
 #define DEFAULT_REFS_COUNT 10
 #define MAX_RESOURCE_PATH_LENGTH 64
 
+namespace nasral::logging
+{
+    class Logger;
+}
+
 namespace nasral::resources
 {
     enum class Status : unsigned
@@ -52,12 +57,20 @@ namespace nasral::resources
         [[nodiscard]] ErrorCode err_code() const { return err_code_; }
         [[nodiscard]] Type type() const { return type_; }
         [[nodiscard]] const SafeHandle<const ResourceManager>& manager() const { return resource_manager_; }
+        [[nodiscard]] const SafeHandle<const logging::Logger>& logger() const { return logger_; }
 
     protected:
+        IResource(const Type type, const ResourceManager* manager, const logging::Logger* logger)
+            : type_(type)
+            , resource_manager_(manager)
+            , logger_(logger)
+        {}
+
         Type type_ = Type::eFile;
         Status status_ = Status::eUnloaded;
         ErrorCode err_code_ = ErrorCode::eNoError;
         SafeHandle<const ResourceManager> resource_manager_;
+        SafeHandle<const logging::Logger> logger_;
     };
 
     struct FixedPath
@@ -99,5 +112,6 @@ namespace nasral::resources
     struct ResourceConfig
     {
         std::string content_dir;
+        std::vector<std::pair<Type, std::string>> initial_resources;
     };
 }

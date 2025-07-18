@@ -9,7 +9,7 @@ namespace nasral::resources
     public:
         typedef std::unique_ptr<File> Ptr;
 
-        explicit File(ResourceManager* manager, const std::string_view& path);
+        explicit File(const ResourceManager* manager, const std::string_view& path);
         ~File() override;
 
         File(const File&) = delete;

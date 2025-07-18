@@ -1,27 +1,26 @@
 #include "pch.h"
-#include <nasral/resources/shader.h>
 #include <nasral/engine.h>
+#include <nasral/resources/shader.h>
 
 namespace nasral::resources
 {
-    Shader::Shader(ResourceManager* manager, const std::string_view& path)
-    : path_(path)
-    {
-        resource_manager_ = SafeHandle<const ResourceManager>(manager);
-        status_ = Status::eUnloaded;
-        err_code_ = ErrorCode::eNoError;
-        type_ = Type::eShader;
-    }
+    Shader::Shader(const ResourceManager* manager, const std::string_view& path)
+        : IResource(Type::eShader, manager, manager->engine()->logger())
+        , path_(path)
+    {}
 
     Shader::~Shader() = default;
 
     void Shader::load() noexcept{
-        std::ifstream file;
+        if (status_ == Status::eLoaded) return;
         const auto path = manager()->full_path(path_.data());
+
+        std::ifstream file;
         file.open(path, std::ios::binary);
         if (!file.is_open()) {
             status_ = Status::eError;
             err_code_ = ErrorCode::eCannotOpenFile;
+            logger()->error("Can't open file: " + path);
             return;
         }
 
@@ -29,6 +28,7 @@ namespace nasral::resources
         if (size == 0 || size % 4 != 0) {
             status_ = Status::eError;
             err_code_ = ErrorCode::eLoadingError;
+            logger()->error("Wrong shader size: " + path);
             return;
         }
 
@@ -47,6 +47,7 @@ namespace nasral::resources
         catch([[maybe_unused]] const std::exception& e){
             status_ = Status::eError;
             err_code_ = ErrorCode::eVulkanError;
+            logger()->error("Can't create shader module: " + path);
             return;
         }
 

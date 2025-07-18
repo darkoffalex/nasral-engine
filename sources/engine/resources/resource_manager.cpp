@@ -3,6 +3,9 @@
 #include <nasral/resources/file.h>
 #include <nasral/engine.h>
 
+#include "nasral/resources/material.h"
+#include "nasral/resources/shader.h"
+
 namespace fs = std::filesystem;
 namespace nasral::resources
 {
@@ -23,6 +26,11 @@ namespace nasral::resources
         for (size_t i = MAX_RESOURCE_COUNT; i > 0; --i){
             free_slots_.push_back(i - 1);
         }
+
+        // Добавить изначальные ресурсы в список
+        for (const auto& [type, path] : config.initial_resources){
+            add_unsafe(type, path);
+        }
     }
 
     ResourceManager::~ResourceManager(){
@@ -31,7 +39,12 @@ namespace nasral::resources
 
     void ResourceManager::add_unsafe(const Type type, const std::string& path){
         if (indices_.count(std::string_view(path)) > 0){
-            throw std::runtime_error("Resource already exists");
+            throw std::runtime_error("Resource already exists: " + path);
+        }
+
+        const auto fp = full_path(path);
+        if (!fs::exists(fp)){
+            throw std::invalid_argument("Resource file does not exist: " + path);
         }
 
         // Получить индекс свободного слота в списке ресурсов
@@ -194,6 +207,16 @@ namespace nasral::resources
                 res = std::make_unique<File>(this, slot.info.path.view());
                 break;
             }
+        case Type::eShader:
+            {
+                res = std::make_unique<Shader>(this, slot.info.path.view());
+                break;
+            }
+        case Type::eMaterial:
+            {
+                res = std::make_unique<Material>(this, slot.info.path.view());
+                break;
+            }
         default:
             {
                 res = std::make_unique<File>(this, slot.info.path.view());
@@ -204,6 +227,18 @@ namespace nasral::resources
         }
 
         return res;
+    }
+
+    const IResource* ResourceManager::get_resource(const size_t index) const{
+        if (index >= slots_.size()
+            || !slots_[index].is_used
+            || !slots_[index].resource
+            || slots_[index].resource->status() != Status::eLoaded)
+        {
+            return nullptr;
+        }
+
+        return slots_[index].resource.get();
     }
 
     void ResourceManager::await_all_tasks() const{
@@ -227,6 +262,10 @@ namespace nasral::resources
         return 0;
     }
 
+    Ref ResourceManager::make_ref(const Type type, const std::string& path) const{
+        return Ref(const_cast<ResourceManager*>(this), type, path);
+    }
+
     const logging::Logger *ResourceManager::logger() const{
         return engine()->logger();
     }
@@ -243,9 +282,9 @@ namespace nasral::resources
                 std::lock_guard lock(slot.refs.mutex);
                 if (!slot.refs.unhandled.empty()){
                     for (auto* ref : slot.refs.unhandled) {
+                        ref->is_handled_ = true;
                         if (ref->on_ready_) {
                             ref->on_ready_(slot.resource.get());
-                            ref->is_handled_ = true;
                         }
                     }
                     slot.refs.unhandled.clear();

@@ -10,7 +10,7 @@ namespace nasral::resources
     public:
         typedef std::unique_ptr<Shader> Ptr;
 
-        explicit Shader(ResourceManager* manager, const std::string_view& path);
+        explicit Shader(const ResourceManager* manager, const std::string_view& path);
         ~Shader() override;
 
         Shader(const Shader&) = delete;

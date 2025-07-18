@@ -2,6 +2,8 @@
 #include <nasral/resources/ref.h>
 #include <nasral/resources/resource_manager.h>
 
+#include "nasral/logging/logger.h"
+
 namespace nasral::resources
 {
     Ref::Ref(ResourceManager* manager, const Type type, const std::string& path)
@@ -13,6 +15,31 @@ namespace nasral::resources
         , on_ready_(nullptr)
     {
         path_.assign(path);
+    }
+
+    Ref::Ref(const Ref& other)
+        : type_(other.type_)
+        , resource_index_(other.resource_index_)
+        , is_requested_(false)
+        , is_handled_(false)
+        , manager_(other.manager_)
+        , on_ready_(nullptr)
+    {
+        path_ = other.path_;
+    }
+
+    Ref& Ref::operator=(const Ref& other){
+        if (this == &other) return *this;
+
+        release();
+        type_ = other.type_;
+        resource_index_ = other.resource_index_;
+        is_requested_ = false;
+        is_handled_ = false;
+        manager_ = other.manager_;
+        on_ready_ = nullptr;
+
+        return *this;
     }
 
     Ref::~Ref(){
@@ -38,5 +65,14 @@ namespace nasral::resources
 
     void Ref::set_callback(const std::function<void(IResource*)>& callback){
         on_ready_ = callback;
+    }
+
+    const IResource* Ref::resource() const{
+        if (!is_requested_ || !resource_index_.has_value()){
+            manager_->logger()->warning("Attempt to access resource before request:" + std::string(path_.data()));
+            return nullptr;
+        }
+
+        return manager_->get_resource(resource_index_.value());
     }
 }

@@ -1,17 +1,13 @@
 #include "pch.h"
+#include <nasral/engine.h>
 #include <nasral/resources/file.h>
-#include <nasral/resources/resource_manager.h>
 
 namespace nasral::resources
 {
-    File::File(ResourceManager* manager, const std::string_view& path)
-        : path_(path)
-    {
-        resource_manager_ = SafeHandle<const ResourceManager>(manager);
-        status_ = Status::eUnloaded;
-        err_code_ = ErrorCode::eNoError;
-        type_ = Type::eFile;
-    }
+    File::File(const ResourceManager* manager, const std::string_view& path)
+        : IResource(Type::eFile, manager, manager->engine()->logger())
+        , path_(path)
+    {}
 
     File::~File(){
         if (file_.is_open()){
@@ -20,11 +16,13 @@ namespace nasral::resources
     }
 
     void File::load() noexcept{
+        if (status_ == Status::eLoaded) return;
         const auto path = manager()->full_path(path_.data());
         file_.open(path, std::ios::binary);
         if (!file_.is_open()) {
             status_ = Status::eError;
             err_code_ = ErrorCode::eCannotOpenFile;
+            logger()->error("Can't open file: " + path);
             return;
         }
         status_ = Status::eLoaded;

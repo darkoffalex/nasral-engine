@@ -14,11 +14,11 @@ namespace nasral
             logger_ = std::make_unique<logging::Logger>(config.log);
             logger()->info("Logger initialized.");
 
-            resource_manager_ = std::make_unique<resources::ResourceManager>(this, config.resources);
-            logger()->info("Resource manager initialized.");
-
             renderer_ = std::make_unique<rendering::Renderer>(this, config.rendering);
             logger()->info("Renderer initialized.");
+
+            resource_manager_ = std::make_unique<resources::ResourceManager>(this, config.resources);
+            logger()->info("Resource manager initialized.");
 
             return true;
         }
@@ -54,14 +54,14 @@ namespace nasral
 
     void Engine::shutdown(){
         try{
-            if (renderer_){
-                renderer_.reset();
-                logger()->info("Renderer destroyed.");
-            }
-
             if (resource_manager_){
                 resource_manager_.reset();
                 logger()->info("Resource manager destroyed.");
+            }
+
+            if (renderer_){
+                renderer_.reset();
+                logger()->info("Renderer destroyed.");
             }
 
             if (logger_){

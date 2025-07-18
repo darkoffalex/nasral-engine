@@ -31,5 +31,5 @@
 // Vulkan
 #include <vulkan/vulkan.hpp>
 
-// Окна
-#include <GLFW/glfw3.h>
+// XML
+#include <pugixml.hpp>

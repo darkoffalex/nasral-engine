@@ -8,6 +8,9 @@ constexpr int kWindowWidth = 800;
 constexpr int kWindowHeight = 600;
 constexpr auto kWindowTitle = "Demo";
 
+namespace nrl = nasral;
+namespace res = nasral::resources;
+
 /**
  * Точка входа
  * @param argc Кол-во аргументов
@@ -38,8 +41,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // Логирование
             config.log.file = "engine.log";
             config.log.console_out = true;
+
             // Ресурсы
             config.resources.content_dir = "../../content/";
+            config.resources.initial_resources = {
+                { nasral::resources::Type::eShader, "materials/triangle/shaders/vertex.spv"},
+                { nasral::resources::Type::eShader, "materials/triangle/shaders/fragment.spv"},
+                { nasral::resources::Type::eMaterial, "materials/triangle/material.xml"}
+            };
+
             // Рендеринг
             config.rendering.app_name = "engine-demo";
             config.rendering.engine_name = "nasral-engine";
@@ -71,6 +81,41 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             glfwSetWindowTitle(window, title.c_str());
         });
 
+        // Тестовые ресурсы (только для тестирования)
+        auto* rm = engine.resource_manager();
+        auto vsr = rm->make_ref(res::Type::eShader, "materials/triangle/shaders/vertex.spv");
+        auto fsr = rm->make_ref(res::Type::eShader, "materials/triangle/shaders/fragment.spv");
+        auto mtr = rm->make_ref(res::Type::eMaterial, "materials/triangle/material.xml");
+
+        // Запрос vertex shader (отдельно)
+        /*
+        vsr.set_callback([](const res::IResource* res){
+            if (res->status() == res::Status::eLoaded){
+                std::cout << "Vertex shader resource loaded!" << std::endl;
+            }
+        });
+        vsr.request();
+
+        // Запрос fragment shader (отдельно)
+        fsr.set_callback([](const res::IResource* res){
+            if (res->status() == res::Status::eLoaded){
+                std::cout << "Fragment shader resource loaded!" << std::endl;
+            }
+        });
+        fsr.request();
+        */
+
+        // Запрос материала (внутри запрашивает shaders)
+        mtr.set_callback([&](const res::IResource* res){
+            if (res->status() == res::Status::eLoaded){
+                std::cout << "Material resource loaded!" << std::endl;
+                const auto vc = rm->ref_count("materials/triangle/shaders/vertex.spv");
+                const auto fc = rm->ref_count("materials/triangle/shaders/fragment.spv");
+                std::cout << "Ref count: " << vc << ", " << fc << std::endl;
+            }
+        });
+        mtr.request();
+
         // Main loop
         while (!glfwWindowShouldClose(window))
         {
@@ -83,6 +128,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // Обновление движка
             engine.update(fps_counter.delta());
         }
+
+        // Освободить ресурсы
+        vsr.release();
+        fsr.release();
+        mtr.release();
 
         // Завершение работы с движком
         engine.shutdown();
