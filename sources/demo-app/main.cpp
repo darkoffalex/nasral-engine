@@ -87,8 +87,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
         auto fsr = rm->make_ref(res::Type::eShader, "materials/triangle/shaders/fragment.spv");
         auto mtr = rm->make_ref(res::Type::eMaterial, "materials/triangle/material.xml");
 
-        // Запрос vertex shader (отдельно)
         /*
+        // Запрос vertex shader (отдельно)
         vsr.set_callback([](const res::IResource* res){
             if (res->status() == res::Status::eLoaded){
                 std::cout << "Vertex shader resource loaded!" << std::endl;
@@ -133,6 +133,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
         vsr.release();
         fsr.release();
         mtr.release();
+        engine.update(0.0f);
 
         // Завершение работы с движком
         engine.shutdown();

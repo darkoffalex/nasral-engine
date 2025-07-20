@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
+#include <nasral/core_types.h>
 
 #define MAX_CAMERAS 1
 #define MAX_OBJECTS 1000
@@ -43,5 +44,12 @@ namespace nasral::rendering
         glm::vec3 normal;
         glm::vec2 uv;
         glm::vec4 color;
+    };
+
+    class RenderingError final : public EngineError
+    {
+    public:
+        explicit RenderingError(const std::string& message)
+        : EngineError(message) {}
     };
 }

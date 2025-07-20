@@ -114,4 +114,11 @@ namespace nasral::resources
         std::string content_dir;
         std::vector<std::pair<Type, std::string>> initial_resources;
     };
+
+    class ResourceError final : public EngineError
+    {
+    public:
+        explicit ResourceError(const std::string& message)
+        : EngineError(message) {}
+    };
 }

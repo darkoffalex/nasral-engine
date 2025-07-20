@@ -21,9 +21,9 @@ namespace nasral
         Engine(const Engine&) = delete;
         Engine& operator=(const Engine&) = delete;
 
-        bool initialize(const Config& config);
-        void update(float delta) const;
-        void shutdown();
+        bool initialize(const Config& config) noexcept;
+        void update(float delta) const noexcept;
+        void shutdown() noexcept;
 
         [[nodiscard]] const logging::Logger* logger() const {
             return logger_.get();

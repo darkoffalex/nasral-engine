@@ -6,8 +6,12 @@ namespace nasral::logging
     Logger::Logger(const LoggingConfig& config)
         : console_out_(config.console_out)
     {
-        if (!config.file.empty()){
-            fs_.open(config.file, std::ios::out | std::ios::app);
+        try {
+            if (!config.file.empty()){
+                fs_.open(config.file, std::ios::out | std::ios::app);
+            }
+        }catch(const std::exception& e) {
+            throw LoggerError(e.what());
         }
     }
 
@@ -17,12 +21,12 @@ namespace nasral::logging
         }
     }
 
-    void Logger::log(const Level level, const std::string& message) const{
-        std::lock_guard<std::mutex> lock(mutex_);
+    void Logger::log(const Level level, const std::string& message) const noexcept{
+        std::lock_guard lock(mutex_);
         log_unsafe(level, message);
     }
 
-    void Logger::log_unsafe(const Level level, const std::string& message) const{
+    void Logger::log_unsafe(const Level level, const std::string& message) const noexcept{
         std::string level_str;
         switch (level){
             case Level::eDebug: level_str = "DEBUG"; break;
@@ -49,19 +53,19 @@ namespace nasral::logging
         }
     }
 
-    void Logger::debug(const std::string& message) const{
+    void Logger::debug(const std::string& message) const noexcept{
         log(Level::eDebug, message);
     }
 
-    void Logger::info(const std::string& message) const{
+    void Logger::info(const std::string& message) const noexcept{
         log(Level::eInfo, message);
     }
 
-    void Logger::warning(const std::string& message) const{
+    void Logger::warning(const std::string& message) const noexcept{
         log(Level::eWarning, message);
     }
 
-    void Logger::error(const std::string& message) const{
+    void Logger::error(const std::string& message) const noexcept{
         log(Level::eError, message);
     }
 }

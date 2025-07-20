@@ -57,7 +57,7 @@ namespace nasral::resources
         void request(Ref* ref, bool unsafe = false);
         void release(const Ref* ref, bool unsafe = false);
 
-        [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path) const;
+        [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path) const noexcept;
         [[nodiscard]] IResource::Ptr make_resource(const Slot& slot);
         [[nodiscard]] const IResource* get_resource(size_t index) const;
         [[nodiscard]] const logging::Logger* logger() const;

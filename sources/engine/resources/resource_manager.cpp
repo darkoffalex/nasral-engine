@@ -13,9 +13,15 @@ namespace nasral::resources
         : engine_(engine)
         , content_dir_(config.content_dir)
     {
+        // Начала инициализации, вывод базовой информации
+        const std::string cwd = std::filesystem::current_path().string();
+        logger()->info("Initializing resource manager...");
+        logger()->info("Current working directory: " + cwd);
+        logger()->info("Content directory: " + content_dir_);
+
         // Проверка доступности директории контента
         if (!content_dir_.empty() && !fs::exists(content_dir_)){
-            throw std::invalid_argument("Content directory does not exist");
+            throw ResourceError("Content directory does not exist (" + content_dir_ + ")");
         }
 
         // Подготовить память массивов
@@ -39,12 +45,13 @@ namespace nasral::resources
 
     void ResourceManager::add_unsafe(const Type type, const std::string& path){
         if (indices_.count(std::string_view(path)) > 0){
-            throw std::runtime_error("Resource already exists: " + path);
+            logger()->warning("Trying to add resource with duplicate path (" + path + ")");
+            return;
         }
 
         const auto fp = full_path(path);
         if (!fs::exists(fp)){
-            throw std::invalid_argument("Resource file does not exist: " + path);
+            throw ResourceError("Resource file not found (" + path + ")");
         }
 
         // Получить индекс свободного слота в списке ресурсов
@@ -53,7 +60,7 @@ namespace nasral::resources
             index = free_slots_.back();
             free_slots_.pop_back();
         } else {
-            throw std::runtime_error("Resource limit reached");
+            throw ResourceError("No free slots in resource manager");
         }
 
         // Подготовить слот для использования
@@ -138,7 +145,7 @@ namespace nasral::resources
         active_slots_.clear();
     }
 
-    std::optional<size_t> ResourceManager::res_index(const std::string_view& path) const{
+    std::optional<size_t> ResourceManager::res_index(const std::string_view& path) const noexcept{
         if (indices_.count(path) > 0) return indices_.at(path);
         return std::nullopt;
     }
@@ -146,10 +153,14 @@ namespace nasral::resources
     void ResourceManager::request(Ref* ref, const bool unsafe){
         // Получить корректный индекс
         const auto index = ref->index().has_value() ? ref->index() : res_index(ref->path().view());
-        if (!index.has_value()) throw std::runtime_error("Resource not found");
-        assert(index.value() < slots_.size());
+        if (!index.has_value()) {
+            const auto message = "Requested resource not found (" + std::string(ref->path().view()) + ")";
+            logger()->error(message);
+            throw ResourceError(message);
+        }
 
         // Обновить индекс у ссылки
+        assert(index.value() < slots_.size());
         ref->resource_index_ = index;
 
         // Увеличить счетчик, отметить, что есть необработанные ссылки
@@ -170,11 +181,21 @@ namespace nasral::resources
     void ResourceManager::release(const Ref* ref, const bool unsafe){
         // Получить корректный индекс
         const auto index = ref->index().has_value() ? ref->index() : res_index(ref->path().view());
-        if (!index.has_value()) throw std::runtime_error("Resource not found");
-        assert(index.value() < slots_.size());
+        if (!index.has_value()) {
+            const auto message = "Releasing resource not found (" + std::string(ref->path().view()) + ")";
+            logger()->warning(message);
+            return;
+        }
 
-        // Уменьшить счетчик ссылок
+        // Активен ли слот
+        assert(index.value() < slots_.size());
         auto& slot = slots_[index.value()];
+        if (!slot.is_used) {
+            logger()->warning("Trying to release resource from unused slot (" + std::string(ref->path().view()) + ")");
+            return;
+        }
+
+        // Уменьшить ко-во ссылок на ресурс
         slot.refs.count.fetch_sub(1, std::memory_order_release);
 
         // Функция удаления существующей необработанной ссылки
@@ -199,34 +220,38 @@ namespace nasral::resources
     }
 
     IResource::Ptr ResourceManager::make_resource(const Slot& slot){
-        std::unique_ptr<IResource> res;
-        switch (slot.info.type)
-        {
-        case Type::eFile:
+        try {
+            std::unique_ptr<IResource> res;
+            switch (slot.info.type)
             {
-                res = std::make_unique<File>(this, slot.info.path.view());
-                break;
+                case Type::eFile:
+                {
+                    res = std::make_unique<File>(this, slot.info.path.view());
+                    break;
+                }
+                case Type::eShader:
+                {
+                    res = std::make_unique<Shader>(this, slot.info.path.view());
+                    break;
+                }
+                case Type::eMaterial:
+                {
+                    res = std::make_unique<Material>(this, slot.info.path.view());
+                    break;
+                }
+                default:
+                {
+                    res = std::make_unique<File>(this, slot.info.path.view());
+                    res->status_ = Status::eError;
+                    res->err_code_ = ErrorCode::eUnknownResource;
+                    break;
+                }
             }
-        case Type::eShader:
-            {
-                res = std::make_unique<Shader>(this, slot.info.path.view());
-                break;
-            }
-        case Type::eMaterial:
-            {
-                res = std::make_unique<Material>(this, slot.info.path.view());
-                break;
-            }
-        default:
-            {
-                res = std::make_unique<File>(this, slot.info.path.view());
-                res->status_ = Status::eError;
-                res->err_code_ = ErrorCode::eUnknownResource;
-                break;
-            }
+            return res;
+        }catch (const std::exception& e) {
+            logger()->error("Can't create resource (" + std::string(slot.info.path.view()) + ") - " + e.what());
+            throw ResourceError("Can't create resource (" + std::string(slot.info.path.view()) + ")");
         }
-
-        return res;
     }
 
     const IResource* ResourceManager::get_resource(const size_t index) const{
@@ -250,8 +275,17 @@ namespace nasral::resources
     }
 
     std::string ResourceManager::full_path(const std::string& path) const{
-        const fs::path full = fs::path(content_dir_) / path;
-        return fs::canonical(full).string();
+        try {
+            const fs::path full = fs::path(content_dir_) / path;
+            if (!fs::exists(full)) {
+                logger()->error("File not found (" + full.string() + ")");
+                throw std::filesystem::filesystem_error("File not found", full.string(), std::error_code());
+            }
+            return fs::canonical(full).string();
+        }
+        catch (const std::exception& e) {
+            throw ResourceError(e.what());
+        }
     }
 
     size_t ResourceManager::ref_count(const std::string &path) const {
@@ -263,7 +297,7 @@ namespace nasral::resources
     }
 
     Ref ResourceManager::make_ref(const Type type, const std::string& path) const{
-        return Ref(const_cast<ResourceManager*>(this), type, path);
+        return {const_cast<ResourceManager*>(this), type, path};
     }
 
     const logging::Logger *ResourceManager::logger() const{

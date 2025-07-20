@@ -3,6 +3,7 @@ add_executable(DemoApp
         pch.h
         main.cpp
         utils/fps_counter.hpp
+        utils/surface_provider.hpp
 )
 add_default_configurations(DemoApp demo_app)
 

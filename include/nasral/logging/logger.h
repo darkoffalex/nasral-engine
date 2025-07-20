@@ -21,12 +21,12 @@ namespace nasral::logging
         Logger(const Logger&) = delete;
         Logger& operator=(const Logger&) = delete;
 
-        void log_unsafe(Level level, const std::string& message) const;
-        void log(Level level, const std::string& message) const;
-        void debug(const std::string& message) const;
-        void info(const std::string& message) const;
-        void warning(const std::string& message) const;
-        void error(const std::string& message) const;
+        void log_unsafe(Level level, const std::string& message) const noexcept;
+        void log(Level level, const std::string& message) const noexcept;
+        void debug(const std::string& message) const noexcept;
+        void info(const std::string& message) const noexcept;
+        void warning(const std::string& message) const noexcept;
+        void error(const std::string& message) const noexcept;
 
     private:
         mutable std::ofstream fs_;

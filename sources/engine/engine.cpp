@@ -9,7 +9,7 @@ namespace nasral
         shutdown();
     }
 
-    bool Engine::initialize(const Config& config){
+    bool Engine::initialize(const Config& config) noexcept{
         try{
             logger_ = std::make_unique<logging::Logger>(config.log);
             logger()->info("Logger initialized.");
@@ -22,13 +22,26 @@ namespace nasral
 
             return true;
         }
+        catch(const logging::LoggerError& e) {
+            const auto& msg = "Can't initialize logger: " + std::string(e.what());
+            std::cerr << msg << std::endl;
+            return false;
+        }
+        catch (const rendering::RenderingError& e) {
+            logger()->error("Can't initialize renderer: " + std::string(e.what()));
+            return false;
+        }
+        catch (const resources::ResourceError& e) {
+            logger()->error("Can't initialize resource manager: " + std::string(e.what()));
+            return false;
+        }
         catch(const std::exception& e){
             logger()->error(e.what());
             return false;
         }
     }
 
-    void Engine::update(const float delta) const {
+    void Engine::update(const float delta) const noexcept{
         assert(logger_ != nullptr);
         assert(resource_manager_ != nullptr);
         assert(renderer_ != nullptr);
@@ -52,7 +65,7 @@ namespace nasral
         }
     }
 
-    void Engine::shutdown(){
+    void Engine::shutdown() noexcept{
         try{
             if (resource_manager_){
                 resource_manager_.reset();

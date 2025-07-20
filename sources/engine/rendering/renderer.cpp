@@ -12,49 +12,50 @@ namespace nasral::rendering
         , current_frame_(0)
         , available_image_index_(0)
     {
+        logger()->info("Initializing renderer...");
+
         try {
             init_vk_instance();
-            logger()->info("Vulkan: Instance created");
+            logger()->info("Vulkan: Instance created.");
 
             init_vk_loader();
-            logger()->info("Vulkan: Loader created");
+            logger()->info("Vulkan: Loader created.");
 
             init_vk_debug_callback();
-            logger()->info("Vulkan: Debug callback created");
+            logger()->info("Vulkan: Debug callback created.");
 
             init_vk_surface();
-            logger()->info("Vulkan: Surface created");
+            logger()->info("Vulkan: Surface created.");
 
             init_vk_device();
             const auto device_name = vk_device_->physical_device().getProperties().deviceName;
             const auto device_name_str = std::string(device_name.data(), strlen(device_name.data()));
-            logger()->info("Vulkan: Device initialized (" + device_name_str + ")");
+            logger()->info("Vulkan: Device initialized (" + device_name_str + ").");
 
             init_vk_render_passes();
-            logger()->info("Vulkan: Render passes created");
+            logger()->info("Vulkan: Render passes created.");
 
             init_vk_swap_chain();
-            logger()->info("Vulkan: Swap chain created");
+            logger()->info("Vulkan: Swap chain created.");
 
             init_vk_framebuffers();
             const auto extent = vk_framebuffers_[0]->extent();
             const std::string extent_str = std::to_string(extent.width) + "x" + std::to_string(extent.height);
-            logger()->info("Vulkan: Frame buffers created (" + extent_str + ")");
+            logger()->info("Vulkan: Frame buffers created (" + extent_str + ").");
 
             init_vk_descriptor_pool();
-            logger()->info("Vulkan: Descriptor pool created");
+            logger()->info("Vulkan: Descriptor pool created.");
 
             init_vk_command_buffers();
-            logger()->info("Vulkan: Command buffers created");
+            logger()->info("Vulkan: Command buffers created.");
 
             init_vk_sync_objects();
-            logger()->info("Vulkan: Sync primitives created");
+            logger()->info("Vulkan: Sync primitives created.");
 
             is_rendering_ = true;
         }
         catch (const std::exception& e) {
-            logger()->error("Failed to initialize renderer: " + std::string(e.what()));
-            throw;
+            throw RenderingError(e.what());
         }
     }
 

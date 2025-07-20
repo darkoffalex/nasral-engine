@@ -25,7 +25,7 @@ namespace nasral::resources
         if (!doc.load_file(path.c_str())){
             status_ = Status::eError;
             err_code_ = ErrorCode::eLoadingError;
-            logger()->error("Can't load material: " + path);
+            logger()->error("Can't load material (" + path + ")");
             return;
         }
 
@@ -33,7 +33,7 @@ namespace nasral::resources
         if (shaders_conf.empty()){
             status_ = Status::eError;
             err_code_ = ErrorCode::eBadFormat;
-            logger()->error("Wrong format of material: " + path + ". Shaders section is missing.");
+            logger()->error("Wrong material file format (" + path + "). Shaders section is missing.");
             return;
         }
 

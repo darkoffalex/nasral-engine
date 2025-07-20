@@ -19,4 +19,13 @@ namespace nasral
     private:
         T* ptr_ = nullptr;
     };
+
+    class EngineError : public std::runtime_error
+    {
+    public:
+        explicit EngineError(const std::string& message)
+        : std::runtime_error(message)
+        {}
+        ~EngineError() override = default;
+    };
 }

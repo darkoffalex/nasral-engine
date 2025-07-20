@@ -47,29 +47,48 @@ namespace nasral::resources
     }
 
     void Ref::request(){
-        if (is_requested_) return;
+        if (is_requested_) {
+            const auto msg = "Attempt to request already requested resource (" + std::string(path_.data()) + ")";
+            manager_->logger()->warning(msg);
+            return;
+        }
+
         manager_->request(this);
         is_requested_ = true;
     }
 
     void Ref::release(){
-        if (!is_requested_) return;
+        if (!is_requested_) {
+            return;
+        }
+
         manager_->release(this);
         is_requested_ = false;
     }
 
     void Ref::set_path(const std::string& path){
-        if (is_requested_) return;
+        if (is_requested_) {
+            const auto msg = "Attempt to set path for already requested resource (" + std::string(path_.data()) + ")";
+            manager_->logger()->warning(msg);
+            return;
+        }
+
         path_.assign(path);
     }
 
     void Ref::set_callback(const std::function<void(IResource*)>& callback){
+        if (is_requested_) {
+            const auto msg = "Attempt to set callback for already requested resource (" + std::string(path_.data()) + ")";
+            manager_->logger()->warning(msg);
+            return;
+        }
+
         on_ready_ = callback;
     }
 
     const IResource* Ref::resource() const{
         if (!is_requested_ || !resource_index_.has_value()){
-            manager_->logger()->warning("Attempt to access resource before request:" + std::string(path_.data()));
+            manager_->logger()->warning("Attempt to access resource before request (" + std::string(path_.data()) + ")");
             return nullptr;
         }
 
