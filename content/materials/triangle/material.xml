@@ -1,7 +1,7 @@
 <Material>
     <Shaders>
-        <Shader stage="vertex" path="materials/triangle/shaders/vertex.spv"/>
-        <Shader stage="fragment" path="materials/triangle/shaders/fragment.spv"/>
+        <Shader stage="vertex" path="materials/triangle/shader.vert.spv"/>
+        <Shader stage="fragment" path="materials/triangle/shader.frag.spv"/>
     </Shaders>
     <Paramaters>
         <Color r="1.0" g="0.0" b="0.0"/>

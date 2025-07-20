@@ -45,8 +45,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // Ресурсы
             config.resources.content_dir = "../../content/";
             config.resources.initial_resources = {
-                { nasral::resources::Type::eShader, "materials/triangle/shaders/vertex.spv"},
-                { nasral::resources::Type::eShader, "materials/triangle/shaders/fragment.spv"},
+                { nasral::resources::Type::eShader, "materials/triangle/shader.vert.spv"},
+                { nasral::resources::Type::eShader, "materials/triangle/shader.frag.spv"},
                 { nasral::resources::Type::eMaterial, "materials/triangle/material.xml"}
             };
 
@@ -83,8 +83,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
 
         // Тестовые ресурсы (только для тестирования)
         auto* rm = engine.resource_manager();
-        auto vsr = rm->make_ref(res::Type::eShader, "materials/triangle/shaders/vertex.spv");
-        auto fsr = rm->make_ref(res::Type::eShader, "materials/triangle/shaders/fragment.spv");
+        auto vsr = rm->make_ref(res::Type::eShader, "materials/triangle/shader.vert.spv");
+        auto fsr = rm->make_ref(res::Type::eShader, "materials/triangle/shader.frag.spv");
         auto mtr = rm->make_ref(res::Type::eMaterial, "materials/triangle/material.xml");
 
         /*
@@ -109,8 +109,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
         mtr.set_callback([&](const res::IResource* res){
             if (res->status() == res::Status::eLoaded){
                 std::cout << "Material resource loaded!" << std::endl;
-                const auto vc = rm->ref_count("materials/triangle/shaders/vertex.spv");
-                const auto fc = rm->ref_count("materials/triangle/shaders/fragment.spv");
+                const auto vc = rm->ref_count("materials/triangle/shader.vert.spv");
+                const auto fc = rm->ref_count("materials/triangle/shader.frag.spv");
                 std::cout << "Ref count: " << vc << ", " << fc << std::endl;
             }
         });

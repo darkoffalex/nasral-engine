@@ -37,34 +37,40 @@ namespace nasral::resources
             return;
         }
 
-        for (auto shader_info : shaders_conf.children("Shader")){
-            const std::string shader_stage = shader_info.attribute("stage").as_string();
-            const std::string shader_path = shader_info.attribute("path").as_string();
+        try{
+            for (auto shader_info : shaders_conf.children("Shader")){
+                const std::string shader_stage = shader_info.attribute("stage").as_string();
+                const std::string shader_path = shader_info.attribute("path").as_string();
 
-            if (shader_stage == "vertex"){
-                vert_shader_res_.set_path(shader_path);
-                vert_shader_res_.set_callback([this](IResource* resource){
-                    const auto* v_shader = dynamic_cast<Shader*>(resource);
-                    if (v_shader && v_shader->status() == Status::eLoaded){
-                        vk_vert_shader_ = v_shader->vk_shader_module();
-                        try_init_vk_objects();
-                    }
-                });
-                vert_shader_res_.request();
-            }
-            else if (shader_stage == "fragment"){
-                frag_shader_res_.set_path(shader_path);
-                frag_shader_res_.set_callback([this](IResource* resource){
-                    const auto* f_shader = dynamic_cast<Shader*>(resource);
-                    if (f_shader && f_shader->status() == Status::eLoaded){
-                        vk_frag_shader_ = f_shader->vk_shader_module();
-                        try_init_vk_objects();
-                    }
-                });
-                frag_shader_res_.request();
+                if (shader_stage == "vertex"){
+                    vert_shader_res_.set_path(shader_path);
+                    vert_shader_res_.set_callback([this](IResource* resource){
+                        const auto* v_shader = dynamic_cast<Shader*>(resource);
+                        if (v_shader && v_shader->status() == Status::eLoaded){
+                            vk_vert_shader_ = v_shader->vk_shader_module();
+                            try_init_vk_objects();
+                        }
+                    });
+                    vert_shader_res_.request();
+                }
+                else if (shader_stage == "fragment"){
+                    frag_shader_res_.set_path(shader_path);
+                    frag_shader_res_.set_callback([this](IResource* resource){
+                        const auto* f_shader = dynamic_cast<Shader*>(resource);
+                        if (f_shader && f_shader->status() == Status::eLoaded){
+                            vk_frag_shader_ = f_shader->vk_shader_module();
+                            try_init_vk_objects();
+                        }
+                    });
+                    frag_shader_res_.request();
+                }
             }
         }
-
+        catch([[maybe_unused]] std::exception& e){
+            status_ = Status::eError;
+            err_code_ = ErrorCode::eLoadingError;
+            logger()->error("Can't load material (" + path + "): " + std::string(e.what()));
+        }
     }
 
     void Material::try_init_vk_objects(){
