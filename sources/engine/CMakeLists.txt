@@ -7,8 +7,8 @@ add_library(Engine OBJECT
         resources/file.cpp
         resources/shader.cpp
         resources/material.cpp
-        resources/loaders/shader_loader.cpp
-        resources/loaders/material_loader.cpp
+        resources/loaders/shader_loader.hpp
+        resources/loaders/material_loader.hpp
         resources/resource_manager.cpp
         rendering/renderer.cpp
 )

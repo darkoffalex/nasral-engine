@@ -3,9 +3,10 @@
 #include <nasral/resources/file.h>
 #include <nasral/resources/shader.h>
 #include <nasral/resources/material.h>
-#include <nasral/resources/loaders/shader_loader.h>
-#include <nasral/resources/loaders/material_loader.h>
 #include <nasral/engine.h>
+
+#include "loaders/shader_loader.hpp"
+#include "loaders/material_loader.hpp"
 
 namespace fs = std::filesystem;
 namespace nasral::resources

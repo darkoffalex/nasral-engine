@@ -1,7 +1,6 @@
 #include "pch.h"
 #include <nasral/engine.h>
 #include <nasral/resources/shader.h>
-#include <nasral/resources/loaders/shader_loader.h>
 
 namespace nasral::resources
 {
@@ -14,15 +13,11 @@ namespace nasral::resources
     Shader::~Shader() = default;
 
     void Shader::load() noexcept{
+        assert(loader_ != nullptr);
         if (status_ == Status::eLoaded) return;
         const auto path = manager()->full_path(path_.data());
 
         try{
-            if (!loader_){
-                loader_ = std::make_unique<ShaderLoader>();
-                logger()->warning("No shader loader provided. Used default fallback loader");
-            }
-
             const auto data = loader_->load(path);
             if (!data.has_value()){
                 status_ = Status::eError;

@@ -3,7 +3,6 @@
 #include <vulkan/vulkan.hpp>
 #include <nasral/resources/ref.h>
 #include <nasral/resources/resource_types.h>
-#include <nasral/resources/loaders/loader.h>
 
 namespace nasral::resources
 {
