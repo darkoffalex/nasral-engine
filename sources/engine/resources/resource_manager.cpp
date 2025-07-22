@@ -1,10 +1,11 @@
 #include "pch.h"
 #include <nasral/resources/resource_manager.h>
 #include <nasral/resources/file.h>
+#include <nasral/resources/shader.h>
+#include <nasral/resources/material.h>
+#include <nasral/resources/loaders/shader_loader.h>
+#include <nasral/resources/loaders/material_loader.h>
 #include <nasral/engine.h>
-
-#include "nasral/resources/material.h"
-#include "nasral/resources/shader.h"
 
 namespace fs = std::filesystem;
 namespace nasral::resources
@@ -231,12 +232,16 @@ namespace nasral::resources
                 }
                 case Type::eShader:
                 {
-                    res = std::make_unique<Shader>(this, slot.info.path.view());
+                    res = std::make_unique<Shader>(this,
+                        slot.info.path.view(),
+                        std::make_unique<ShaderLoader>());
                     break;
                 }
                 case Type::eMaterial:
                 {
-                    res = std::make_unique<Material>(this, slot.info.path.view());
+                    res = std::make_unique<Material>(this,
+                        slot.info.path.view(),
+                        std::make_unique<MaterialLoader>());
                     break;
                 }
                 default:

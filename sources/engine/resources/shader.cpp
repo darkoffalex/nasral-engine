@@ -1,12 +1,14 @@
 #include "pch.h"
 #include <nasral/engine.h>
 #include <nasral/resources/shader.h>
+#include <nasral/resources/loaders/shader_loader.h>
 
 namespace nasral::resources
 {
-    Shader::Shader(const ResourceManager* manager, const std::string_view& path)
+    Shader::Shader(const ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader)
         : IResource(Type::eShader, manager, manager->engine()->logger())
         , path_(path)
+        , loader_(std::move(loader))
     {}
 
     Shader::~Shader() = default;
@@ -15,29 +17,26 @@ namespace nasral::resources
         if (status_ == Status::eLoaded) return;
         const auto path = manager()->full_path(path_.data());
 
-        std::ifstream file;
-        file.open(path, std::ios::binary);
-        if (!file.is_open()) {
-            status_ = Status::eError;
-            err_code_ = ErrorCode::eCannotOpenFile;
-            logger()->error("Can't open file: " + path);
-            return;
-        }
-
-        const std::streamsize size = file.seekg(0, std::ios::end).tellg();
-        if (size == 0 || size % 4 != 0) {
-            status_ = Status::eError;
-            err_code_ = ErrorCode::eLoadingError;
-            logger()->error("Wrong shader size: " + path);
-            return;
-        }
-
-        std::vector<std::uint32_t> shader_code(size / 4);
-        file.seekg(0, std::ios::beg);
-        file.read(reinterpret_cast<char*>(shader_code.data()), size);
-        file.close();
-
         try{
+            if (!loader_){
+                loader_ = std::make_unique<ShaderLoader>();
+                logger()->warning("No shader loader provided. Used default fallback loader");
+            }
+
+            const auto data = loader_->load(path);
+            if (!data.has_value()){
+                status_ = Status::eError;
+                err_code_ = loader_->err_code();
+                if (err_code_  == ErrorCode::eCannotOpenFile){
+                    logger()->error("Can't open file: " + path);
+                }
+                else if (err_code_ == ErrorCode::eBadFormat){
+                    logger()->error("Wrong shader size: " + path);
+                }
+                return;
+            }
+
+            const auto shader_code = data.value().code;
             const auto& vd = resource_manager_->engine()->renderer()->vk_device();
             vk_shader_module_ = vd->logical_device().createShaderModuleUnique(
                 vk::ShaderModuleCreateInfo()

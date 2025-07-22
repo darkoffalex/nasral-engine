@@ -36,7 +36,7 @@ for /d %%D in ("%SCRIPT_DIR%\*") do (
     echo Processing folder "%%~nD":
 
     :: Проходим по всем файлам в текущей папке
-    for %%F in ("%%D\*.*") do (
+    for %%F in ("%%D\*.vert" "%%D\*.frag" "%%D\*.geom") do (
         :: Формируем путь для входного файла и выходного файла
         set INPUT_FILE=%%F
         set OUTPUT_FILE=%%F.spv

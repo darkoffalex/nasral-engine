@@ -2,13 +2,15 @@
 #include <nasral/engine.h>
 #include <nasral/resources/material.h>
 #include <nasral/resources/shader.h>
+#include <nasral/resources/loaders/material_loader.h>
 
 
 namespace nasral::resources
 {
-    Material::Material(ResourceManager* manager, const std::string_view& path)
+    Material::Material(ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader)
         : IResource(Type::eMaterial, manager, manager->engine()->logger())
         , path_(path)
+        , loader_(std::move(loader))
         , vert_shader_res_(manager, Type::eShader, "")
         , frag_shader_res_(manager, Type::eShader, "")
         , vk_vert_shader_(std::nullopt)
@@ -21,50 +23,48 @@ namespace nasral::resources
         if (status_ == Status::eLoaded) return;
         const auto path = manager()->full_path(path_.data());
 
-        pugi::xml_document doc;
-        if (!doc.load_file(path.c_str())){
-            status_ = Status::eError;
-            err_code_ = ErrorCode::eLoadingError;
-            logger()->error("Can't load material (" + path + ")");
-            return;
-        }
-
-        const auto shaders_conf = doc.child("Material").child("Shaders");
-        if (shaders_conf.empty()){
-            status_ = Status::eError;
-            err_code_ = ErrorCode::eBadFormat;
-            logger()->error("Wrong material file format (" + path + "). Shaders section is missing.");
-            return;
-        }
-
         try{
-            for (auto shader_info : shaders_conf.children("Shader")){
-                const std::string shader_stage = shader_info.attribute("stage").as_string();
-                const std::string shader_path = shader_info.attribute("path").as_string();
-
-                if (shader_stage == "vertex"){
-                    vert_shader_res_.set_path(shader_path);
-                    vert_shader_res_.set_callback([this](IResource* resource){
-                        const auto* v_shader = dynamic_cast<Shader*>(resource);
-                        if (v_shader && v_shader->status() == Status::eLoaded){
-                            vk_vert_shader_ = v_shader->vk_shader_module();
-                            try_init_vk_objects();
-                        }
-                    });
-                    vert_shader_res_.request();
-                }
-                else if (shader_stage == "fragment"){
-                    frag_shader_res_.set_path(shader_path);
-                    frag_shader_res_.set_callback([this](IResource* resource){
-                        const auto* f_shader = dynamic_cast<Shader*>(resource);
-                        if (f_shader && f_shader->status() == Status::eLoaded){
-                            vk_frag_shader_ = f_shader->vk_shader_module();
-                            try_init_vk_objects();
-                        }
-                    });
-                    frag_shader_res_.request();
-                }
+            if (!loader_){
+                loader_ = std::make_unique<MaterialLoader>();
+                logger()->warning("No material loader provided. Used default fallback loader");
             }
+
+            const auto& data = loader_->load(path);
+            if (!data.has_value()){
+                status_ = Status::eError;
+                err_code_ = loader_->err_code();
+                if (err_code_  == ErrorCode::eLoadingError){
+                    logger()->error("Can't read XML file: " + path);
+                }
+                else if (err_code_ == ErrorCode::eBadFormat){
+                    logger()->error("Wrong file format: " + path);
+                }
+                return;
+            }
+
+            // Запрос под-ресурса вершинного shader'а
+            // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_objects()
+            vert_shader_res_.set_path(data->vert_shader_path);
+            vert_shader_res_.set_callback([this](IResource* resource){
+                const auto* v_shader = dynamic_cast<Shader*>(resource);
+                if (v_shader && v_shader->status() == Status::eLoaded){
+                    vk_vert_shader_ = v_shader->vk_shader_module();
+                    try_init_vk_objects();
+                }
+            });
+            vert_shader_res_.request();
+
+            // Запрос под-ресурса фрагментного shader'а
+            // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_objects()
+            frag_shader_res_.set_path(data->frag_shader_path);
+            frag_shader_res_.set_callback([this](IResource* resource){
+                const auto* f_shader = dynamic_cast<Shader*>(resource);
+                if (f_shader && f_shader->status() == Status::eLoaded){
+                    vk_frag_shader_ = f_shader->vk_shader_module();
+                    try_init_vk_objects();
+                }
+            });
+            frag_shader_res_.request();
         }
         catch([[maybe_unused]] std::exception& e){
             status_ = Status::eError;

@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.hpp>
 #include <nasral/resources/ref.h>
 #include <nasral/resources/resource_types.h>
+#include <nasral/resources/loaders/loader.h>
 
 namespace nasral::resources
 {
@@ -10,7 +11,18 @@ namespace nasral::resources
     {
     public:
         typedef std::unique_ptr<Material> Ptr;
-        explicit Material(ResourceManager* manager, const std::string_view& path);
+
+        struct Data
+        {
+            std::string vert_shader_path;
+            std::string frag_shader_path;
+            glm::vec4 color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        };
+
+        explicit Material(
+            ResourceManager* manager,
+            const std::string_view& path,
+            std::unique_ptr<Loader<Data>> loader);
         ~Material() override;
 
         Material(const Material&) = delete;
@@ -25,6 +37,7 @@ namespace nasral::resources
 
     protected:
         std::string_view path_;
+        std::unique_ptr<Loader<Data>> loader_;
         Ref vert_shader_res_;
         Ref frag_shader_res_;
         std::optional<vk::ShaderModule> vk_vert_shader_;
