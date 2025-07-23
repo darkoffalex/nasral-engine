@@ -118,7 +118,7 @@ namespace vk::utils
          * @param size Размер области, которую нужно отобразить. Если не указано, используется весь буфер.
          * @return Указатель на область памяти хоста.
          */
-        void* map(const vk::DeviceSize offset, const vk::DeviceSize size = VK_WHOLE_SIZE){
+        void* map(const vk::DeviceSize offset = 0, const vk::DeviceSize size = VK_WHOLE_SIZE){
             assert(vk_device_);
             assert(vk_memory_);
             assert(size_ > 0 && offset + size <= size_);
@@ -130,11 +130,47 @@ namespace vk::utils
          *
          * После вызова этой функции данные, изменённые через `map()`, будут записаны в память устройства.
          */
-
         void unmap(){
             assert(vk_device_);
             assert(vk_memory_);
             vk_device_.unmapMemory(vk_memory_.get());
+        }
+
+        /**
+         * @brief Копирование данных в другой Vulkan буфер
+         * @param other Другой Vulkan буфер
+         * @param queue_group Группа очередей устройства с поддержкой команд копирования/перемещения
+         */
+        void copy_to(const Buffer& other, const Device::QueueGroup& queue_group){
+            // Командный пул и очередь из группы с поддержкой команд копирования
+            const auto& pool = queue_group.command_pools[0];
+            const auto& queue = queue_group.queues[0];
+
+            // Выделить командный буфер для исполнения команды копирования
+            auto cmd_buffers = vk_device_.allocateCommandBuffersUnique(
+                vk::CommandBufferAllocateInfo()
+                .setCommandBufferCount(1)
+                .setCommandPool(pool.get())
+                .setLevel(vk::CommandBufferLevel::ePrimary));
+
+            // Записать команду в буфер
+            cmd_buffers[0].get().begin(
+                vk::CommandBufferBeginInfo()
+                .setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+
+            cmd_buffers[0].get().copyBuffer(vk_buffer_.get(), other.vk_buffer_.get(), vk::BufferCopy()
+                .setSrcOffset(0)
+                .setDstOffset(0)
+                .setSize(size_));
+
+            cmd_buffers[0].get().end();
+
+            // Отправить команду в очередь и подождать выполнения
+            vk::SubmitInfo submit_info{};
+            submit_info.setCommandBufferCount(1);
+            submit_info.setPCommandBuffers(&cmd_buffers[0].get());
+            queue.submit(submit_info, nullptr);
+            queue.waitIdle();
         }
 
         /**
@@ -147,13 +183,13 @@ namespace vk::utils
          * @brief Возвращает объект Vulkan-буфера.
          * @return Объект-handle для Vulkan-буфера
          */
-        [[nodiscard]] vk::Buffer vk_buffer() const { return vk_buffer_.get(); }
+        [[nodiscard]] const vk::Buffer& vk_buffer() const { return vk_buffer_.get(); }
 
         /**
          * Возвращает объект памяти, связанной с буфером.
          * @return Объект-handle для Vulkan-памяти
          */
-        [[nodiscard]] vk::DeviceMemory vk_memory() const { return vk_memory_.get(); }
+        [[nodiscard]] const vk::DeviceMemory& vk_memory() const { return vk_memory_.get(); }
 
 
     protected:

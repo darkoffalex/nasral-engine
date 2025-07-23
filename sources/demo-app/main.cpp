@@ -47,7 +47,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.resources.initial_resources = {
                 { nasral::resources::Type::eShader, "materials/triangle/shader.vert.spv"},
                 { nasral::resources::Type::eShader, "materials/triangle/shader.frag.spv"},
-                { nasral::resources::Type::eMaterial, "materials/triangle/material.xml"}
+                { nasral::resources::Type::eMaterial, "materials/triangle/material.xml"},
+                { nasral::resources::Type::eMesh, "meshes/quad/quad.obj"}
             };
 
             // Рендеринг
@@ -83,27 +84,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
 
         // Тестовые ресурсы (только для тестирования)
         auto* rm = engine.resource_manager();
-        auto vsr = rm->make_ref(res::Type::eShader, "materials/triangle/shader.vert.spv");
-        auto fsr = rm->make_ref(res::Type::eShader, "materials/triangle/shader.frag.spv");
         auto mtr = rm->make_ref(res::Type::eMaterial, "materials/triangle/material.xml");
-
-        /*
-        // Запрос vertex shader (отдельно)
-        vsr.set_callback([](const res::IResource* res){
-            if (res->status() == res::Status::eLoaded){
-                std::cout << "Vertex shader resource loaded!" << std::endl;
-            }
-        });
-        vsr.request();
-
-        // Запрос fragment shader (отдельно)
-        fsr.set_callback([](const res::IResource* res){
-            if (res->status() == res::Status::eLoaded){
-                std::cout << "Fragment shader resource loaded!" << std::endl;
-            }
-        });
-        fsr.request();
-        */
+        auto msh = rm->make_ref(res::Type::eMesh, "meshes/quad/quad.obj");
 
         // Запрос материала (внутри запрашивает shaders)
         mtr.set_callback([&](const res::IResource* res){
@@ -115,6 +97,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             }
         });
         mtr.request();
+
+        // Запрос mesh'а
+        msh.set_callback([&](const res::IResource* res){
+            if (res->status() == res::Status::eLoaded){
+                std::cout << "Mesh resource loaded!" << std::endl;
+                std::cout << "Ref count: " << rm->ref_count("meshes/quad/quad.obj") << std::endl;
+            }
+        });
+        msh.request();
 
         // Main loop
         while (!glfwWindowShouldClose(window))
@@ -130,9 +121,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
         }
 
         // Освободить ресурсы
-        vsr.release();
-        fsr.release();
         mtr.release();
+        msh.release();
         engine.update(0.0f);
 
         // Завершение работы с движком

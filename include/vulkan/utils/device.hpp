@@ -284,6 +284,26 @@ namespace vk::utils
         }
 
         /**
+         * Получить индексы групп с поддержкой нужных типов команд
+         * @param supported_types Флаги типов команд
+         * @return Массив индексов
+         */
+        [[nodiscard]] std::vector<size_t> queue_groups_with_support(const vk::QueueFlags& supported_types) const{
+            std::vector<size_t> result;
+            for (size_t i = 0; i < queue_groups_.size(); ++i) {
+                if (queue_groups_[i].family_index.has_value()) {
+                    const uint32_t family_index = queue_groups_[i].family_index.value();
+                    if (family_index < available_families_.size()) {
+                        if ((available_families_[family_index].queueFlags & supported_types) == supported_types) {
+                            result.push_back(i);
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        /**
          * @brief Возвращает группу очередей по индексу
          * @param index Индекс группы
          * @return Ссылка на группу очередей
@@ -329,6 +349,9 @@ namespace vk::utils
                 throw std::runtime_error("Cannot find GPUs with Vulkan support");
             }
 
+            // Очистить кэш семейств очередей
+            available_families_.clear();
+
             // Предварительно заполнить список групп очередей
             queue_groups_.resize(req_queue_groups.size());
 
@@ -340,6 +363,9 @@ namespace vk::utils
                     queue_groups_[i].family_index = std::nullopt;
                 }
 
+                // Кэшировать семейства очередей устройства (может пригодиться в дальнейшем)
+                available_families_ = device.getQueueFamilyProperties();
+
                 // Кол-во использований каждого семейства
                 std::map<uint32_t, uint32_t> family_usage_count;
 
@@ -347,7 +373,7 @@ namespace vk::utils
 
                 // Найти нужные семейства очередей, учитывая запросы (req_queue_groups) и доступные семейства
                 for(size_t i = 0; i < req_queue_groups.size(); ++i){
-                    auto available = device.getQueueFamilyProperties();
+                    const auto& available = available_families_;
                     auto suitable = std::vector<uint32_t>();
 
                     for (size_t family_index = 0; family_index < available.size(); ++family_index)
@@ -520,5 +546,7 @@ namespace vk::utils
         vk::UniqueDevice device_;
         /// Группы очередей
         std::vector<QueueGroup> queue_groups_;
+        /// Кэш семейств очередей (для последующей фильтрации по флагам и прочего)
+        std::vector<vk::QueueFamilyProperties> available_families_;
     };
 }

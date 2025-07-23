@@ -1,15 +1,24 @@
 # Основная цель сборки (объектная библиотека)
 add_library(Engine OBJECT
+        # База
         pch.h
         engine.cpp
+
+        # Логирование
         logging/logger.cpp
+
+        # Ресурсы
         resources/ref.cpp
         resources/file.cpp
         resources/shader.cpp
         resources/material.cpp
+        resources/mesh.cpp
         resources/loaders/shader_loader.hpp
         resources/loaders/material_loader.hpp
+        resources/loaders/mesh_mock_loader.hpp
         resources/resource_manager.cpp
+
+        # Рендеринг
         rendering/renderer.cpp
 )
 add_default_configurations(Engine demo_app)

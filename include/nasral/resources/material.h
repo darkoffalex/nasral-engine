@@ -18,10 +18,7 @@ namespace nasral::resources
             glm::vec4 color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         };
 
-        explicit Material(
-            ResourceManager* manager,
-            const std::string_view& path,
-            std::unique_ptr<Loader<Data>> loader);
+        Material(ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader);
         ~Material() override;
 
         Material(const Material&) = delete;
