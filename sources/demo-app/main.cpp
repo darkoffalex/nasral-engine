@@ -55,7 +55,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.rendering.app_name = "engine-demo";
             config.rendering.engine_name = "nasral-engine";
             config.rendering.surface_provider = std::make_shared<utils::GlfwSurfaceProvider>(window);
-            config.rendering.clear_color = {1.0f, 0.0f, 0.0f, 1.0f};
+            config.rendering.clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
             config.rendering.pfn_vk_get_proc_addr = glfwGetInstanceProcAddress;
             config.rendering.rendering_resolution = {}; // На текущий момент не используется
             config.rendering.color_format = vk::Format::eB8G8R8A8Unorm;
@@ -82,31 +82,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             glfwSetWindowTitle(window, title.c_str());
         });
 
-        // Тестовые ресурсы (только для тестирования)
-        auto* rm = engine.resource_manager();
-        auto mtr = rm->make_ref(res::Type::eMaterial, "materials/triangle/material.xml");
-        auto msh = rm->make_ref(res::Type::eMesh, "meshes/quad/quad.obj");
-
-        // Запрос материала (внутри запрашивает shaders)
-        mtr.set_callback([&](const res::IResource* res){
-            if (res->status() == res::Status::eLoaded){
-                std::cout << "Material resource loaded!" << std::endl;
-                const auto vc = rm->ref_count("materials/triangle/shader.vert.spv");
-                const auto fc = rm->ref_count("materials/triangle/shader.frag.spv");
-                std::cout << "Ref count: " << vc << ", " << fc << std::endl;
-            }
-        });
-        mtr.request();
-
-        // Запрос mesh'а
-        msh.set_callback([&](const res::IResource* res){
-            if (res->status() == res::Status::eLoaded){
-                std::cout << "Mesh resource loaded!" << std::endl;
-                std::cout << "Ref count: " << rm->ref_count("meshes/quad/quad.obj") << std::endl;
-            }
-        });
-        msh.request();
-
         // Main loop
         while (!glfwWindowShouldClose(window))
         {
@@ -119,11 +94,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // Обновление движка
             engine.update(fps_counter.delta());
         }
-
-        // Освободить ресурсы
-        mtr.release();
-        msh.release();
-        engine.update(0.0f);
 
         // Завершение работы с движком
         engine.shutdown();

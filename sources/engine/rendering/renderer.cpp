@@ -202,6 +202,63 @@ namespace nasral::rendering
         current_frame_++;
     }
 
+    void Renderer::cmd_bind_material_pipeline(const vk::Pipeline& pipeline){
+        // Если рендеринг отключен
+        if (!is_rendering_) return;
+
+        // Текущий индекс кадра
+        const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
+
+        // Получить буфер команд
+        auto& cmd_buffer = vk_command_buffers_[frame_index];
+
+        // Размеры области рендеринга
+        const auto& extent = vk_framebuffers_[frame_index]->extent();
+        const auto& width = extent.width;
+        const auto& height = extent.height;
+
+        // Область вида (динамическое состояние)
+        auto viewport = vk::Viewport()
+        .setX(0.0f)
+        .setWidth(static_cast<float>(width))
+        .setMinDepth(0.0f)
+        .setMaxDepth(1.0f);
+
+        if (config_.use_opengl_style){
+            viewport.setY(static_cast<float>(height));
+            viewport.setHeight(-static_cast<float>(height));
+        }else{
+            viewport.setY(0.0f);
+            viewport.setHeight(static_cast<float>(height));
+        }
+
+        // Ножницы (динамическое состояние)
+        auto scissor = vk::Rect2D()
+        .setOffset(vk::Offset2D(0, 0))
+        .setExtent(extent);
+
+        // Запись команд. Привязать конвейер и динамические состояния
+        cmd_buffer->bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+        cmd_buffer->setViewport(0, {viewport});
+        cmd_buffer->setScissor(0, {scissor});
+    }
+
+    void Renderer::cmd_draw_mesh(const vk::Buffer& vertices, const vk::Buffer& indices, const size_t index_count){
+        // Если рендеринг отключен
+        if (!is_rendering_) return;
+
+        // Текущий индекс кадра
+        const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
+
+        // Получить буфер команд
+        auto& cmd_buffer = vk_command_buffers_[frame_index];
+
+        // Запись команд. Привязать геометрию и нарисовать её
+        cmd_buffer->bindVertexBuffers(0, {vertices}, {0});
+        cmd_buffer->bindIndexBuffer(indices, 0, vk::IndexType::eUint32);
+        cmd_buffer->drawIndexed(index_count, 1, 0, 0, 0);
+    }
+
     void Renderer::cmd_wait_for_frame() const{
         vk_device_->logical_device().waitIdle();
     }

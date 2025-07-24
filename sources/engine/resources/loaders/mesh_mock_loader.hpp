@@ -6,7 +6,7 @@ namespace nasral::resources
     class MeshMockLoader final : public Loader<Mesh::Data>
     {
     public:
-        std::optional<Mesh::Data> load(const std::string_view& path) override{
+        std::optional<Mesh::Data> load([[maybe_unused]] const std::string_view& path) override{
             constexpr float size = 1.0f;
             std::vector<rendering::Vertex> vertices = {
                 {{-(size/2.0f), -(size/2.0f), 0.0f},{0.0f, 0.0f, 1.0f},{0.0f, 0.0f},{1.0f, 0.0f,0.0f,1.0f}},

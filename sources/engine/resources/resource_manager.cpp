@@ -3,10 +3,12 @@
 #include <nasral/resources/file.h>
 #include <nasral/resources/shader.h>
 #include <nasral/resources/material.h>
+#include <nasral/resources/mesh.h>
 #include <nasral/engine.h>
 
 #include "loaders/shader_loader.hpp"
 #include "loaders/material_loader.hpp"
+#include "loaders/mesh_mock_loader.hpp"
 
 namespace fs = std::filesystem;
 namespace nasral::resources
@@ -226,26 +228,33 @@ namespace nasral::resources
             std::unique_ptr<IResource> res;
             switch (slot.info.type)
             {
-                case Type::eFile:
+            case Type::eFile:
                 {
                     res = std::make_unique<File>(this, slot.info.path.view());
                     break;
                 }
-                case Type::eShader:
+            case Type::eShader:
                 {
                     res = std::make_unique<Shader>(this,
                         slot.info.path.view(),
                         std::make_unique<ShaderLoader>());
                     break;
                 }
-                case Type::eMaterial:
+            case Type::eMaterial:
                 {
                     res = std::make_unique<Material>(this,
                         slot.info.path.view(),
                         std::make_unique<MaterialLoader>());
                     break;
                 }
-                default:
+            case Type::eMesh:
+                {
+                    res = std::make_unique<Mesh>(this,
+                        slot.info.path.view(),
+                        std::make_unique<MeshMockLoader>());
+                    break;
+                }
+            default:
                 {
                     res = std::make_unique<File>(this, slot.info.path.view());
                     res->status_ = Status::eError;

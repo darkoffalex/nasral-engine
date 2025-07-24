@@ -32,10 +32,14 @@ namespace nasral::resources
                 return;
             }
 
+            // Кол-во вершин и индексов
+            vertex_count_ = data->vertices.size();
+            index_count_ = data->indices.size();
+
             // Получить устройство и группу очередей для копирования/перемещения
             const auto& vd = resource_manager_->engine()->renderer()->vk_device();
             const auto transfer_groups_ids = vd->queue_groups_with_support(vk::QueueFlagBits::eTransfer);
-            const auto& transfer_group = vd->queue_group(transfer_groups_ids[0]);
+            const auto& transfer_group = vd->queue_group(transfer_groups_ids.back());
 
             // Вершины
             {
@@ -75,7 +79,7 @@ namespace nasral::resources
                 index_buffer_ = std::make_unique<vk::utils::Buffer>(
                     vd,
                     sizeof(uint32_t) * index_count_,
-                    vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                    vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
                     vk::MemoryPropertyFlagBits::eDeviceLocal);
 
                 // Копировать данные во временный (staging) буфер

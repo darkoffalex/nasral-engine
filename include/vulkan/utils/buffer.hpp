@@ -81,23 +81,30 @@ namespace vk::utils
             // Выделить память буфера
             try
             {
+                // Выделить память
                 vk_memory_ = vk_device_.allocateMemoryUnique(
                     vk::MemoryAllocateInfo()
                     .setAllocationSize(size_)
                     .setMemoryTypeIndex(mem_type_id.value())
                     .setPNext(usage & vk::BufferUsageFlagBits::eShaderDeviceAddress ? &allocate_flags : nullptr));
+
+                // Связать с объектом буфера
+                vk_device_.bindBufferMemory(
+                    vk_buffer_.get(),
+                    vk_memory_.get(),
+                    0);
             }
             catch(const ::vk::OutOfDeviceMemoryError& e) {
                 vk_buffer_.reset();
-                throw std::runtime_error("Failed to allocate image memory. " + std::string(e.what()));
+                throw std::runtime_error("Failed to allocate buffer memory. " + std::string(e.what()));
             }
             catch(const ::vk::OutOfHostMemoryError& e) {
                 vk_buffer_.reset();
-                throw std::runtime_error("Failed to allocate image memory. " + std::string(e.what()));
+                throw std::runtime_error("Failed to allocate buffer memory. " + std::string(e.what()));
             }
             catch(const std::exception& e) {
                 vk_buffer_.reset();
-                throw std::runtime_error("Failed to allocate image memory. " + std::string(e.what()));
+                throw std::runtime_error("Failed to allocate buffer memory. " + std::string(e.what()));
             }
         }
 
@@ -121,7 +128,7 @@ namespace vk::utils
         void* map(const vk::DeviceSize offset = 0, const vk::DeviceSize size = VK_WHOLE_SIZE){
             assert(vk_device_);
             assert(vk_memory_);
-            assert(size_ > 0 && offset + size <= size_);
+            assert(size_ > 0 && (offset + size <= size_ || size == VK_WHOLE_SIZE));
             return vk_device_.mapMemory(vk_memory_.get(), offset, size, vk::MemoryMapFlags());
         }
 

@@ -1,6 +1,8 @@
 #include "pch.h"
 #include <nasral/engine.h>
 
+#include "nasral/resources/material.h"
+
 namespace nasral
 {
     Engine::Engine()= default;
@@ -19,6 +21,9 @@ namespace nasral
 
             resource_manager_ = std::make_unique<resources::ResourceManager>(this, config.resources);
             logger()->info("Resource manager initialized.");
+
+            test_scene_ = std::make_unique<TestScene>(resource_manager_);
+            logger()->info("Test scene initialized.");
 
             return true;
         }
@@ -47,14 +52,9 @@ namespace nasral
         assert(renderer_ != nullptr);
 
         try{
-            // Обработка событий
-            // TODO: Обработка событий
-
-            // Обработка сцены
-            // TODO: Обработка сцены
-
             // Тестирование рендеринга
             renderer_->cmd_begin_frame();
+            test_scene_->render(renderer_);
             renderer_->cmd_end_frame();
 
             // Обновление состояния ресурсов
@@ -67,6 +67,13 @@ namespace nasral
 
     void Engine::shutdown() noexcept{
         try{
+            if (test_scene_){
+                renderer_->cmd_wait_for_frame();
+                test_scene_.reset();
+                resource_manager_->update(0.0f);
+                logger()->info("Test scene destroyed.");
+            }
+
             if (resource_manager_){
                 resource_manager_.reset();
                 logger()->info("Resource manager destroyed.");
@@ -85,5 +92,64 @@ namespace nasral
         catch(const std::exception& e){
             logger()->error(e.what());
         }
+    }
+
+    /* ТОЛЬКО ДЛЯ ТЕСТИРОВАНИЯ */
+
+    Engine::TestScene::TestScene(const resources::ResourceManager::Ptr& resource_manager)
+        : material_ref(resource_manager.get(), resources::Type::eMaterial, "materials/triangle/material.xml")
+        , mesh_ref(resource_manager.get(), resources::Type::eMesh, "meshes/quad/quad.obj")
+    {
+        // Запрос материала
+        material_ref.set_callback([&](const resources::IResource* res){
+            if (res->status() == resources::Status::eLoaded){
+                auto* material = dynamic_cast<const resources::Material*>(res);
+                assert(material != nullptr);
+
+                pipeline = material->vk_pipeline();
+            }
+        });
+        material_ref.request();
+
+        // Запрос геометрии
+        mesh_ref.set_callback([&](const resources::IResource* res){
+            if (res->status() == resources::Status::eLoaded){
+                auto* mesh = dynamic_cast<const resources::Mesh*>(res);
+                assert(mesh != nullptr);
+
+                vertex_buffer = mesh->vk_vertex_buffer();
+                index_buffer = mesh->vk_index_buffer();
+                vertex_count = mesh->vertex_count();
+                index_count = mesh->index_count();
+            }
+        });
+        mesh_ref.request();
+    }
+
+    Engine::TestScene::~TestScene(){
+        pipeline = nullptr;
+        vertex_buffer = nullptr;
+        index_buffer = nullptr;
+        index_count = 0;
+        vertex_count = 0;
+
+        material_ref.release();
+        mesh_ref.release();
+    }
+
+    void Engine::TestScene::render(const rendering::Renderer::Ptr& renderer) const{
+        if (!is_ready()){
+            return;
+        }
+
+        renderer->cmd_bind_material_pipeline(pipeline);
+        renderer->cmd_draw_mesh(vertex_buffer, index_buffer, index_count);
+    }
+
+    bool Engine::TestScene::is_ready() const{
+        if (vertex_buffer && index_buffer && pipeline && vertex_count > 0 && index_count > 0){
+            return true;
+        }
+        return false;
     }
 }

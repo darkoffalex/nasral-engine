@@ -26,6 +26,8 @@ namespace nasral::rendering
 
         void cmd_begin_frame();
         void cmd_end_frame();
+        void cmd_bind_material_pipeline(const vk::Pipeline& pipeline);
+        void cmd_draw_mesh(const vk::Buffer& vertices, const vk::Buffer& indices, size_t index_count);
         void cmd_wait_for_frame() const;
         void request_surface_refresh();
 

@@ -3,6 +3,8 @@
 #include <nasral/resources/resource_manager.h>
 #include <nasral/rendering/renderer.h>
 
+#include "resources/mesh.h"
+
 namespace nasral
 {
     class Engine
@@ -13,6 +15,26 @@ namespace nasral
             logging::LoggingConfig log;
             resources::ResourceConfig resources;
             rendering::RenderingConfig rendering;
+        };
+
+        // Только для тестирования
+        struct TestScene
+        {
+            typedef std::unique_ptr<TestScene> Ptr;
+
+            resources::Ref material_ref;
+            resources::Ref mesh_ref;
+
+            vk::Pipeline pipeline = {};
+            vk::Buffer vertex_buffer = {};
+            vk::Buffer index_buffer = {};
+            size_t vertex_count = 0;
+            size_t index_count = 0;
+
+            explicit TestScene(const resources::ResourceManager::Ptr& resource_manager);
+            ~TestScene();
+            void render(const rendering::Renderer::Ptr& renderer) const;
+            [[nodiscard]] bool is_ready() const;
         };
 
         Engine();
@@ -41,5 +63,8 @@ namespace nasral
         logging::Logger::Ptr logger_;
         resources::ResourceManager::Ptr resource_manager_;
         rendering::Renderer::Ptr renderer_;
+
+        // Только для тестирования
+        TestScene::Ptr test_scene_;
     };
 }
