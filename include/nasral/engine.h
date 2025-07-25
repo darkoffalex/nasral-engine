@@ -25,16 +25,12 @@ namespace nasral
             resources::Ref material_ref;
             resources::Ref mesh_ref;
 
-            vk::Pipeline pipeline = {};
-            vk::Buffer vertex_buffer = {};
-            vk::Buffer index_buffer = {};
-            size_t vertex_count = 0;
-            size_t index_count = 0;
+            rendering::Handles::Mesh mesh_handles;
+            rendering::Handles::Material material_handles;
 
             explicit TestScene(const resources::ResourceManager::Ptr& resource_manager);
             ~TestScene();
             void render(const rendering::Renderer::Ptr& renderer) const;
-            [[nodiscard]] bool is_ready() const;
         };
 
         Engine();

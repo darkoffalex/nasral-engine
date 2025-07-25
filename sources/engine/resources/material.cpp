@@ -67,6 +67,10 @@ namespace nasral::resources
         }
     }
 
+    rendering::Handles::Material Material::render_handles() const{
+        return {vk_pipeline()};
+    }
+
     void Material::try_init_vk_objects(){
         // Если не все обработчики были вызваны - выход
         if (!vert_shader_res_.is_handled() || !frag_shader_res_.is_handled()){
@@ -87,44 +91,11 @@ namespace nasral::resources
 
         /** 1. Макет конвейера **/
 
-        // Описываем макет дескрипторных наборов.
-        // Макет очень сильно зависит от кода shader'а и должен его учитывать.
-
-        // Дескрипторный набор для вида/камеры
-        std::array<vk::DescriptorSetLayoutBinding, 1> view_uniform_bindings = {
-            {
-                vk::DescriptorSetLayoutBinding()
-                .setBinding(0)
-                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-                .setStageFlags(vk::ShaderStageFlagBits::eVertex)
-                .setDescriptorCount(1)
-            }
-        };
-
-        vk_dset_layout_view_ = vd->logical_device().createDescriptorSetLayoutUnique(
-        vk::DescriptorSetLayoutCreateInfo()
-        .setBindings(view_uniform_bindings));
-
-        // Дескрипторный набор для объектов сцены
-        std::array<vk::DescriptorSetLayoutBinding, 1> object_uniform_bindings = {
-            {
-                vk::DescriptorSetLayoutBinding()
-                .setBinding(0)
-                .setDescriptorType(vk::DescriptorType::eUniformBufferDynamic)
-                .setStageFlags(vk::ShaderStageFlagBits::eVertex)
-                .setDescriptorCount(1)
-            }
-        };
-
-        vk_dset_layout_object_ = vd->logical_device().createDescriptorSetLayoutUnique(
-        vk::DescriptorSetLayoutCreateInfo()
-        .setBindings(object_uniform_bindings));
-
         // Создать макет всего конвейера
         try{
             std::array<vk::DescriptorSetLayout, 2> dset_layouts = {
-                vk_dset_layout_view_.get(),
-                vk_dset_layout_object_.get()
+                renderer->vk_dset_layout_view().get(),
+                renderer->vk_dset_layout_objects().get()
             };
 
             vk_pipeline_layout_ = vd->logical_device().createPipelineLayoutUnique(

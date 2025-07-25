@@ -28,6 +28,7 @@ namespace nasral::resources
         [[nodiscard]] const vk::Buffer& vk_index_buffer() const { return index_buffer_->vk_buffer(); }
         [[nodiscard]] size_t vertex_count() const { return vertex_count_; }
         [[nodiscard]] size_t index_count() const { return index_count_; }
+        [[nodiscard]] rendering::Handles::Mesh render_handles() const;
 
     protected:
         std::string_view path_;

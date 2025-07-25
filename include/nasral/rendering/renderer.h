@@ -26,8 +26,8 @@ namespace nasral::rendering
 
         void cmd_begin_frame();
         void cmd_end_frame();
-        void cmd_bind_material_pipeline(const vk::Pipeline& pipeline);
-        void cmd_draw_mesh(const vk::Buffer& vertices, const vk::Buffer& indices, size_t index_count);
+        void cmd_bind_material_pipeline(const Handles::Material& handles);
+        void cmd_draw_mesh(const Handles::Mesh& handles);
         void cmd_wait_for_frame() const;
         void request_surface_refresh();
 
@@ -41,6 +41,8 @@ namespace nasral::rendering
         [[nodiscard]] const vk::SurfaceKHR& vk_surface() const { return *vk_surface_; }
         [[nodiscard]] const vk::utils::Framebuffer& vk_framebuffer(const size_t index) const { return *vk_framebuffers_[index]; }
         [[nodiscard]] const vk::UniqueDescriptorPool& vk_descriptor_pool() const { return vk_descriptor_pool_; }
+        [[nodiscard]] const vk::UniqueDescriptorSetLayout& vk_dset_layout_view() const { return vk_dset_layout_view_; }
+        [[nodiscard]] const vk::UniqueDescriptorSetLayout& vk_dset_layout_objects() const { return vk_dset_layout_objects_; }
 
         [[nodiscard]] vk::Extent2D get_rendering_resolution() const;
 
@@ -66,6 +68,7 @@ namespace nasral::rendering
         void init_vk_swap_chain();
         void init_vk_framebuffers();
         void init_vk_descriptor_pool();
+        void init_vk_descriptor_set_layouts();
         void init_vk_command_buffers();
         void init_vk_sync_objects();
         void refresh_vk_surface();
@@ -88,6 +91,8 @@ namespace nasral::rendering
         vk::UniqueSwapchainKHR vk_swap_chain_;
         std::vector<vk::utils::Framebuffer::Ptr> vk_framebuffers_;
         vk::UniqueDescriptorPool vk_descriptor_pool_;
+        vk::UniqueDescriptorSetLayout vk_dset_layout_view_;
+        vk::UniqueDescriptorSetLayout vk_dset_layout_objects_;
 
         // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
         size_t current_frame_;

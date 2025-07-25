@@ -46,6 +46,9 @@ namespace nasral::rendering
             init_vk_descriptor_pool();
             logger()->info("Vulkan: Descriptor pool created.");
 
+            init_vk_descriptor_set_layouts();
+            logger()->info("Vulkan: Descriptor set layouts created.");
+
             init_vk_command_buffers();
             logger()->info("Vulkan: Command buffers created.");
 
@@ -202,7 +205,7 @@ namespace nasral::rendering
         current_frame_++;
     }
 
-    void Renderer::cmd_bind_material_pipeline(const vk::Pipeline& pipeline){
+    void Renderer::cmd_bind_material_pipeline(const Handles::Material& handles){
         // Если рендеринг отключен
         if (!is_rendering_) return;
 
@@ -238,12 +241,12 @@ namespace nasral::rendering
         .setExtent(extent);
 
         // Запись команд. Привязать конвейер и динамические состояния
-        cmd_buffer->bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+        cmd_buffer->bindPipeline(vk::PipelineBindPoint::eGraphics, handles.pipeline);
         cmd_buffer->setViewport(0, {viewport});
         cmd_buffer->setScissor(0, {scissor});
     }
 
-    void Renderer::cmd_draw_mesh(const vk::Buffer& vertices, const vk::Buffer& indices, const size_t index_count){
+    void Renderer::cmd_draw_mesh(const Handles::Mesh& handles){
         // Если рендеринг отключен
         if (!is_rendering_) return;
 
@@ -254,9 +257,9 @@ namespace nasral::rendering
         auto& cmd_buffer = vk_command_buffers_[frame_index];
 
         // Запись команд. Привязать геометрию и нарисовать её
-        cmd_buffer->bindVertexBuffers(0, {vertices}, {0});
-        cmd_buffer->bindIndexBuffer(indices, 0, vk::IndexType::eUint32);
-        cmd_buffer->drawIndexed(index_count, 1, 0, 0, 0);
+        cmd_buffer->bindVertexBuffers(0, {handles.vertex_buffer}, {0});
+        cmd_buffer->bindIndexBuffer(handles.index_buffer, 0, vk::IndexType::eUint32);
+        cmd_buffer->drawIndexed(handles.index_count, 1, 0, 0, 0);
     }
 
     void Renderer::cmd_wait_for_frame() const{
@@ -634,6 +637,44 @@ namespace nasral::rendering
             .setMaxSets(2)
             .setPoolSizes(pool_sizes)
             .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet));
+    }
+
+    void Renderer::init_vk_descriptor_set_layouts(){
+        assert(vk_instance_);
+        assert(vk_device_);
+
+        // Описываем макет дескрипторных наборов.
+        // Макет очень сильно зависит от кода shader'а и должен его учитывать.
+
+        // Дескрипторный набор для вида/камеры
+        std::array<vk::DescriptorSetLayoutBinding, 1> view_uniform_bindings = {
+            {
+                vk::DescriptorSetLayoutBinding()
+                .setBinding(0)
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setStageFlags(vk::ShaderStageFlagBits::eVertex)
+                .setDescriptorCount(1)
+            }
+        };
+
+        vk_dset_layout_view_ = vk_device_->logical_device().createDescriptorSetLayoutUnique(
+        vk::DescriptorSetLayoutCreateInfo()
+        .setBindings(view_uniform_bindings));
+
+        // Дескрипторный набор для объектов сцены
+        std::array<vk::DescriptorSetLayoutBinding, 1> object_uniform_bindings = {
+            {
+                vk::DescriptorSetLayoutBinding()
+                .setBinding(0)
+                .setDescriptorType(vk::DescriptorType::eUniformBufferDynamic)
+                .setStageFlags(vk::ShaderStageFlagBits::eVertex)
+                .setDescriptorCount(1)
+            }
+        };
+
+        vk_dset_layout_objects_ = vk_device_->logical_device().createDescriptorSetLayoutUnique(
+            vk::DescriptorSetLayoutCreateInfo()
+            .setBindings(object_uniform_bindings));
     }
 
     void Renderer::init_vk_command_buffers(){

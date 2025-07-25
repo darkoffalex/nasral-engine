@@ -105,8 +105,7 @@ namespace nasral
             if (res->status() == resources::Status::eLoaded){
                 auto* material = dynamic_cast<const resources::Material*>(res);
                 assert(material != nullptr);
-
-                pipeline = material->vk_pipeline();
+                material_handles = material->render_handles();
             }
         });
         material_ref.request();
@@ -116,40 +115,25 @@ namespace nasral
             if (res->status() == resources::Status::eLoaded){
                 auto* mesh = dynamic_cast<const resources::Mesh*>(res);
                 assert(mesh != nullptr);
-
-                vertex_buffer = mesh->vk_vertex_buffer();
-                index_buffer = mesh->vk_index_buffer();
-                vertex_count = mesh->vertex_count();
-                index_count = mesh->index_count();
+                mesh_handles = mesh->render_handles();
             }
         });
         mesh_ref.request();
     }
 
     Engine::TestScene::~TestScene(){
-        pipeline = nullptr;
-        vertex_buffer = nullptr;
-        index_buffer = nullptr;
-        index_count = 0;
-        vertex_count = 0;
-
+        material_handles = {};
+        mesh_handles = {};
         material_ref.release();
         mesh_ref.release();
     }
 
     void Engine::TestScene::render(const rendering::Renderer::Ptr& renderer) const{
-        if (!is_ready()){
+        if (!mesh_handles || !material_handles){
             return;
         }
 
-        renderer->cmd_bind_material_pipeline(pipeline);
-        renderer->cmd_draw_mesh(vertex_buffer, index_buffer, index_count);
-    }
-
-    bool Engine::TestScene::is_ready() const{
-        if (vertex_buffer && index_buffer && pipeline && vertex_count > 0 && index_count > 0){
-            return true;
-        }
-        return false;
+        renderer->cmd_bind_material_pipeline(material_handles);
+        renderer->cmd_draw_mesh(mesh_handles);
     }
 }

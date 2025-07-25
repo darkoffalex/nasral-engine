@@ -46,6 +46,29 @@ namespace nasral::rendering
         glm::vec4 color;
     };
 
+    struct Handles
+    {
+        struct Material
+        {
+            vk::Pipeline pipeline = VK_NULL_HANDLE;
+
+            [[nodiscard]] explicit operator bool() const noexcept{
+                return pipeline;
+            }
+        };
+
+        struct Mesh
+        {
+            vk::Buffer vertex_buffer = VK_NULL_HANDLE;
+            vk::Buffer index_buffer = VK_NULL_HANDLE;
+            uint32_t index_count = 0;
+
+            [[nodiscard]] explicit operator bool() const noexcept{
+                return vertex_buffer && index_buffer && index_count;
+            }
+        };
+    };
+
     class RenderingError final : public EngineError
     {
     public:

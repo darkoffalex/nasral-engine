@@ -105,4 +105,12 @@ namespace nasral::resources
 
         status_ = Status::eLoaded;
     }
+
+    rendering::Handles::Mesh Mesh::render_handles() const{
+        return {
+            vk_vertex_buffer(),
+            vk_index_buffer(),
+            static_cast<uint32_t>(index_count_),
+        };
+    }
 }
