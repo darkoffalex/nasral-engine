@@ -69,10 +69,28 @@ namespace nasral::rendering
         };
     };
 
+    struct CameraUniforms
+    {
+        glm::mat4 view;
+        glm::mat4 projection;
+    };
+
+    struct ObjectUniforms
+    {
+        glm::mat4 model;
+    };
+
+    static_assert(sizeof(CameraUniforms) % 16 == 0, "CameraUniforms size must be multiple of 16 bytes");
+    static_assert(sizeof(ObjectUniforms) % 16 == 0, "ObjectUniforms size must be multiple of 16 bytes");
+
     class RenderingError final : public EngineError
     {
     public:
         explicit RenderingError(const std::string& message)
         : EngineError(message) {}
     };
+
+    inline uint32_t size_align(const uint32_t size, const uint32_t alignment){
+        return (size + alignment - 1) & ~(alignment - 1);
+    }
 }

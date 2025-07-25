@@ -1,0 +1,9 @@
+<Material>
+    <Shaders>
+        <Shader stage="vertex" path="materials/uniforms/shader.vert.spv"/>
+        <Shader stage="fragment" path="materials/uniforms/shader.frag.spv"/>
+    </Shaders>
+    <Paramaters>
+        <Color r="1.0" g="0.0" b="0.0"/>
+    </Paramaters>
+</Material>

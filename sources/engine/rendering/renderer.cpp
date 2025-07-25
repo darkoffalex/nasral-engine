@@ -49,6 +49,9 @@ namespace nasral::rendering
             init_vk_descriptor_set_layouts();
             logger()->info("Vulkan: Descriptor set layouts created.");
 
+            init_vk_uniforms();
+            logger()->info("Vulkan: Uniform buffers allocated.");
+
             init_vk_command_buffers();
             logger()->info("Vulkan: Command buffers created.");
 
@@ -675,6 +678,92 @@ namespace nasral::rendering
         vk_dset_layout_objects_ = vk_device_->logical_device().createDescriptorSetLayoutUnique(
             vk::DescriptorSetLayoutCreateInfo()
             .setBindings(object_uniform_bindings));
+    }
+
+    void Renderer::init_vk_uniforms(){
+        assert(vk_instance_);
+        assert(vk_device_);
+        assert(vk_descriptor_pool_);
+        assert(vk_dset_layout_view_);
+        assert(vk_dset_layout_objects_);
+
+        // Выравнивание для uniform буферов
+        const auto alignment = vk_device_->physical_device()
+            .getProperties()
+            .limits
+            .minUniformBufferOffsetAlignment;
+
+        // Дескрипторные наборы
+        {
+            // Выделить дескрипторный набор для камеры
+            vk_device_->logical_device().allocateDescriptorSetsUnique(
+                vk::DescriptorSetAllocateInfo()
+                .setDescriptorPool(vk_descriptor_pool_.get())
+                .setDescriptorSetCount(1)
+                .setSetLayouts({*vk_dset_layout_view_}))
+            .front()
+            .swap(vk_dset_view_);
+
+            // Выделить дескрипторный набор для объектов
+            vk_device_->logical_device().allocateDescriptorSetsUnique(
+                vk::DescriptorSetAllocateInfo()
+                .setDescriptorPool(vk_descriptor_pool_.get())
+                .setDescriptorSetCount(1)
+                .setSetLayouts({*vk_dset_layout_objects_}))
+            .front()
+            .swap(vk_dset_objects_);
+        }
+
+        // Uniform буферы
+        {
+            // Выделить uniform буфер для камеры (вид, проекция)
+            vk_ubo_view_ = std::make_unique<vk::utils::Buffer>(
+                vk_device_,
+                size_align(sizeof(CameraUniforms), alignment),
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+            // Выделить uniform буфер для объектов сцены
+            vk_ubo_objects_ = std::make_unique<vk::utils::Buffer>(
+                vk_device_,
+                size_align(sizeof(ObjectUniforms), alignment) * MAX_OBJECTS,
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+        }
+
+        // Связать дескрипторы и буферы
+        {
+            const std::array<vk::WriteDescriptorSet, 2> writes
+            {
+                // Камера
+                vk::WriteDescriptorSet()
+                .setDstSet(vk_dset_view_.get())
+                .setDstBinding(0)
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorCount(1)
+                .setBufferInfo(
+                    vk::DescriptorBufferInfo()
+                    .setBuffer(vk_ubo_view_->vk_buffer())
+                    .setOffset(0)
+                    .setRange(size_align(sizeof(CameraUniforms), alignment)))
+                ,
+
+                // Объекты
+                vk::WriteDescriptorSet()
+                .setDstSet(vk_dset_objects_.get())
+                .setDstBinding(0)
+                .setDescriptorType(vk::DescriptorType::eUniformBufferDynamic)
+                .setDescriptorCount(1)
+                .setBufferInfo(
+                    vk::DescriptorBufferInfo()
+                    .setBuffer(vk_ubo_objects_->vk_buffer())
+                    .setOffset(0)
+                    .setRange(size_align(sizeof(ObjectUniforms), alignment))
+                )
+            };
+
+            vk_device_->logical_device().updateDescriptorSets(writes, {});
+        }
     }
 
     void Renderer::init_vk_command_buffers(){

@@ -3,6 +3,7 @@
 #include <nasral/core_types.h>
 #include <nasral/rendering/rendering_types.h>
 #include <vulkan/utils/framebuffer.hpp>
+#include <vulkan/utils/buffer.hpp>
 
 namespace nasral{class Engine;}
 namespace nasral::logging{class Logger;}
@@ -69,6 +70,7 @@ namespace nasral::rendering
         void init_vk_framebuffers();
         void init_vk_descriptor_pool();
         void init_vk_descriptor_set_layouts();
+        void init_vk_uniforms();
         void init_vk_command_buffers();
         void init_vk_sync_objects();
         void refresh_vk_surface();
@@ -90,9 +92,15 @@ namespace nasral::rendering
         vk::UniqueRenderPass vk_render_pass_;
         vk::UniqueSwapchainKHR vk_swap_chain_;
         std::vector<vk::utils::Framebuffer::Ptr> vk_framebuffers_;
+
+        // Uniform-буферы и дескрипторы
         vk::UniqueDescriptorPool vk_descriptor_pool_;
         vk::UniqueDescriptorSetLayout vk_dset_layout_view_;
         vk::UniqueDescriptorSetLayout vk_dset_layout_objects_;
+        vk::UniqueDescriptorSet vk_dset_view_;
+        vk::UniqueDescriptorSet vk_dset_objects_;
+        vk::utils::Buffer::Ptr vk_ubo_view_;
+        vk::utils::Buffer::Ptr vk_ubo_objects_;
 
         // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
         size_t current_frame_;
