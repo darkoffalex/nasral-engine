@@ -149,6 +149,7 @@ namespace vk::utils
          * @param queue_group Группа очередей устройства с поддержкой команд копирования/перемещения
          */
         void copy_to(const Buffer& other, const Device::QueueGroup& queue_group){
+            // TODO: Вероятно нужно синхронизировать между разными потоками при асинхронной загрузке...
             // Командный пул и очередь из группы с поддержкой команд копирования
             const auto& pool = queue_group.command_pools[0];
             const auto& queue = queue_group.queues[0];
