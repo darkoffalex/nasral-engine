@@ -48,6 +48,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
                 { nasral::resources::Type::eShader, "materials/triangle/shader.vert.spv"},
                 { nasral::resources::Type::eShader, "materials/triangle/shader.frag.spv"},
                 { nasral::resources::Type::eMaterial, "materials/triangle/material.xml"},
+                { nasral::resources::Type::eShader, "materials/uniforms/shader.vert.spv"},
+                { nasral::resources::Type::eShader, "materials/uniforms/shader.frag.spv"},
+                { nasral::resources::Type::eMaterial, "materials/uniforms/material.xml"},
                 { nasral::resources::Type::eMesh, "meshes/quad/quad.obj"}
             };
 

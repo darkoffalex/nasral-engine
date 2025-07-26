@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <vulkan/vulkan.hpp>
 #include <nasral/core_types.h>
 
@@ -51,9 +52,10 @@ namespace nasral::rendering
         struct Material
         {
             vk::Pipeline pipeline = VK_NULL_HANDLE;
+            vk::PipelineLayout pipeline_layout = VK_NULL_HANDLE;
 
             [[nodiscard]] explicit operator bool() const noexcept{
-                return pipeline;
+                return pipeline && pipeline_layout;
             }
         };
 
@@ -71,13 +73,13 @@ namespace nasral::rendering
 
     struct CameraUniforms
     {
-        glm::mat4 view;
-        glm::mat4 projection;
+        glm::mat4 view = glm::identity<glm::mat4>();
+        glm::mat4 projection = glm::identity<glm::mat4>();
     };
 
     struct ObjectUniforms
     {
-        glm::mat4 model;
+        glm::mat4 model = glm::identity<glm::mat4>();
     };
 
     static_assert(sizeof(CameraUniforms) % 16 == 0, "CameraUniforms size must be multiple of 16 bytes");

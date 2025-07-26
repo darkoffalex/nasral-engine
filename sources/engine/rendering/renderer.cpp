@@ -249,6 +249,46 @@ namespace nasral::rendering
         cmd_buffer->setScissor(0, {scissor});
     }
 
+    void Renderer::cmd_bind_cam_descriptors(const Handles::Material& handles){
+        // Если рендеринг отключен
+        if (!is_rendering_) return;
+        // Текущий индекс кадра
+        const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
+        // Получить буфер команд
+        auto& cmd_buffer = vk_command_buffers_[frame_index];
+
+        // Привязать дескрипторный набор камеры
+        cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+            handles.pipeline_layout,
+            0,
+            {vk_dset_view_.get()},
+            {});
+    }
+
+    void Renderer::cmd_bind_obj_descriptors(const Handles::Material& handles, const uint32_t obj_index){
+        // Если рендеринг отключен
+        if (!is_rendering_) return;
+        // Текущий индекс кадра
+        const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
+        // Получить буфер команд
+        auto& cmd_buffer = vk_command_buffers_[frame_index];
+
+        // Выравнивание для uniform буферов
+        static const auto alignment = vk_device_->physical_device()
+            .getProperties()
+            .limits
+            .minUniformBufferOffsetAlignment;
+
+        auto offset = obj_index * size_align(sizeof(ObjectUniforms), alignment);
+
+        // Привязать дескрипторный набор камеры
+        cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+            handles.pipeline_layout,
+            1,
+            {vk_dset_objects_.get()},
+            {offset});
+    }
+
     void Renderer::cmd_draw_mesh(const Handles::Mesh& handles){
         // Если рендеринг отключен
         if (!is_rendering_) return;
@@ -273,9 +313,26 @@ namespace nasral::rendering
         surface_refresh_required_.store(true, std::memory_order_release);
     }
 
+    void Renderer::update_cam_uniforms(const CameraUniforms& uniforms, const size_t index){
+        assert(index < MAX_CAMERAS);
+        assert(vk_ubo_view_);
+        update_uniforms(*vk_ubo_view_, to<uint32_t>(index), uniforms);
+    }
+
+    void Renderer::update_obj_uniforms(const ObjectUniforms& uniforms, const size_t index){
+        assert(index < MAX_OBJECTS);
+        assert(vk_ubo_objects_);
+        update_uniforms(*vk_ubo_objects_, to<uint32_t>(index), uniforms);
+    }
+
     vk::Extent2D Renderer::get_rendering_resolution() const{
         assert(!vk_framebuffers_.empty());
         return vk_framebuffers_[0]->extent();
+    }
+
+    float Renderer::get_rendering_aspect() const{
+        const auto& extent = get_rendering_resolution();
+        return to<float>(extent.width) / to<float>(extent.height);
     }
 
     VkBool32 Renderer::vk_debug_report_callback(

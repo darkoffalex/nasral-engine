@@ -68,7 +68,7 @@ namespace nasral::resources
     }
 
     rendering::Handles::Material Material::render_handles() const{
-        return {vk_pipeline()};
+        return {vk_pipeline(), vk_pipeline_layout()};
     }
 
     void Material::try_init_vk_objects(){

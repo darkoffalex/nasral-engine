@@ -28,9 +28,13 @@ namespace nasral::rendering
         void cmd_begin_frame();
         void cmd_end_frame();
         void cmd_bind_material_pipeline(const Handles::Material& handles);
+        void cmd_bind_cam_descriptors(const Handles::Material& handles);
+        void cmd_bind_obj_descriptors(const Handles::Material& handles, uint32_t obj_index);
         void cmd_draw_mesh(const Handles::Mesh& handles);
         void cmd_wait_for_frame() const;
         void request_surface_refresh();
+        void update_cam_uniforms(const CameraUniforms& uniforms, size_t index = 0);
+        void update_obj_uniforms(const ObjectUniforms& uniforms, size_t index = 0);
 
         [[nodiscard]] bool is_rendering() const { return is_rendering_; }
         [[nodiscard]] size_t current_frame() const { return current_frame_; }
@@ -46,6 +50,7 @@ namespace nasral::rendering
         [[nodiscard]] const vk::UniqueDescriptorSetLayout& vk_dset_layout_objects() const { return vk_dset_layout_objects_; }
 
         [[nodiscard]] vk::Extent2D get_rendering_resolution() const;
+        [[nodiscard]] float get_rendering_aspect() const;
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
             vk::Flags<vk::DebugReportFlagBitsEXT> flags,
@@ -74,6 +79,16 @@ namespace nasral::rendering
         void init_vk_command_buffers();
         void init_vk_sync_objects();
         void refresh_vk_surface();
+
+        template<typename T>
+        void update_uniforms(vk::utils::Buffer& buffer, const uint32_t index, const T& data) {
+            assert(vk_device_);
+            const auto alignment = vk_device_->physical_device().getProperties().limits.minUniformBufferOffsetAlignment;
+            const auto offset = size_align(sizeof(T), alignment) * index;
+            auto* ptr = buffer.map(offset, sizeof(T));
+            std::memcpy(ptr, &data, sizeof(T));
+            buffer.unmap();
+        }
 
     protected:
         SafeHandle<const Engine> engine_;
