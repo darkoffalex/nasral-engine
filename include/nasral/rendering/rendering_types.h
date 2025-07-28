@@ -52,10 +52,9 @@ namespace nasral::rendering
         struct Material
         {
             vk::Pipeline pipeline = VK_NULL_HANDLE;
-            vk::PipelineLayout pipeline_layout = VK_NULL_HANDLE;
 
             [[nodiscard]] explicit operator bool() const noexcept{
-                return pipeline && pipeline_layout;
+                return pipeline;
             }
         };
 
@@ -69,6 +68,14 @@ namespace nasral::rendering
                 return vertex_buffer && index_buffer && index_count;
             }
         };
+    };
+
+    enum class UniformLayoutType : unsigned
+    {
+        eDummy = 0,
+        eBasicRasterization,
+        ePostProcessing,
+        TOTAL
     };
 
     struct CameraUniforms

@@ -68,7 +68,7 @@ namespace nasral::resources
     }
 
     rendering::Handles::Material Material::render_handles() const{
-        return {vk_pipeline(), vk_pipeline_layout()};
+        return {vk_pipeline()};
     }
 
     void Material::try_init_vk_objects(){
@@ -87,30 +87,10 @@ namespace nasral::resources
 
         // Получить renderer и устройство
         const auto* renderer = resource_manager_->engine()->renderer();
+        const auto& ul = renderer->vk_uniform_layout(to<size_t>(rendering::UniformLayoutType::eBasicRasterization));
         const auto& vd = renderer->vk_device();
 
-        /** 1. Макет конвейера **/
-
-        // Создать макет всего конвейера
-        try{
-            std::array<vk::DescriptorSetLayout, 2> dset_layouts = {
-                renderer->vk_dset_layout_view().get(),
-                renderer->vk_dset_layout_objects().get()
-            };
-
-            vk_pipeline_layout_ = vd->logical_device().createPipelineLayoutUnique(
-                vk::PipelineLayoutCreateInfo()
-                .setSetLayouts(dset_layouts));
-        }
-        catch([[maybe_unused]] std::exception& e){
-            status_ = Status::eError;
-            err_code_ = ErrorCode::eVulkanError;
-            logger()->error("Can't create vulkan pipeline layout: " + std::string(e.what()));
-            return;
-        }
-
-
-        /** 2. Входные данные **/
+        /** 1. Входные данные **/
 
         // Vulkan позволяет привязывать сразу несколько вершинных буферов.
         // Это может быть полезно в том случае, если буферы хранят разную информацию.
@@ -159,7 +139,7 @@ namespace nasral::resources
         vertex_input_state.setVertexAttributeDescriptions(vertex_input_attributes);
 
 
-        /** 3. Сборка примитивов **/
+        /** 2. Сборка примитивов **/
 
         // Указываем как нужно собирать вершины и используется ли перезапуск примитивов
         // Перезапуск примитивов позволяет останавливать сборку примитива, переходя к следующему при обработке спец-индекса.
@@ -168,7 +148,7 @@ namespace nasral::resources
         input_assembly_state.setTopology(::vk::PrimitiveTopology::eTriangleList);
         input_assembly_state.setPrimitiveRestartEnable(false);
 
-        /** 4. программируемые стадии (shaders) **/
+        /** 3. программируемые стадии (shaders) **/
 
         // Описываем программируемые стадии конвейера
         std::array<vk::PipelineShaderStageCreateInfo, 2> shader_stages{
@@ -185,7 +165,7 @@ namespace nasral::resources
             .setPName("main")
         };
 
-        /** 5. View-port **/
+        /** 4. View-port **/
 
         // Пространство в стиле OpenGL
         const auto extent = renderer->get_rendering_resolution();
@@ -284,6 +264,10 @@ namespace nasral::resources
 
         // Попытка инициализации графического конвейера
         try{
+            if (!ul.vk_pipeline_layout()){
+                throw std::runtime_error("Can't create graphics pipeline. Pipeline layout is not initialized!");
+            }
+
             auto result = vd->logical_device().createGraphicsPipelineUnique(
                 {},
                 vk::GraphicsPipelineCreateInfo()
@@ -296,7 +280,7 @@ namespace nasral::resources
                 .setPMultisampleState(&multisampling_state)
                 .setPColorBlendState(&color_blending_state)
                 .setPDynamicState(&dynamic_states_info)
-                .setLayout(vk_pipeline_layout_.get())
+                .setLayout(ul.vk_pipeline_layout())
                 .setRenderPass(renderer->vk_render_pass())
                 .setSubpass(0));
 

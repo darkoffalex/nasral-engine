@@ -43,11 +43,8 @@ namespace nasral::rendering
             const std::string extent_str = std::to_string(extent.width) + "x" + std::to_string(extent.height);
             logger()->info("Vulkan: Frame buffers created (" + extent_str + ").");
 
-            init_vk_descriptor_pool();
-            logger()->info("Vulkan: Descriptor pool created.");
-
-            init_vk_descriptor_set_layouts();
-            logger()->info("Vulkan: Descriptor set layouts created.");
+            init_vk_uniform_layouts();
+            logger()->info("Vulkan: Uniform layouts created.");
 
             init_vk_uniforms();
             logger()->info("Vulkan: Uniform buffers allocated.");
@@ -249,23 +246,24 @@ namespace nasral::rendering
         cmd_buffer->setScissor(0, {scissor});
     }
 
-    void Renderer::cmd_bind_cam_descriptors(const Handles::Material& handles){
+    void Renderer::cmd_bind_cam_descriptors(){
         // Если рендеринг отключен
         if (!is_rendering_) return;
         // Текущий индекс кадра
         const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
         // Получить буфер команд
         auto& cmd_buffer = vk_command_buffers_[frame_index];
-
         // Привязать дескрипторный набор камеры
+        const auto& ul = vk_uniform_layouts_[to<size_t>(UniformLayoutType::eBasicRasterization)];
+        static const auto& pl = ul->vk_pipeline_layout();
         cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-            handles.pipeline_layout,
+            pl,
             0,
             {vk_dset_view_.get()},
             {});
     }
 
-    void Renderer::cmd_bind_obj_descriptors(const Handles::Material& handles, const uint32_t obj_index){
+    void Renderer::cmd_bind_obj_descriptors(const uint32_t obj_index){
         // Если рендеринг отключен
         if (!is_rendering_) return;
         // Текущий индекс кадра
@@ -282,8 +280,10 @@ namespace nasral::rendering
         auto offset = obj_index * size_align(sizeof(ObjectUniforms), alignment);
 
         // Привязать дескрипторный набор камеры
+        const auto& ul = vk_uniform_layouts_[to<size_t>(UniformLayoutType::eBasicRasterization)];
+        static const auto& pl = ul->vk_pipeline_layout();
         cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-            handles.pipeline_layout,
+            pl,
             1,
             {vk_dset_objects_.get()},
             {offset});
@@ -672,104 +672,63 @@ namespace nasral::rendering
         }
     }
 
-    void Renderer::init_vk_descriptor_pool(){
+    void Renderer::init_vk_uniform_layouts(){
         assert(vk_instance_);
         assert(vk_device_);
 
-        // Описываем размер дескрипторного пула.
-        // На данном этапе нас не интересует структура самих дескрипторных наборов.
-        // Важно лишь количество дескрипторов конкретного типа, что можно выделить из пула.
-        std::array<::vk::DescriptorPoolSize, 2> pool_sizes{
-            // Для камеры будет использован статический буфер
-            vk::DescriptorPoolSize()
-                .setType(vk::DescriptorType::eUniformBuffer)
-                .setDescriptorCount(MAX_CAMERAS),
-            vk::DescriptorPoolSize()
-                .setType(vk::DescriptorType::eUniformBufferDynamic)
-                .setDescriptorCount(1),
-        };
+        auto& layouts = vk_uniform_layouts_;
+        layouts.resize(to<size_t>(UniformLayoutType::TOTAL));
 
-        // Мы можем использовать разные наборы дескрипторов для камеры и для объектов
-        // На текущий момент используем 2 набора (камеры + объекты).
-        // Для объектов будет создан один большой uniform буфер, который буфер привязываться со смещением
-        vk_descriptor_pool_ = vk_device_->logical_device().createDescriptorPoolUnique(
-            vk::DescriptorPoolCreateInfo()
-            .setMaxSets(2)
-            .setPoolSizes(pool_sizes)
-            .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet));
-    }
+        // Для шейдеров, которые не используют uniform блоки
+        layouts[to<size_t>(UniformLayoutType::eDummy)] = std::make_unique<vk::utils::UniformLayout>(vk_device_);
 
-    void Renderer::init_vk_descriptor_set_layouts(){
-        assert(vk_instance_);
-        assert(vk_device_);
-
-        // Описываем макет дескрипторных наборов.
-        // Макет очень сильно зависит от кода shader'а и должен его учитывать.
-
-        // Дескрипторный набор для вида/камеры
-        std::array<vk::DescriptorSetLayoutBinding, 1> view_uniform_bindings = {
+        // Для шейдеров базовой растеризации (камера, объекты, текстуры)
+        std::vector<vk::utils::UniformLayout::SetLayoutInfo> set_layouts = {
+            // set = 0: Camera
             {
-                vk::DescriptorSetLayoutBinding()
-                .setBinding(0)
-                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-                .setStageFlags(vk::ShaderStageFlagBits::eVertex)
-                .setDescriptorCount(1)
+                {
+                    0,
+                    1,
+                    MAX_CAMERAS,
+                    vk::DescriptorType::eUniformBuffer,
+                    vk::ShaderStageFlagBits::eVertex
+                }
+            },
+            // set = 1: Objects
+            {
+                {
+                    0,
+                    1,
+                    MAX_OBJECTS,
+                    vk::DescriptorType::eUniformBufferDynamic,
+                    vk::ShaderStageFlagBits::eVertex
+                }
             }
         };
-
-        vk_dset_layout_view_ = vk_device_->logical_device().createDescriptorSetLayoutUnique(
-        vk::DescriptorSetLayoutCreateInfo()
-        .setBindings(view_uniform_bindings));
-
-        // Дескрипторный набор для объектов сцены
-        std::array<vk::DescriptorSetLayoutBinding, 1> object_uniform_bindings = {
-            {
-                vk::DescriptorSetLayoutBinding()
-                .setBinding(0)
-                .setDescriptorType(vk::DescriptorType::eUniformBufferDynamic)
-                .setStageFlags(vk::ShaderStageFlagBits::eVertex)
-                .setDescriptorCount(1)
-            }
-        };
-
-        vk_dset_layout_objects_ = vk_device_->logical_device().createDescriptorSetLayoutUnique(
-            vk::DescriptorSetLayoutCreateInfo()
-            .setBindings(object_uniform_bindings));
+        layouts[to<size_t>(UniformLayoutType::eBasicRasterization)] = std::make_unique<vk::utils::UniformLayout>(
+            vk_device_,
+            set_layouts,
+            2);
     }
 
     void Renderer::init_vk_uniforms(){
         assert(vk_instance_);
         assert(vk_device_);
-        assert(vk_descriptor_pool_);
-        assert(vk_dset_layout_view_);
-        assert(vk_dset_layout_objects_);
+
+        // Получить необходимые объекты (пул, макеты наборов)
+        const auto& ul = vk_uniform_layouts_[to<size_t>(UniformLayoutType::eBasicRasterization)];
+        assert(ul);
+
+        // Выделить дескрипторный набор для камеры
+        ul->allocate_sets(0,1).front().swap(vk_dset_view_);
+        // Выделить дескрипторный набор для объектов
+        ul->allocate_sets(1,1).front().swap(vk_dset_objects_);
 
         // Выравнивание для uniform буферов
         const auto alignment = vk_device_->physical_device()
             .getProperties()
             .limits
             .minUniformBufferOffsetAlignment;
-
-        // Дескрипторные наборы
-        {
-            // Выделить дескрипторный набор для камеры
-            vk_device_->logical_device().allocateDescriptorSetsUnique(
-                vk::DescriptorSetAllocateInfo()
-                .setDescriptorPool(vk_descriptor_pool_.get())
-                .setDescriptorSetCount(1)
-                .setSetLayouts({*vk_dset_layout_view_}))
-            .front()
-            .swap(vk_dset_view_);
-
-            // Выделить дескрипторный набор для объектов
-            vk_device_->logical_device().allocateDescriptorSetsUnique(
-                vk::DescriptorSetAllocateInfo()
-                .setDescriptorPool(vk_descriptor_pool_.get())
-                .setDescriptorSetCount(1)
-                .setSetLayouts({*vk_dset_layout_objects_}))
-            .front()
-            .swap(vk_dset_objects_);
-        }
 
         // Uniform буферы
         {

@@ -4,6 +4,7 @@
 #include <nasral/rendering/rendering_types.h>
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/buffer.hpp>
+#include <vulkan/utils/uniform_layout.hpp>
 
 namespace nasral{class Engine;}
 namespace nasral::logging{class Logger;}
@@ -28,8 +29,8 @@ namespace nasral::rendering
         void cmd_begin_frame();
         void cmd_end_frame();
         void cmd_bind_material_pipeline(const Handles::Material& handles);
-        void cmd_bind_cam_descriptors(const Handles::Material& handles);
-        void cmd_bind_obj_descriptors(const Handles::Material& handles, uint32_t obj_index);
+        void cmd_bind_cam_descriptors();
+        void cmd_bind_obj_descriptors(uint32_t obj_index);
         void cmd_draw_mesh(const Handles::Mesh& handles);
         void cmd_wait_for_frame() const;
         void request_surface_refresh();
@@ -45,9 +46,7 @@ namespace nasral::rendering
         [[nodiscard]] const vk::RenderPass& vk_render_pass() const { return *vk_render_pass_; }
         [[nodiscard]] const vk::SurfaceKHR& vk_surface() const { return *vk_surface_; }
         [[nodiscard]] const vk::utils::Framebuffer& vk_framebuffer(const size_t index) const { return *vk_framebuffers_[index]; }
-        [[nodiscard]] const vk::UniqueDescriptorPool& vk_descriptor_pool() const { return vk_descriptor_pool_; }
-        [[nodiscard]] const vk::UniqueDescriptorSetLayout& vk_dset_layout_view() const { return vk_dset_layout_view_; }
-        [[nodiscard]] const vk::UniqueDescriptorSetLayout& vk_dset_layout_objects() const { return vk_dset_layout_objects_; }
+        [[nodiscard]] const vk::utils::UniformLayout& vk_uniform_layout(const size_t index) const { return *vk_uniform_layouts_[index]; }
 
         [[nodiscard]] vk::Extent2D get_rendering_resolution() const;
         [[nodiscard]] float get_rendering_aspect() const;
@@ -73,8 +72,7 @@ namespace nasral::rendering
         void init_vk_render_passes();
         void init_vk_swap_chain();
         void init_vk_framebuffers();
-        void init_vk_descriptor_pool();
-        void init_vk_descriptor_set_layouts();
+        void init_vk_uniform_layouts();
         void init_vk_uniforms();
         void init_vk_command_buffers();
         void init_vk_sync_objects();
@@ -109,9 +107,7 @@ namespace nasral::rendering
         std::vector<vk::utils::Framebuffer::Ptr> vk_framebuffers_;
 
         // Uniform-буферы и дескрипторы
-        vk::UniqueDescriptorPool vk_descriptor_pool_;
-        vk::UniqueDescriptorSetLayout vk_dset_layout_view_;
-        vk::UniqueDescriptorSetLayout vk_dset_layout_objects_;
+        std::vector<vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
         vk::UniqueDescriptorSet vk_dset_view_;
         vk::UniqueDescriptorSet vk_dset_objects_;
         vk::utils::Buffer::Ptr vk_ubo_view_;

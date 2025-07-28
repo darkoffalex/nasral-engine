@@ -56,6 +56,9 @@ namespace nasral
             // Начало кадра
             renderer_->cmd_begin_frame();
 
+            // Привязать uniform-дескрипторы камеры
+            renderer_->cmd_bind_cam_descriptors();
+
             // Отрисовка объектов
             for (size_t i = 0; i < test_scene_nodes_.size(); ++i){
                 auto& node = test_scene_nodes_[i];
@@ -172,8 +175,7 @@ namespace nasral
         renderer->cmd_bind_material_pipeline(material_handles_);
 
         // Привязка дескрипторов
-        renderer->cmd_bind_cam_descriptors(material_handles_);
-        renderer->cmd_bind_obj_descriptors(material_handles_, to<std::uint32_t>(obj_index));
+        renderer->cmd_bind_obj_descriptors(to<std::uint32_t>(obj_index));
 
         // Рисование объекта
         renderer->cmd_draw_mesh(mesh_handles_);
