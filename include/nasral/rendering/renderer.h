@@ -73,6 +73,7 @@ namespace nasral::rendering
         void init_vk_swap_chain();
         void init_vk_framebuffers();
         void init_vk_uniform_layouts();
+        void init_vk_texture_samplers();
         void init_vk_uniforms();
         void init_vk_command_buffers();
         void init_vk_sync_objects();
@@ -108,6 +109,7 @@ namespace nasral::rendering
 
         // Uniform-буферы и дескрипторы
         std::vector<vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
+        std::array<vk::UniqueSampler, static_cast<size_t>(TextureSamplerType::TOTAL)> vk_texture_samplers_;
         vk::UniqueDescriptorSet vk_dset_view_;
         vk::UniqueDescriptorSet vk_dset_objects_;
         vk::utils::Buffer::Ptr vk_ubo_view_;

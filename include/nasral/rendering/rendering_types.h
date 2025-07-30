@@ -68,6 +68,16 @@ namespace nasral::rendering
                 return vertex_buffer && index_buffer && index_count;
             }
         };
+
+        struct Texture
+        {
+            vk::Image image = VK_NULL_HANDLE;
+            vk::ImageView image_view = VK_NULL_HANDLE;
+
+            [[nodiscard]] explicit operator bool() const noexcept{
+                return image && image_view;
+            }
+        };
     };
 
     enum class UniformLayoutType : unsigned
@@ -75,6 +85,17 @@ namespace nasral::rendering
         eDummy = 0,
         eBasicRasterization,
         ePostProcessing,
+        TOTAL
+    };
+
+    enum class TextureSamplerType : unsigned
+    {
+        eNearest = 0,
+        eNearestClamp,
+        eLinear,
+        eLinearClamp,
+        eAnisotropic,
+        eAnisotropicClamp,
         TOTAL
     };
 

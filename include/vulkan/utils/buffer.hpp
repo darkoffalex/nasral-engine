@@ -149,7 +149,11 @@ namespace vk::utils
          * @param queue_group Группа очередей устройства с поддержкой команд копирования/перемещения
          */
         void copy_to(const Buffer& other, const Device::QueueGroup& queue_group){
+            assert(vk_device_);
+            assert(vk_buffer_);
+
             // TODO: Вероятно нужно синхронизировать между разными потоками при асинхронной загрузке...
+
             // Командный пул и очередь из группы с поддержкой команд копирования
             const auto& pool = queue_group.command_pools[0];
             const auto& queue = queue_group.queues[0];
@@ -173,12 +177,17 @@ namespace vk::utils
 
             cmd_buffers[0].get().end();
 
+            // Забор для ожидания выполнения
+            auto fence = vk_device_.createFenceUnique(vk::FenceCreateInfo());
+
             // Отправить команду в очередь и подождать выполнения
-            vk::SubmitInfo submit_info{};
-            submit_info.setCommandBufferCount(1);
-            submit_info.setPCommandBuffers(&cmd_buffers[0].get());
-            queue.submit(submit_info, nullptr);
-            queue.waitIdle();
+            queue.submit(vk::SubmitInfo().setCommandBuffers({cmd_buffers[0].get()}), fence.get());
+
+            // Подождать выполнения
+            (void)vk_device_.waitForFences(
+                {fence.get()},
+                true,
+                std::numeric_limits<uint64_t>::max());
         }
 
         /**

@@ -4,11 +4,13 @@
 #include <nasral/resources/shader.h>
 #include <nasral/resources/material.h>
 #include <nasral/resources/mesh.h>
+#include <nasral/resources/texture.h>
 #include <nasral/engine.h>
 
 #include "loaders/shader_loader.hpp"
 #include "loaders/material_loader.hpp"
 #include "loaders/mesh_mock_loader.hpp"
+#include "loaders/texture_loader.hpp"
 
 namespace fs = std::filesystem;
 namespace nasral::resources
@@ -252,6 +254,13 @@ namespace nasral::resources
                     res = std::make_unique<Mesh>(this,
                         slot.info.path.view(),
                         std::make_unique<MeshMockLoader>());
+                    break;
+                }
+            case Type::eTexture:
+                {
+                    res = std::make_unique<Texture>(this,
+                        slot.info.path.view(),
+                        std::make_unique<TextureLoader>());
                     break;
                 }
             default:

@@ -46,6 +46,9 @@ namespace nasral::rendering
             init_vk_uniform_layouts();
             logger()->info("Vulkan: Uniform layouts created.");
 
+            init_vk_texture_samplers();
+            logger()->info("Vulkan: Texture samplers created.");
+
             init_vk_uniforms();
             logger()->info("Vulkan: Uniform buffers allocated.");
 
@@ -426,8 +429,10 @@ namespace nasral::rendering
         };
 
         // Требования к очередям
+        // Первая группа содержит 2 графические очереди (рендеринг и операции загрузки текстур)
+        // Вторая группа содержит 1 очередь команд переноса данных (загрузка ресурсов)
         std::vector<vk::utils::Device::QueueGroupRequest> req_queues(to<size_t>(CommandGroup::TOTAL));
-        req_queues[to<size_t>(CommandGroup::eGraphicsAndPresent)] = vk::utils::Device::QueueGroupRequest::graphics(1, true),
+        req_queues[to<size_t>(CommandGroup::eGraphicsAndPresent)] = vk::utils::Device::QueueGroupRequest::graphics(2, true),
         req_queues[to<size_t>(CommandGroup::eTransfer)] = vk::utils::Device::QueueGroupRequest::transfer(1),
 
         // Создать устройство
@@ -699,9 +704,16 @@ namespace nasral::rendering
                 {
                     0,
                     1,
-                    MAX_OBJECTS,
+                    1,
                     vk::DescriptorType::eUniformBufferDynamic,
                     vk::ShaderStageFlagBits::eVertex
+                },
+                {
+                    1,
+                    MAX_OBJECTS,
+                    MAX_OBJECTS,
+                    vk::DescriptorType::eCombinedImageSampler,
+                    vk::ShaderStageFlagBits::eFragment
                 }
             }
         };
@@ -709,6 +721,119 @@ namespace nasral::rendering
             vk_device_,
             set_layouts,
             2);
+    }
+
+    void Renderer::init_vk_texture_samplers(){
+        assert(vk_instance_);
+        assert(vk_device_);
+
+        auto& samplers = vk_texture_samplers_;
+        const auto max_anisotropy = vk_device_->physical_device().getProperties().limits.maxSamplerAnisotropy;
+        const bool anisotropy_supported = vk_device_->physical_device().getFeatures().samplerAnisotropy;
+
+        // eNearest
+        samplers[to<size_t>(TextureSamplerType::eNearest)] =
+            vk_device_->logical_device().createSamplerUnique(
+                vk::SamplerCreateInfo()
+                .setMinFilter(vk::Filter::eNearest)
+                .setMagFilter(vk::Filter::eNearest)
+                .setMipmapMode(vk::SamplerMipmapMode::eNearest)
+                .setMinLod(0.0f)
+                .setMaxLod(VK_LOD_CLAMP_NONE)
+                .setAddressModeU(vk::SamplerAddressMode::eRepeat)
+                .setAddressModeV(vk::SamplerAddressMode::eRepeat)
+                .setAddressModeW(vk::SamplerAddressMode::eRepeat)
+                .setAnisotropyEnable(false)
+                .setUnnormalizedCoordinates(false)
+                .setCompareEnable(false)
+            );
+
+        // eNearestClamp
+        samplers[to<size_t>(TextureSamplerType::eNearestClamp)] =
+            vk_device_->logical_device().createSamplerUnique(
+                vk::SamplerCreateInfo()
+                .setMinFilter(vk::Filter::eNearest)
+                .setMagFilter(vk::Filter::eNearest)
+                .setMipmapMode(vk::SamplerMipmapMode::eNearest)
+                .setMinLod(0.0f)
+                .setMaxLod(VK_LOD_CLAMP_NONE)
+                .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+                .setAnisotropyEnable(false)
+                .setUnnormalizedCoordinates(false)
+                .setCompareEnable(false)
+            );
+
+        // eLinear
+        samplers[to<size_t>(TextureSamplerType::eLinear)] =
+            vk_device_->logical_device().createSamplerUnique(
+                vk::SamplerCreateInfo()
+                .setMinFilter(vk::Filter::eLinear)
+                .setMagFilter(vk::Filter::eLinear)
+                .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+                .setMinLod(0.0f)
+                .setMaxLod(VK_LOD_CLAMP_NONE)
+                .setAddressModeU(vk::SamplerAddressMode::eRepeat)
+                .setAddressModeV(vk::SamplerAddressMode::eRepeat)
+                .setAddressModeW(vk::SamplerAddressMode::eRepeat)
+                .setAnisotropyEnable(false)
+                .setUnnormalizedCoordinates(false)
+                .setCompareEnable(false)
+            );
+
+        // eLinearClamp
+        samplers[to<size_t>(TextureSamplerType::eLinearClamp)] =
+            vk_device_->logical_device().createSamplerUnique(
+                vk::SamplerCreateInfo()
+                .setMinFilter(vk::Filter::eLinear)
+                .setMagFilter(vk::Filter::eLinear)
+                .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+                .setMinLod(0.0f)
+                .setMaxLod(VK_LOD_CLAMP_NONE)
+                .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+                .setAnisotropyEnable(false)
+                .setUnnormalizedCoordinates(false)
+                .setCompareEnable(false)
+            );
+
+        // eAnisotropic
+        samplers[to<size_t>(TextureSamplerType::eAnisotropic)] =
+            vk_device_->logical_device().createSamplerUnique(
+                vk::SamplerCreateInfo()
+                .setMinFilter(vk::Filter::eLinear)
+                .setMagFilter(vk::Filter::eLinear)
+                .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+                .setMinLod(0.0f)
+                .setMaxLod(VK_LOD_CLAMP_NONE)
+                .setAddressModeU(vk::SamplerAddressMode::eRepeat)
+                .setAddressModeV(vk::SamplerAddressMode::eRepeat)
+                .setAddressModeW(vk::SamplerAddressMode::eRepeat)
+                .setAnisotropyEnable(anisotropy_supported)
+                .setMaxAnisotropy(anisotropy_supported ? max_anisotropy : 1.0f)
+                .setUnnormalizedCoordinates(false)
+                .setCompareEnable(false)
+            );
+
+        // eAnisotropicClamp
+        samplers[to<size_t>(TextureSamplerType::eAnisotropicClamp)] =
+            vk_device_->logical_device().createSamplerUnique(
+                vk::SamplerCreateInfo()
+                .setMinFilter(vk::Filter::eLinear)
+                .setMagFilter(vk::Filter::eLinear)
+                .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+                .setMinLod(0.0f)
+                .setMaxLod(VK_LOD_CLAMP_NONE)
+                .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+                .setAnisotropyEnable(anisotropy_supported)
+                .setMaxAnisotropy(anisotropy_supported ? max_anisotropy : 1.0f)
+                .setUnnormalizedCoordinates(false)
+                .setCompareEnable(false)
+            );
     }
 
     void Renderer::init_vk_uniforms(){

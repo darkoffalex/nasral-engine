@@ -45,7 +45,7 @@ namespace vk::utils
 
             /**
              * @brief Создает запрос для очередей графических команд
-             * @param queue_count Количество очередей
+             * @param queue_count Количество очередей и отдельных пулов
              * @param present Требуется ли представление
              * @return Сконфигурированный запрос
              */
@@ -53,32 +53,35 @@ namespace vk::utils
                 return {
                     vk::QueueFlagBits::eGraphics,
                     present,
+                    queue_count,
                     queue_count
                 };
             }
 
             /**
              * @brief Создает запрос для очередей команд перемещения данных
-             * @param queue_count Количество очередей
+             * @param queue_count Количество очередей и отдельных пулов
              * @return
              */
             static QueueGroupRequest transfer(const uint32_t queue_count = 1) {
                 return {
                     vk::QueueFlagBits::eTransfer,
                     false,
+                    queue_count,
                     queue_count
                 };
             }
 
             /**
              * @brief Создает запрос для очередей вычислительных команд
-             * @param queue_count Количество очередей
+             * @param queue_count Количество очередей и отдельных
              * @return Сконфигурированный запрос
              */
             static QueueGroupRequest compute(const uint32_t queue_count = 1) {
                 return {
                     vk::QueueFlagBits::eCompute,
                     false,
+                    queue_count,
                     queue_count
                 };
             }

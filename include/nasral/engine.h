@@ -39,8 +39,10 @@ namespace nasral
 
             resources::Ref material_ref_;
             resources::Ref mesh_ref_;
+            resources::Ref texture_ref_;
             rendering::Handles::Mesh mesh_handles_;
             rendering::Handles::Material material_handles_;
+            rendering::Handles::Texture texture_handles_;
 
             glm::vec3 position_ = glm::vec3(0.0f, 0.0f, 0.0f);
             glm::vec3 rotation_ = glm::vec3(0.0f, 0.0f, 0.0f);

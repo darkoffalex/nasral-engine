@@ -10,10 +10,11 @@ namespace nasral::resources
             constexpr float size = 1.0f;
             std::vector<rendering::Vertex> vertices = {
                 {{-(size/2.0f), -(size/2.0f), 0.0f},{0.0f, 0.0f, 1.0f},{0.0f, 0.0f},{1.0f, 0.0f,0.0f,1.0f}},
-                {{0.0f, (size/2.0f), 0.0f},{0.0f, 0.0f, 1.0f},{0.5f, 1.0f},{0.0f, 1.0f,0.0f,1.0f}},
-                {{(size/2.0f), -(size/2.0f), 0.0f},{0.0f, 0.0f, 1.0f},{1.0f, 0.0f},{0.0f, 0.0f,1.0f,1.0f}}
+                {{-(size/2.0f), (size/2.0f), 0.0f},{0.0f, 0.0f, 1.0f},{0.5f, 1.0f},{0.0f, 1.0f,0.0f,1.0f}},
+                {{(size/2.0f), (size/2.0f), 0.0f},{0.0f, 0.0f, 1.0f},{1.0f, 0.0f},{0.0f, 0.0f,1.0f,1.0f}},
+                {{(size/2.0f), (-size/2.0f), 0.0f},{0.0f, 0.0f, 1.0f},{1.0f, 0.0f},{1.0f, 1.0f,0.0f,1.0f}}
             };
-            std::vector<uint32_t> indices = {0, 1, 2};
+            std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
             return std::optional{Mesh::Data{
                 std::move(vertices),
                 std::move(indices)

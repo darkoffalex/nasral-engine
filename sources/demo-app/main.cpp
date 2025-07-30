@@ -4,8 +4,8 @@
 
 #include <nasral/engine.h>
 
-constexpr int kWindowWidth = 800;
-constexpr int kWindowHeight = 600;
+constexpr int kWindowWidth = 1280;
+constexpr int kWindowHeight = 720;
 constexpr auto kWindowTitle = "Demo";
 
 namespace nrl = nasral;
@@ -51,14 +51,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
                 { nasral::resources::Type::eShader, "materials/uniforms/shader.vert.spv"},
                 { nasral::resources::Type::eShader, "materials/uniforms/shader.frag.spv"},
                 { nasral::resources::Type::eMaterial, "materials/uniforms/material.xml"},
-                { nasral::resources::Type::eMesh, "meshes/quad/quad.obj"}
+                { nasral::resources::Type::eMesh, "meshes/quad/quad.obj"},
+                { nasral::resources::Type::eTexture, "textures/tiles_diff.png" }
             };
 
             // Рендеринг
             config.rendering.app_name = "engine-demo";
             config.rendering.engine_name = "nasral-engine";
             config.rendering.surface_provider = std::make_shared<utils::GlfwSurfaceProvider>(window);
-            config.rendering.clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
+            config.rendering.clear_color = {0.0f, 0.0f, 0.25f, 1.0f};
             config.rendering.pfn_vk_get_proc_addr = glfwGetInstanceProcAddress;
             config.rendering.rendering_resolution = {}; // На текущий момент не используется
             config.rendering.color_format = vk::Format::eB8G8R8A8Unorm;

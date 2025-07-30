@@ -48,6 +48,7 @@ namespace vk::utils
 
         /** @brief Конструктор по умолчанию */
         Image():
+            vk_device_(nullptr),
             image_(nullptr),
             image_view_(nullptr),
             own_image_(nullptr),
@@ -85,10 +86,13 @@ namespace vk::utils
               const uint32_t mip_levels = 1u,
               const uint32_t array_layers = 1u,
               const std::vector<uint32_t>& queue_family_indices = {})
-              : Image()
+        : vk_device_(device->logical_device())
+        , image_(nullptr)
+        , image_view_(nullptr)
+        , own_image_(nullptr)
+        , own_image_memory_(nullptr)
         {
             assert(device);
-            assert(mip_levels > 0);
             assert(array_layers > 0);
             assert(extent.width > 0 && extent.height > 0 && extent.depth > 0);
 
@@ -175,6 +179,11 @@ namespace vk::utils
                 throw std::runtime_error("Failed to allocate image memory. " + std::string(e.what()));
             }
 
+            // Если изображение используется только для как источник копирования - нам не нужен image view
+            if (usage == vk::ImageUsageFlagBits::eTransferSrc){
+                return;
+            }
+
             // Создать объект image-vew (для доступа к памяти изображения)
             image_view_ = device->logical_device().createImageViewUnique(
                     ImageViewCreateInfo()
@@ -188,6 +197,7 @@ namespace vk::utils
                             .setLevelCount(mip_levels_)
                             .setBaseArrayLayer(0)
                             .setLayerCount(type == Type::eCube ? 6 : 1)));
+
         }
 
         /**
@@ -263,6 +273,349 @@ namespace vk::utils
             return own_image_memory_.get();
         }
 
+        /**
+         * @brief Отображает (maps) память изображения в память хоста, чтобы можно было изменить данные.
+         * @warning Изображение должно быть с MemoryPropertyFlagBits::eHostVisible и vk::ImageLayout::ePreinitialized
+         * @param aspect Аспект изображения для разметки (цвет, глубина и прочее)
+         * @param layer Слой изображения
+         * @param level Мип-уровень изображения
+         * @return Указатель на размеченные данные
+         */
+        void* map(const vk::ImageAspectFlags& aspect, const uint32_t layer = 0, const uint32_t level = 0){
+            assert(own_image_memory_);
+            assert(own_image_);
+            assert(vk_device_);
+
+            const auto isl = vk_device_.getImageSubresourceLayout(
+                own_image_.get(),
+                {aspect, level, layer});
+
+            void* data = nullptr;
+            const auto result = vk_device_.mapMemory(own_image_memory_.get(), isl.offset, isl.size, {}, &data);
+            if (result != vk::Result::eSuccess) {
+                throw std::runtime_error("Failed to map image memory");
+            }
+            return data;
+        }
+
+        /**
+         * @brief Снимает отображение (unmaps) памяти изображения.
+         */
+        void unmap(){
+            assert(own_image_memory_);
+            assert(own_image_);
+            assert(vk_device_);
+            vk_device_.unmapMemory(own_image_memory_.get());
+        }
+
+        /**
+         * @brief Копирование данных в другое Vulkan изображение
+         * @param dst_image Целевое изображение (должно быть создано с eTransferSrc и  eHostVisible | eHostCoherent)
+         * @param queue_group Группа очередей устройства с поддержкой команд копирования/перемещения
+         * @param extent Размер копируемой области
+         * @param src_aspect Аспект(ы) для копирования исходного изображения
+         * @param dst_aspect Аспект(ы) целевого изображения
+         * @param src_layer_count Кол-во копируемых слоев исходного изображения (не путать с mip)
+         * @param dst_layer_count Кол-во слоев у целевого изображения
+         * @param prepare_for_sampling Подготовить для sampling'а в shader'ах
+         */
+        void copy_to(const Image& dst_image
+                     , const Device::QueueGroup& queue_group
+                     , const vk::Extent3D& extent
+                     , const vk::ImageAspectFlags& src_aspect = vk::ImageAspectFlagBits::eColor
+                     , const vk::ImageAspectFlags& dst_aspect = vk::ImageAspectFlagBits::eColor
+                     , const uint32_t src_layer_count = 1
+                     , const uint32_t dst_layer_count = 1
+                     , const bool prepare_for_sampling = true) const
+        {
+            assert(vk_device_);
+            assert(image_ || own_image_);
+            assert(dst_image.image() && dst_image.image_view());
+            assert(!queue_group.queues.empty() && !queue_group.command_pools.empty());
+
+            // TODO: Вероятно нужно синхронизировать между разными потоками при асинхронной загрузке...
+
+            // Командный пул и очередь для копирования
+            const auto& pool = queue_group.command_pools.back();
+            const auto& queue = queue_group.queues.back();
+
+            // Выделить командный буфер
+            auto cmd_buffers = vk_device_.allocateCommandBuffersUnique(
+                vk::CommandBufferAllocateInfo()
+                    .setCommandBufferCount(1)
+                    .setCommandPool(pool.get())
+                    .setLevel(vk::CommandBufferLevel::ePrimary));
+
+            const auto& cmd_buffer = cmd_buffers[0].get();
+
+            // Начать запись команд
+            cmd_buffer.begin(
+                vk::CommandBufferBeginInfo()
+                    .setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+
+            // 1. Барьер: Перевести исходное изображение в eTransferSrcOptimal
+            vk::ImageMemoryBarrier src_barrier{};
+            src_barrier.setImage(image())
+                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setOldLayout(vk::ImageLayout::ePreinitialized)
+                .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+                .setSrcAccessMask(vk::AccessFlagBits::eHostWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
+                .setSubresourceRange(vk::ImageSubresourceRange()
+                    .setAspectMask(src_aspect)
+                    .setBaseMipLevel(0)
+                    .setLevelCount(1)
+                    .setBaseArrayLayer(0)
+                    .setLayerCount(src_layer_count));
+
+            // 2. Барьер: Перевести целевое изображение в eTransferDstOptimal
+            vk::ImageMemoryBarrier dst_barrier{};
+            dst_barrier.setImage(dst_image.image())
+                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setOldLayout(vk::ImageLayout::ePreinitialized)
+                .setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+                .setSrcAccessMask(vk::AccessFlagBits::eNone)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+                .setSubresourceRange(vk::ImageSubresourceRange()
+                    .setAspectMask(dst_aspect)
+                    .setBaseMipLevel(0)
+                    .setLevelCount(1)
+                    .setBaseArrayLayer(0)
+                    .setLayerCount(dst_layer_count));
+
+            // Применить барьеры для обоих изображений
+            const std::array<vk::ImageMemoryBarrier, 2> barriers = {src_barrier, dst_barrier};
+            cmd_buffer.pipelineBarrier(
+                vk::PipelineStageFlagBits::eAllCommands,
+                vk::PipelineStageFlagBits::eTransfer,
+                {}, 0, nullptr, 0, nullptr, barriers.size(), barriers.data());
+
+
+            // 3. Копирование данных из исходного изображения в целевое
+            vk::ImageCopy copy_region{};
+            copy_region.setSrcSubresource(
+                vk::ImageSubresourceLayers()
+                    .setAspectMask(src_aspect)
+                    .setMipLevel(0)
+                    .setBaseArrayLayer(0)
+                    .setLayerCount(src_layer_count))
+                .setDstSubresource(
+                    vk::ImageSubresourceLayers()
+                        .setAspectMask(dst_aspect)
+                        .setMipLevel(0)
+                        .setBaseArrayLayer(0)
+                        .setLayerCount(dst_layer_count))
+                .setSrcOffset({0, 0, 0})
+                .setDstOffset({0, 0, 0})
+                .setExtent(extent);
+
+            cmd_buffer.copyImage(
+                image(),
+                vk::ImageLayout::eTransferSrcOptimal,
+                dst_image.image(),
+                vk::ImageLayout::eTransferDstOptimal,
+                1, &copy_region);
+
+            // 4. Барьер: Перевести целевое изображение в eShaderReadOnlyOptimal (если prepare_for_sampling)
+            if (prepare_for_sampling) {
+                dst_barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+                    .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+                    .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+                    .setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+
+                cmd_buffer.pipelineBarrier(
+                    vk::PipelineStageFlagBits::eTransfer,
+                    vk::PipelineStageFlagBits::eFragmentShader,
+                    {}, 0, nullptr, 0, nullptr, 1, &dst_barrier);
+            }
+
+            // Завершить запись команд
+            cmd_buffer.end();
+
+            // Забор для ожидания выполнения
+            auto fence = vk_device_.createFenceUnique(vk::FenceCreateInfo());
+
+            // Отправить команды в очередь
+            queue.submit(vk::SubmitInfo().setCommandBuffers({cmd_buffer}), fence.get());
+
+            // Подождать выполнения
+            (void)vk_device_.waitForFences(
+                {fence.get()},
+                true,
+                std::numeric_limits<uint64_t>::max());
+        }
+
+        /**
+         * Генерация мип-уровней для изображения
+         * @warning Изображение должно быть создано с мип-уровнями
+         * @param queue_group Группа очередей устройства с поддержкой команд копирования/перемещения
+         * @param initial_extent Изначальное разрешение первого слоя
+         * @param aspect Аспект изображения для разметки (цвет, глубина и прочее)
+         * @param layer_count Кол-во слоев
+         */
+        void generate_mipmaps(const Device::QueueGroup& queue_group
+                              , const vk::Extent3D& initial_extent
+                              , const vk::ImageAspectFlags& aspect
+                              , const uint32_t layer_count) const
+        {
+            assert(vk_device_);
+            assert(own_image_);
+            assert(mip_levels_ > 1);
+            assert(!queue_group.queues.empty() && !queue_group.command_pools.empty());
+
+            // Командный пул и очередь
+            const auto& pool = queue_group.command_pools.back();
+            const auto& queue = queue_group.queues.back();
+
+            // Выделить командный буфер
+            auto cmd_buffers = vk_device_.allocateCommandBuffersUnique(
+                vk::CommandBufferAllocateInfo()
+                    .setCommandBufferCount(1)
+                    .setCommandPool(pool.get())
+                    .setLevel(vk::CommandBufferLevel::ePrimary));
+
+            const auto& cmd_buffer = cmd_buffers[0].get();
+
+            // Начать запись команд
+            cmd_buffer.begin(
+                vk::CommandBufferBeginInfo()
+                    .setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+
+            // Предполагается, что базовый мип-уровень (0) уже заполнен данными и находится в eTransferSrcOptimal
+            vk::ImageMemoryBarrier barrier{};
+            barrier.setImage(image())
+                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setSubresourceRange(
+                    vk::ImageSubresourceRange()
+                        .setAspectMask(aspect)
+                        .setBaseMipLevel(0)
+                        .setLevelCount(1)
+                        .setBaseArrayLayer(0)
+                        .setLayerCount(layer_count));
+
+            // Перевести базовый мип-уровень в eTransferSrcOptimal (если не сделано ранее)
+            barrier.setOldLayout(vk::ImageLayout::eUndefined)
+                .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+                .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferRead);
+
+            cmd_buffer.pipelineBarrier(
+                vk::PipelineStageFlagBits::eTransfer,
+                vk::PipelineStageFlagBits::eTransfer,
+                {}, 0, nullptr, 0, nullptr, 1, &barrier);
+
+            // Цикл по мип-уровням
+            vk::Extent2D current_extent{initial_extent.width, initial_extent.height};
+            for (uint32_t mip_level = 1; mip_level < mip_levels_; ++mip_level)
+            {
+                // Вычислить размеры следующего мип-уровня
+                const vk::Extent2D next_extent{
+                    std::max(1u, current_extent.width / 2),
+                    std::max(1u, current_extent.height / 2)
+                };
+
+                // 1. Перевести следующий мип-уровень в eTransferDstOptimal
+                barrier.setSubresourceRange(
+                    vk::ImageSubresourceRange()
+                        .setAspectMask(aspect)
+                        .setBaseMipLevel(mip_level)
+                        .setLevelCount(1)
+                        .setBaseArrayLayer(0)
+                        .setLayerCount(layer_count))
+                    .setOldLayout(vk::ImageLayout::eUndefined)
+                    .setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+                    .setSrcAccessMask(vk::AccessFlagBits::eNone)
+                    .setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
+
+                cmd_buffer.pipelineBarrier(
+                    vk::PipelineStageFlagBits::eTransfer,
+                    vk::PipelineStageFlagBits::eTransfer,
+                    {}, 0, nullptr, 0, nullptr, 1, &barrier);
+
+                // 2. Выполнить blit из предыдущего мип-уровня в текущий
+                vk::ImageBlit blit_region{};
+                blit_region.setSrcSubresource(
+                        vk::ImageSubresourceLayers()
+                            .setAspectMask(aspect)
+                            .setMipLevel(mip_level - 1)
+                            .setBaseArrayLayer(0)
+                            .setLayerCount(layer_count))
+                    .setSrcOffsets({
+                        vk::Offset3D{0, 0, 0},
+                        vk::Offset3D{static_cast<int32_t>(current_extent.width)
+                            , static_cast<int32_t>(current_extent.height)
+                            , 1}
+                    })
+                    .setDstSubresource(
+                        vk::ImageSubresourceLayers()
+                            .setAspectMask(aspect)
+                            .setMipLevel(mip_level)
+                            .setBaseArrayLayer(0)
+                            .setLayerCount(layer_count))
+                    .setDstOffsets({
+                        vk::Offset3D{0, 0, 0},
+                        vk::Offset3D{static_cast<int32_t>(next_extent.width)
+                            , static_cast<int32_t>(next_extent.height)
+                            , 1}
+                    });
+
+                cmd_buffer.blitImage(
+                    image(), vk::ImageLayout::eTransferSrcOptimal,
+                    image(), vk::ImageLayout::eTransferDstOptimal,
+                    1, &blit_region, vk::Filter::eLinear);
+
+                // 3. Перевести текущий мип-уровень в eTransferSrcOptimal для следующей итерации
+                barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+                    .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+                    .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+                    .setDstAccessMask(vk::AccessFlagBits::eTransferRead);
+
+                cmd_buffer.pipelineBarrier(
+                    vk::PipelineStageFlagBits::eTransfer,
+                    vk::PipelineStageFlagBits::eTransfer,
+                    {}, 0, nullptr, 0, nullptr, 1, &barrier);
+
+                // Обновить текущий размер для следующей итерации
+                current_extent = next_extent;
+            }
+
+            // 4. Перевести все мип-уровни в eShaderReadOnlyOptimal для использования в шейдерах
+            barrier.setSubresourceRange(
+                vk::ImageSubresourceRange()
+                    .setAspectMask(aspect)
+                    .setBaseMipLevel(0)
+                    .setLevelCount(mip_levels_)
+                    .setBaseArrayLayer(0)
+                    .setLayerCount(layer_count))
+                .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
+                .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+                .setSrcAccessMask(vk::AccessFlagBits::eTransferRead)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+
+            cmd_buffer.pipelineBarrier(
+                vk::PipelineStageFlagBits::eTransfer,
+                vk::PipelineStageFlagBits::eFragmentShader,
+                {}, 0, nullptr, 0, nullptr, 1, &barrier);
+
+            // Завершить запись команд
+            cmd_buffer.end();
+
+            // Создать забор
+            auto fence = vk_device_.createFenceUnique(vk::FenceCreateInfo());
+
+            // Отправить команды в очередь
+            queue.submit(vk::SubmitInfo().setCommandBuffers({cmd_buffer}), fence.get());
+
+            // Ожидать завершения
+            (void)vk_device_.waitForFences(
+                {fence.get()},
+                true,
+                std::numeric_limits<uint64_t>::max());
+        }
+
     private:
         /**
          * @brief Преобразует тип изображения в VkImageType
@@ -317,6 +670,8 @@ namespace vk::utils
         }
 
     protected:
+        /// Handle-объект логического устройства Vulkan
+        vk::Device vk_device_;
         /// Handle внешнего изображения
         vk::Image image_;
         /// Представление изображения (для доступа/просмотра изображения)

@@ -3,6 +3,7 @@
 
 #include "nasral/resources/material.h"
 #include "nasral/resources/mesh.h"
+#include "nasral/resources/texture.h"
 
 namespace nasral
 {
@@ -120,22 +121,23 @@ namespace nasral
 
         // Объекты сцены
         test_scene_nodes_.reserve(2);
-        for (size_t i = 0; i < 2; ++i){
+        for (size_t i = 0; i < 1; ++i){
             test_scene_nodes_.emplace_back(this);
         }
 
         // Сдвинуть влево и право
-        test_scene_nodes_[0].set_position({-0.5f, 0.0f, 0.0f});
-        test_scene_nodes_[1].set_position({0.5f, 0.0f, 0.0f});
+        test_scene_nodes_[0].set_position({0.0f, 0.0f, 0.0f});
+        // test_scene_nodes_[1].set_position({0.5f, 0.0f, 0.0f});
 
         // Запросить ресурсы
         test_scene_nodes_[0].request_resources();
-        test_scene_nodes_[1].request_resources();
+        // test_scene_nodes_[1].request_resources();
     }
 
     Engine::TestNode::TestNode(const Engine* engine)
         : material_ref_(engine->resource_manager()->make_ref(resources::Type::eMaterial, "materials/uniforms/material.xml"))
         , mesh_ref_(engine->resource_manager()->make_ref(resources::Type::eMesh, "meshes/quad/quad.obj"))
+        , texture_ref_(engine->resource_manager()->make_ref(resources::Type::eTexture, "textures/tiles_diff.png"))
     {
         material_ref_.set_callback([&](const resources::IResource* res){
             if (res->status() == resources::Status::eLoaded){
@@ -152,22 +154,33 @@ namespace nasral
                 mesh_handles_ = mesh->render_handles();
             }
         });
+
+        texture_ref_.set_callback([&](const resources::IResource* res){
+            if (res->status() == resources::Status::eLoaded){
+                auto* texture = dynamic_cast<const resources::Texture*>(res);
+                assert(texture != nullptr);
+                texture_handles_ = texture->render_handles();
+            }
+        });
     }
 
     void Engine::TestNode::request_resources(){
         material_ref_.request();
         mesh_ref_.request();
+        texture_ref_.request();
     }
 
     void Engine::TestNode::release_resources(){
         material_handles_ = {};
         mesh_handles_ = {};
+
         material_ref_.release();
         mesh_ref_.release();
+        texture_ref_.release();
     }
 
     void Engine::TestNode::render(const rendering::Renderer::Ptr& renderer, const size_t obj_index) const{
-        if (!mesh_handles_ || !material_handles_){
+        if (!mesh_handles_ || !material_handles_ || !texture_handles_){
             return;
         }
 

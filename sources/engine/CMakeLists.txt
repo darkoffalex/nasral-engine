@@ -13,9 +13,11 @@ add_library(Engine OBJECT
         resources/shader.cpp
         resources/material.cpp
         resources/mesh.cpp
+        resources/texture.cpp
         resources/loaders/shader_loader.hpp
         resources/loaders/material_loader.hpp
         resources/loaders/mesh_mock_loader.hpp
+        resources/loaders/texture_loader.hpp
         resources/resource_manager.cpp
 
         # Рендеринг
