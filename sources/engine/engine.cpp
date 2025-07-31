@@ -63,10 +63,13 @@ namespace nasral
             // Отрисовка объектов
             for (size_t i = 0; i < test_scene_nodes_.size(); ++i){
                 auto& node = test_scene_nodes_[i];
-                if (node.is_pending_ubo_update()){
+
+                // Если требуются изменения буфера
+                if (node.is_pending_ubo_update(true)){
                     renderer_->update_obj_uniforms(node.uniforms(), i);
                 }
 
+                // Отрисовка
                 node.render(renderer_, i);
             }
 
@@ -121,21 +124,22 @@ namespace nasral
 
         // Объекты сцены
         test_scene_nodes_.reserve(2);
-        for (size_t i = 0; i < 1; ++i){
+        for (size_t i = 0; i < 2; ++i){
             test_scene_nodes_.emplace_back(this);
         }
 
         // Сдвинуть влево и право
-        test_scene_nodes_[0].set_position({0.0f, 0.0f, 0.0f});
-        // test_scene_nodes_[1].set_position({0.5f, 0.0f, 0.0f});
+        test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});
+        test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
 
         // Запросить ресурсы
         test_scene_nodes_[0].request_resources();
-        // test_scene_nodes_[1].request_resources();
+        test_scene_nodes_[1].request_resources();
     }
 
     Engine::TestNode::TestNode(const Engine* engine)
-        : material_ref_(engine->resource_manager()->make_ref(resources::Type::eMaterial, "materials/uniforms/material.xml"))
+        : engine_(engine)
+        , material_ref_(engine->resource_manager()->make_ref(resources::Type::eMaterial, "materials/uniforms/material.xml"))
         , mesh_ref_(engine->resource_manager()->make_ref(resources::Type::eMesh, "meshes/quad/quad.obj"))
         , texture_ref_(engine->resource_manager()->make_ref(resources::Type::eTexture, "textures/tiles_diff.png"))
     {
@@ -160,8 +164,14 @@ namespace nasral
                 auto* texture = dynamic_cast<const resources::Texture*>(res);
                 assert(texture != nullptr);
                 texture_handles_ = texture->render_handles();
+                update_tex_d_set(engine_->renderer());
             }
         });
+    }
+
+    Engine::TestNode::~TestNode(){
+        remove_tex_d_set(engine_->renderer());
+        release_resources();
     }
 
     void Engine::TestNode::request_resources(){
@@ -188,27 +198,27 @@ namespace nasral
         renderer->cmd_bind_material_pipeline(material_handles_);
 
         // Привязка дескрипторов
-        renderer->cmd_bind_obj_descriptors(to<std::uint32_t>(obj_index));
+        renderer->cmd_bind_obj_descriptors(to<uint32_t>(obj_index), texture_handles_);
 
         // Рисование объекта
         renderer->cmd_draw_mesh(mesh_handles_);
     }
 
-    void Engine::TestNode::set_position(const glm::vec3& position, bool update_mat){
+    void Engine::TestNode::set_position(const glm::vec3& position, const bool update_mat){
         position_ = position;
         if (update_mat){
             update_matrix();
         }
     }
 
-    void Engine::TestNode::set_rotation(const glm::vec3& rotation, bool update_mat){
+    void Engine::TestNode::set_rotation(const glm::vec3& rotation, const bool update_mat){
         rotation_ = rotation;
         if (update_mat){
             update_matrix();
         }
     }
 
-    void Engine::TestNode::set_scale(const glm::vec3& scale, bool update_mat){
+    void Engine::TestNode::set_scale(const glm::vec3& scale, const bool update_mat){
         scale_ = scale;
         if (update_mat){
             update_matrix();
@@ -230,5 +240,49 @@ namespace nasral
         model = glm::rotate(model, glm::radians(rotation_.x), glm::vec3(1.0f, 0.0f, 0.0f));
         model = glm::scale(model, scale_);
         pending_ubo_update_ = true;
+    }
+
+    void Engine::TestNode::update_tex_d_set(const rendering::Renderer* renderer){
+        assert(texture_handles_.image_view);
+
+        // Удалить дескрипторный набор, если есть
+        if (texture_handles_.descriptor_set){
+            remove_tex_d_set(renderer);
+        }
+
+        // Выделить новый дескрипторный набор
+        vk::UniqueDescriptorSet set;
+        const auto& ul = renderer->vk_uniform_layout(rendering::UniformLayoutType::eBasicRasterization);
+        ul.allocate_sets(2, 1)[0].swap(set);
+
+        // Обновить дескрипторный набор - связать привязку, семплер и текстуру
+        const auto& sampler = renderer->vk_texture_sampler(rendering::TextureSamplerType::eNearest);
+        vk::DescriptorImageInfo image_info{};
+        image_info.setSampler(sampler)
+                  .setImageView(texture_handles_.image_view)
+                  .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+
+        vk::WriteDescriptorSet write{};
+        write.setDstSet(set.get())
+             .setDstBinding(0)
+             .setDstArrayElement(0)
+             .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+             .setDescriptorCount(1)
+             .setImageInfo(image_info);
+
+        renderer->vk_device()->logical_device().updateDescriptorSets(write, {});
+
+        // Скопировать handle дескриптора и лишить владения unique объект
+        // Далее временем жизни набора управляет узел
+        texture_handles_.descriptor_set = set.get();
+        set.release();
+    }
+
+    void Engine::TestNode::remove_tex_d_set(const rendering::Renderer* renderer){
+        renderer->cmd_wait_for_frame();
+        const auto& device = renderer->vk_device();
+        const auto& ul = renderer->vk_uniform_layout(rendering::UniformLayoutType::eBasicRasterization);
+        const auto& pool = ul.vk_descriptor_pool();
+        device->logical_device().freeDescriptorSets(pool, {texture_handles_.descriptor_set});
     }
 }

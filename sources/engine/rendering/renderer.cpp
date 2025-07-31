@@ -266,7 +266,7 @@ namespace nasral::rendering
             {});
     }
 
-    void Renderer::cmd_bind_obj_descriptors(const uint32_t obj_index){
+    void Renderer::cmd_bind_obj_descriptors(const uint32_t ubo_offset_index, const Handles::Texture& tex_handles){
         // Если рендеринг отключен
         if (!is_rendering_) return;
         // Текущий индекс кадра
@@ -280,7 +280,7 @@ namespace nasral::rendering
             .limits
             .minUniformBufferOffsetAlignment;
 
-        auto offset = obj_index * size_align(sizeof(ObjectUniforms), alignment);
+        auto offset = ubo_offset_index * size_align(sizeof(ObjectUniforms), alignment);
 
         // Привязать дескрипторный набор камеры
         const auto& ul = vk_uniform_layouts_[to<size_t>(UniformLayoutType::eBasicRasterization)];
@@ -288,7 +288,7 @@ namespace nasral::rendering
         cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
             pl,
             1,
-            {vk_dset_objects_.get()},
+            {vk_dset_objects_.get(), tex_handles.descriptor_set},
             {offset});
     }
 
@@ -326,6 +326,31 @@ namespace nasral::rendering
         assert(index < MAX_OBJECTS);
         assert(vk_ubo_objects_);
         update_uniforms(*vk_ubo_objects_, to<uint32_t>(index), uniforms);
+    }
+
+    void Renderer::update_obj_texture(const Handles::Texture& handles,
+        const TextureSamplerType& sampler_type,
+        const size_t index)
+    {
+        assert(index < MAX_OBJECTS);
+        assert(handles);
+        assert(vk_dset_objects_);
+
+        const auto& sampler = vk_texture_samplers_[to<size_t>(sampler_type)];
+        vk::DescriptorImageInfo image_info{};
+        image_info.setSampler(sampler.get())
+                  .setImageView(handles.image_view)
+                  .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+
+        vk::WriteDescriptorSet write{};
+        write.setDstSet(vk_dset_objects_.get())
+             .setDstBinding(1)
+             .setDstArrayElement(to<uint32_t>(index)) // Индекс объекта в массиве дескрипторов
+             .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+             .setDescriptorCount(1)
+             .setImageInfo(image_info);
+
+        vk_device_->logical_device().updateDescriptorSets({write}, {});
     }
 
     vk::Extent2D Renderer::get_rendering_resolution() const{
@@ -707,20 +732,25 @@ namespace nasral::rendering
                     1,
                     vk::DescriptorType::eUniformBufferDynamic,
                     vk::ShaderStageFlagBits::eVertex
-                },
+                }
+            },
+            // set = 2: Object textures
+            {
                 {
+                    0,
                     1,
-                    MAX_OBJECTS,
                     MAX_OBJECTS,
                     vk::DescriptorType::eCombinedImageSampler,
                     vk::ShaderStageFlagBits::eFragment
                 }
             }
         };
+
+        // Наборов для текстур может быть выделено столько, сколько объектов (поэтому 2 + MAX_OBJECTS)
         layouts[to<size_t>(UniformLayoutType::eBasicRasterization)] = std::make_unique<vk::utils::UniformLayout>(
             vk_device_,
             set_layouts,
-            2);
+            2 + MAX_OBJECTS);
     }
 
     void Renderer::init_vk_texture_samplers(){
@@ -874,34 +904,37 @@ namespace nasral::rendering
 
         // Связать дескрипторы и буферы
         {
-            const std::array<vk::WriteDescriptorSet, 2> writes
-            {
-                // Камера
-                vk::WriteDescriptorSet()
-                .setDstSet(vk_dset_view_.get())
-                .setDstBinding(0)
-                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-                .setDescriptorCount(1)
-                .setBufferInfo(
-                    vk::DescriptorBufferInfo()
-                    .setBuffer(vk_ubo_view_->vk_buffer())
-                    .setOffset(0)
-                    .setRange(size_align(sizeof(CameraUniforms), alignment)))
-                ,
+            std::vector<vk::WriteDescriptorSet> writes;
 
-                // Объекты
+            // Камера (set = 0, binding = 0)
+            vk::DescriptorBufferInfo cam_buffer_info;
+            cam_buffer_info.setBuffer(vk_ubo_view_->vk_buffer())
+                           .setOffset(0)
+                           .setRange(size_align(sizeof(CameraUniforms), alignment));
+
+            writes.emplace_back(
                 vk::WriteDescriptorSet()
-                .setDstSet(vk_dset_objects_.get())
-                .setDstBinding(0)
-                .setDescriptorType(vk::DescriptorType::eUniformBufferDynamic)
-                .setDescriptorCount(1)
-                .setBufferInfo(
-                    vk::DescriptorBufferInfo()
-                    .setBuffer(vk_ubo_objects_->vk_buffer())
-                    .setOffset(0)
-                    .setRange(size_align(sizeof(ObjectUniforms), alignment))
-                )
-            };
+                    .setDstSet(vk_dset_view_.get())
+                    .setDstBinding(0)
+                    .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                    .setDescriptorCount(1)
+                    .setBufferInfo(cam_buffer_info)
+            );
+
+            // Объекты (set = 1, binding = 0)
+            vk::DescriptorBufferInfo obj_buffer_info;
+            obj_buffer_info.setBuffer(vk_ubo_objects_->vk_buffer())
+                           .setOffset(0)
+                           .setRange(size_align(sizeof(ObjectUniforms), alignment));
+
+            writes.emplace_back(
+                vk::WriteDescriptorSet()
+                    .setDstSet(vk_dset_objects_.get())
+                    .setDstBinding(0)
+                    .setDescriptorType(vk::DescriptorType::eUniformBufferDynamic)
+                    .setDescriptorCount(1)
+                    .setBufferInfo(obj_buffer_info)
+            );
 
             vk_device_->logical_device().updateDescriptorSets(writes, {});
         }

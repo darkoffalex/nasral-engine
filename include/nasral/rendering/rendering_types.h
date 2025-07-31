@@ -73,9 +73,10 @@ namespace nasral::rendering
         {
             vk::Image image = VK_NULL_HANDLE;
             vk::ImageView image_view = VK_NULL_HANDLE;
+            vk::DescriptorSet descriptor_set = VK_NULL_HANDLE;
 
             [[nodiscard]] explicit operator bool() const noexcept{
-                return image && image_view;
+                return image && image_view && descriptor_set;
             }
         };
     };

@@ -140,7 +140,8 @@ namespace nasral::resources
     rendering::Handles::Texture Texture::render_handles() const{
         return {
             image_->image(),
-            image_->image_view()
+            image_->image_view(),
+            VK_NULL_HANDLE
         };
     }
 

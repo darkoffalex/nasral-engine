@@ -87,7 +87,7 @@ namespace nasral::resources
 
         // Получить renderer и устройство
         const auto* renderer = resource_manager_->engine()->renderer();
-        const auto& ul = renderer->vk_uniform_layout(to<size_t>(rendering::UniformLayoutType::eBasicRasterization));
+        const auto& ul = renderer->vk_uniform_layout(rendering::UniformLayoutType::eBasicRasterization);
         const auto& vd = renderer->vk_device();
 
         /** 1. Входные данные **/

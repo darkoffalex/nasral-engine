@@ -67,7 +67,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.rendering.color_space = vk::ColorSpaceKHR::eSrgbNonlinear;
             config.rendering.present_mode = vk::PresentModeKHR::eImmediate;
             config.rendering.use_opengl_style = true;
-            config.rendering.use_validation_layers = true;
+            config.rendering.use_validation_layers = false;
             config.rendering.max_frames_in_flight = 3;
             config.rendering.swap_chain_image_count = 4;
         }

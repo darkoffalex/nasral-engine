@@ -18,8 +18,9 @@ namespace nasral
         class TestNode
         {
         public:
+            friend class Engine;
             explicit TestNode(const Engine* engine);
-            ~TestNode() = default;
+            ~TestNode();
 
             void request_resources();
             void release_resources();
@@ -33,9 +34,11 @@ namespace nasral
 
         private:
             void update_matrix();
+            void update_tex_d_set(const rendering::Renderer* renderer);
+            void remove_tex_d_set(const rendering::Renderer* renderer);
 
         protected:
-            SafeHandle<Engine> engine_;
+            SafeHandle<const Engine> engine_;
 
             resources::Ref material_ref_;
             resources::Ref mesh_ref_;
@@ -43,7 +46,6 @@ namespace nasral
             rendering::Handles::Mesh mesh_handles_;
             rendering::Handles::Material material_handles_;
             rendering::Handles::Texture texture_handles_;
-
             glm::vec3 position_ = glm::vec3(0.0f, 0.0f, 0.0f);
             glm::vec3 rotation_ = glm::vec3(0.0f, 0.0f, 0.0f);
             glm::vec3 scale_ = glm::vec3(1.0f, 1.0f, 1.0f);

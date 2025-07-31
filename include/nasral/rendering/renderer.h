@@ -30,12 +30,13 @@ namespace nasral::rendering
         void cmd_end_frame();
         void cmd_bind_material_pipeline(const Handles::Material& handles);
         void cmd_bind_cam_descriptors();
-        void cmd_bind_obj_descriptors(uint32_t obj_index);
+        void cmd_bind_obj_descriptors(uint32_t ubo_offset_index, const Handles::Texture& tex_handles);
         void cmd_draw_mesh(const Handles::Mesh& handles);
         void cmd_wait_for_frame() const;
         void request_surface_refresh();
         void update_cam_uniforms(const CameraUniforms& uniforms, size_t index = 0);
         void update_obj_uniforms(const ObjectUniforms& uniforms, size_t index = 0);
+        void update_obj_texture(const Handles::Texture& handles, const TextureSamplerType& sampler_type, size_t index = 0);
 
         [[nodiscard]] bool is_rendering() const { return is_rendering_; }
         [[nodiscard]] size_t current_frame() const { return current_frame_; }
@@ -45,8 +46,9 @@ namespace nasral::rendering
         [[nodiscard]] const vk::utils::Device::Ptr& vk_device() const { return vk_device_; }
         [[nodiscard]] const vk::RenderPass& vk_render_pass() const { return *vk_render_pass_; }
         [[nodiscard]] const vk::SurfaceKHR& vk_surface() const { return *vk_surface_; }
-        [[nodiscard]] const vk::utils::Framebuffer& vk_framebuffer(const size_t index) const { return *vk_framebuffers_[index]; }
-        [[nodiscard]] const vk::utils::UniformLayout& vk_uniform_layout(const size_t index) const { return *vk_uniform_layouts_[index]; }
+        [[nodiscard]] const vk::utils::Framebuffer& vk_framebuffer(const size_t index) const { return *vk_framebuffers_[index];}
+        [[nodiscard]] const vk::Sampler& vk_texture_sampler(const TextureSamplerType& type) const { return *vk_texture_samplers_[to<size_t>(type)];}
+        [[nodiscard]] const vk::utils::UniformLayout& vk_uniform_layout(const UniformLayoutType& type) const { return *vk_uniform_layouts_[to<size_t>(type)];}
 
         [[nodiscard]] vk::Extent2D get_rendering_resolution() const;
         [[nodiscard]] float get_rendering_aspect() const;

@@ -8,6 +8,7 @@ layout (location = 3) in vec4 color;
 
 layout (location = 0) out VS_OUT {
     vec3 color;
+    vec2 uv;
 } vs_out;
 
 layout(set = 0, binding = 0, std140) uniform UniformCamera {
@@ -23,4 +24,5 @@ void main()
 {
     gl_Position = camera.proj * camera.view * object.model * vec4(position, 1.0);
     vs_out.color = color.rgb;
+    vs_out.uv = uv;
 }
