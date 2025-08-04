@@ -28,6 +28,8 @@ namespace vk::utils
     class UniformLayout final
     {
     public:
+        typedef std::unique_ptr<UniformLayout> Ptr;
+
         /**
          * @brief Описание одиночной привязки набора
          */
@@ -37,16 +39,24 @@ namespace vk::utils
             uint32_t binding = 0;
             /// Кол-во потенциально привязываемых дескрипторов в наборе (для массивов дескрипторов)
             uint32_t count = 1;
-            /// Кол-во максимальных выделений дескрипторов такого типа (для пула)
-            uint32_t max_allocations = 1;
             /// Тип дескриптора
             vk::DescriptorType type = vk::DescriptorType::eUniformBuffer;
             /// Стадия шейдера
             vk::ShaderStageFlags stage_flags = vk::ShaderStageFlagBits::eVertex;
+            /// Флаги привязки (например, для bindless дескрипторов)
+            vk::DescriptorBindingFlagsEXT binding_flags = {};
         };
 
-        typedef std::unique_ptr<UniformLayout> Ptr;
-        typedef std::vector<SetBindingInfo> SetLayoutInfo;
+        /**
+         * @brief Описание макета набора
+         */
+        struct SetLayoutInfo
+        {
+            /// Описание привязок
+            std::vector<SetBindingInfo> bindings;
+            /// Максимальное кол-во выделяемых наборов
+            uint32_t max_sets = 0;
+        };
 
         /** @brief Конструктор по умолчанию */
         UniformLayout()
@@ -70,22 +80,24 @@ namespace vk::utils
          * @brief Основной конструктор
          * @param device Устройство Vulkan (обертка из utils)
          * @param set_layouts Описания макетов дескрипторных наборов
-         * @param max_sets_allocations Максимальное кол-во выделяемых наборов
          */
         UniformLayout(const Device::Ptr& device,
-                      const std::vector<SetLayoutInfo>& set_layouts,
-                      const size_t max_sets_allocations)
+                      const std::vector<SetLayoutInfo>& set_layouts)
         : vk_device_(device->logical_device())
         {
             // Дескрипторный пул
             {
+                // Общее кол-во наборов (для размеров пула)
+                uint32_t max_sets_allocations = 0;
+
                 // Описываем размер дескрипторного пула.
                 // На данном этапе нас не интересует структура самих дескрипторных наборов.
                 // Важно лишь количество дескрипторов конкретного типа, что можно выделить из пула.
                 std::map<vk::DescriptorType, uint32_t> type_max_allocations;
-                for (const auto& set_layout : set_layouts){
-                    for (const auto& binding : set_layout){
-                        type_max_allocations[binding.type] += binding.max_allocations;
+                for (const auto& [bindings, max_sets] : set_layouts){
+                    for (const auto& binding : bindings){
+                        max_sets_allocations += max_sets;
+                        type_max_allocations[binding.type] += (max_sets * binding.count);
                     }
                 }
 
@@ -113,8 +125,12 @@ namespace vk::utils
                 std::vector<vk::DescriptorSetLayout> vk_layouts;
                 for (const auto& set_layout : set_layouts){
                     std::vector<vk::DescriptorSetLayoutBinding> bindings;
-                    bindings.reserve(set_layout.size());
-                    for (const auto& binding : set_layout){
+                    std::vector<vk::DescriptorBindingFlagsEXT> binding_flags;
+                    bindings.reserve(set_layout.bindings.size());
+                    binding_flags.reserve(set_layout.bindings.size());
+
+                    for (const auto& binding : set_layout.bindings){
+                        binding_flags.push_back(binding.binding_flags);
                         bindings.push_back(vk::DescriptorSetLayoutBinding()
                             .setBinding(binding.binding)
                             .setDescriptorType(binding.type)
@@ -122,10 +138,15 @@ namespace vk::utils
                             .setStageFlags(binding.stage_flags));
                     }
 
+                    auto flags_info = vk::DescriptorSetLayoutBindingFlagsCreateInfoEXT()
+                        .setBindingFlags(binding_flags)
+                        .setPNext(nullptr);
+
                     vk_descriptor_set_layouts_.emplace_back(
                         vk_device_.createDescriptorSetLayoutUnique(
                         vk::DescriptorSetLayoutCreateInfo()
-                        .setBindings(bindings)));
+                        .setBindings(bindings)
+                        .setPNext(&flags_info)));
 
                     vk_layouts.push_back(vk_descriptor_set_layouts_.back().get());
                 }

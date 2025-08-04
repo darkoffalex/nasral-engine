@@ -1,6 +1,5 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
-#include <nasral/core_types.h>
 #include <nasral/rendering/rendering_types.h>
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/buffer.hpp>
@@ -28,15 +27,17 @@ namespace nasral::rendering
 
         void cmd_begin_frame();
         void cmd_end_frame();
-        void cmd_bind_material_pipeline(const Handles::Material& handles);
-        void cmd_bind_cam_descriptors();
-        void cmd_bind_obj_descriptors(uint32_t ubo_offset_index, const Handles::Texture& tex_handles);
-        void cmd_draw_mesh(const Handles::Mesh& handles);
+        void cmd_bind_material(const Handles::Material& handles);
+        void cmd_bind_frame_descriptors();
+        void cmd_draw_mesh(const Handles::Mesh& handles, uint32_t obj_index);
         void cmd_wait_for_frame() const;
+
         void request_surface_refresh();
-        void update_cam_uniforms(const CameraUniforms& uniforms, size_t index = 0);
-        void update_obj_uniforms(const ObjectUniforms& uniforms, size_t index = 0);
-        void update_obj_texture(const Handles::Texture& handles, const TextureSamplerType& sampler_type, size_t index = 0);
+        void update_cam_ubo(uint32_t index, const CameraUniforms& uniforms) const;
+        void update_obj_ubo(uint32_t index, const ObjectTransformUniforms& uniforms) const;
+        void update_obj_ubo(uint32_t index, const ObjectPhongMatUniforms& uniforms) const;
+        void update_obj_ubo(uint32_t index, const ObjectPbrMatUniforms& uniforms) const;
+        void update_obj_tex(uint32_t index, const Handles::Texture& handles, const TextureType& t_type, const TextureSamplerType& s_type);
 
         [[nodiscard]] bool is_rendering() const { return is_rendering_; }
         [[nodiscard]] size_t current_frame() const { return current_frame_; }
@@ -82,13 +83,18 @@ namespace nasral::rendering
         void refresh_vk_surface();
 
         template<typename T>
-        void update_uniforms(vk::utils::Buffer& buffer, const uint32_t index, const T& data) {
+        [[nodiscard]] vk::DeviceSize aligned_size() const{
             assert(vk_device_);
-            const auto alignment = vk_device_->physical_device().getProperties().limits.minUniformBufferOffsetAlignment;
-            const auto offset = size_align(sizeof(T), alignment) * index;
-            auto* ptr = buffer.map(offset, sizeof(T));
-            std::memcpy(ptr, &data, sizeof(T));
-            buffer.unmap();
+            auto& d = vk_device_->physical_device();
+            static const auto alignment = d.getProperties().limits.minUniformBufferOffsetAlignment;
+            return size_align(sizeof(T), alignment);
+        }
+
+        template<typename T>
+        [[nodiscard]] vk::DeviceSize ubo_offset(const uint32_t index) const{
+            assert(vk_device_);
+            const auto offset = aligned_size<T>() * index;
+            return offset;
         }
 
     protected:
@@ -109,13 +115,19 @@ namespace nasral::rendering
         vk::UniqueSwapchainKHR vk_swap_chain_;
         std::vector<vk::utils::Framebuffer::Ptr> vk_framebuffers_;
 
-        // Uniform-буферы и дескрипторы
+        // Макеты конвейеров
         std::vector<vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
+        // Семплеры текстур
         std::array<vk::UniqueSampler, static_cast<size_t>(TextureSamplerType::TOTAL)> vk_texture_samplers_;
+        // Дескрипторные наборы (камера, трансформации и материалы объектов, текстуры объектов)
         vk::UniqueDescriptorSet vk_dset_view_;
-        vk::UniqueDescriptorSet vk_dset_objects_;
+        vk::UniqueDescriptorSet vk_dset_objects_uniforms_;
+        vk::UniqueDescriptorSet vk_dset_objects_textures_;
+        // Uniform буферы объектов (камера, трансформации, материалы)
         vk::utils::Buffer::Ptr vk_ubo_view_;
-        vk::utils::Buffer::Ptr vk_ubo_objects_;
+        vk::utils::Buffer::Ptr vk_ubo_objects_transforms_;
+        vk::utils::Buffer::Ptr vk_ubo_objects_phong_mat_;
+        vk::utils::Buffer::Ptr vk_ubo_objects_pbr_mat_;
 
         // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
         size_t current_frame_;

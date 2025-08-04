@@ -80,6 +80,12 @@ namespace nasral::rendering
         // Если рендеринг отключен
         if (!is_rendering_) return;
 
+        // Подготовить uniform буферы к записи
+        vk_ubo_view_->map_unsafe();
+        vk_ubo_objects_transforms_->map_unsafe();
+        vk_ubo_objects_phong_mat_->map_unsafe();
+        vk_ubo_objects_pbr_mat_->map_unsafe();
+
         // Текущий индекс кадра
         const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
 
@@ -158,6 +164,12 @@ namespace nasral::rendering
         // Завершения командного буфера
         cmd_buffer->end();
 
+        // Убрать разметку с uniform буферов (сделать данные доступными для шейдера)
+        vk_ubo_view_->unmap_unsafe();
+        vk_ubo_objects_transforms_->unmap_unsafe();
+        vk_ubo_objects_phong_mat_->unmap_unsafe();
+        vk_ubo_objects_pbr_mat_->unmap_unsafe();
+
         // Семафоры, ожидаемые для исполнения команд рендеринга
         std::array<vk::Semaphore, 1> wait_semaphores{
             vk_render_available_semaphore_[frame_index].get()
@@ -208,7 +220,7 @@ namespace nasral::rendering
         current_frame_++;
     }
 
-    void Renderer::cmd_bind_material_pipeline(const Handles::Material& handles){
+    void Renderer::cmd_bind_material(const Handles::Material& handles){
         // Если рендеринг отключен
         if (!is_rendering_) return;
 
@@ -249,50 +261,25 @@ namespace nasral::rendering
         cmd_buffer->setScissor(0, {scissor});
     }
 
-    void Renderer::cmd_bind_cam_descriptors(){
+    void Renderer::cmd_bind_frame_descriptors(){
         // Если рендеринг отключен
         if (!is_rendering_) return;
         // Текущий индекс кадра
         const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
         // Получить буфер команд
         auto& cmd_buffer = vk_command_buffers_[frame_index];
-        // Привязать дескрипторный набор камеры
+        // Получить макет конвейера
         const auto& ul = vk_uniform_layouts_[to<size_t>(UniformLayoutType::eBasicRasterization)];
         static const auto& pl = ul->vk_pipeline_layout();
+        // Привязать все необходимые дескрипторы
         cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
             pl,
             0,
-            {vk_dset_view_.get()},
+            {vk_dset_view_.get(), vk_dset_objects_uniforms_.get(), vk_dset_objects_textures_.get()},
             {});
     }
 
-    void Renderer::cmd_bind_obj_descriptors(const uint32_t ubo_offset_index, const Handles::Texture& tex_handles){
-        // Если рендеринг отключен
-        if (!is_rendering_) return;
-        // Текущий индекс кадра
-        const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
-        // Получить буфер команд
-        auto& cmd_buffer = vk_command_buffers_[frame_index];
-
-        // Выравнивание для uniform буферов
-        static const auto alignment = vk_device_->physical_device()
-            .getProperties()
-            .limits
-            .minUniformBufferOffsetAlignment;
-
-        auto offset = ubo_offset_index * size_align(sizeof(ObjectUniforms), alignment);
-
-        // Привязать дескрипторный набор камеры
-        const auto& ul = vk_uniform_layouts_[to<size_t>(UniformLayoutType::eBasicRasterization)];
-        static const auto& pl = ul->vk_pipeline_layout();
-        cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-            pl,
-            1,
-            {vk_dset_objects_.get(), tex_handles.descriptor_set},
-            {offset});
-    }
-
-    void Renderer::cmd_draw_mesh(const Handles::Mesh& handles){
+    void Renderer::cmd_draw_mesh(const Handles::Mesh& handles, const uint32_t obj_index){
         // Если рендеринг отключен
         if (!is_rendering_) return;
 
@@ -305,7 +292,7 @@ namespace nasral::rendering
         // Запись команд. Привязать геометрию и нарисовать её
         cmd_buffer->bindVertexBuffers(0, {handles.vertex_buffer}, {0});
         cmd_buffer->bindIndexBuffer(handles.index_buffer, 0, vk::IndexType::eUint32);
-        cmd_buffer->drawIndexed(handles.index_count, 1, 0, 0, 0);
+        cmd_buffer->drawIndexed(handles.index_count, 1, 0, 0, obj_index);
     }
 
     void Renderer::cmd_wait_for_frame() const{
@@ -316,35 +303,54 @@ namespace nasral::rendering
         surface_refresh_required_.store(true, std::memory_order_release);
     }
 
-    void Renderer::update_cam_uniforms(const CameraUniforms& uniforms, const size_t index){
-        assert(index < MAX_CAMERAS);
-        assert(vk_ubo_view_);
-        update_uniforms(*vk_ubo_view_, to<uint32_t>(index), uniforms);
+    void Renderer::update_cam_ubo(const uint32_t index, const CameraUniforms& uniforms) const{
+        vk_ubo_view_->update_mapped(
+            ubo_offset<CameraUniforms>(index),
+            aligned_size<CameraUniforms>(),
+            &uniforms);
     }
 
-    void Renderer::update_obj_uniforms(const ObjectUniforms& uniforms, const size_t index){
-        assert(index < MAX_OBJECTS);
-        assert(vk_ubo_objects_);
-        update_uniforms(*vk_ubo_objects_, to<uint32_t>(index), uniforms);
+    void Renderer::update_obj_ubo(const uint32_t index, const ObjectTransformUniforms& uniforms) const{
+        vk_ubo_objects_transforms_->update_mapped(
+            ubo_offset<ObjectTransformUniforms>(index),
+            aligned_size<ObjectTransformUniforms>(),
+            &uniforms);
     }
 
-    void Renderer::update_obj_texture(const Handles::Texture& handles,
-        const TextureSamplerType& sampler_type,
-        const size_t index)
+    void Renderer::update_obj_ubo(const uint32_t index, const ObjectPhongMatUniforms& uniforms) const{
+        vk_ubo_objects_phong_mat_->update_mapped(
+            ubo_offset<ObjectPhongMatUniforms>(index),
+            aligned_size<ObjectPhongMatUniforms>(),
+            &uniforms
+        );
+    }
+
+    void Renderer::update_obj_ubo(const uint32_t index, const ObjectPbrMatUniforms& uniforms) const{
+        vk_ubo_objects_pbr_mat_->update_mapped(
+            ubo_offset<ObjectPbrMatUniforms>(index),
+            aligned_size<ObjectPbrMatUniforms>(),
+            &uniforms
+        );
+    }
+
+    void Renderer::update_obj_tex(const uint32_t index
+        , const Handles::Texture& handles
+        , const TextureType& t_type
+        , const TextureSamplerType& s_type)
     {
         assert(index < MAX_OBJECTS);
         assert(handles);
-        assert(vk_dset_objects_);
+        assert(vk_dset_objects_textures_);
 
-        const auto& sampler = vk_texture_samplers_[to<size_t>(sampler_type)];
+        const auto& sampler = vk_texture_samplers_[to<size_t>(s_type)];
         vk::DescriptorImageInfo image_info{};
         image_info.setSampler(sampler.get())
                   .setImageView(handles.image_view)
                   .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 
         vk::WriteDescriptorSet write{};
-        write.setDstSet(vk_dset_objects_.get())
-             .setDstBinding(1)
+        write.setDstSet(vk_dset_objects_textures_.get())
+             .setDstBinding(to<uint32_t>(t_type))
              .setDstArrayElement(to<uint32_t>(index)) // Индекс объекта в массиве дескрипторов
              .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
              .setDescriptorCount(1)
@@ -450,7 +456,8 @@ namespace nasral::rendering
         // Требуемые расширения (поддержка своп-чейна и выделенных аллокаций памяти)
         const std::vector req_extensions{
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME
+            VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
+            VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
         };
 
         // Требования к очередям
@@ -717,40 +724,74 @@ namespace nasral::rendering
             // set = 0: Camera
             {
                 {
-                    0,
-                    1,
-                    MAX_CAMERAS,
-                    vk::DescriptorType::eUniformBuffer,
-                    vk::ShaderStageFlagBits::eVertex
-                }
+                    {0,1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex}
+                },
+                1
             },
             // set = 1: Objects
             {
                 {
-                    0,
-                    1,
-                    1,
-                    vk::DescriptorType::eUniformBufferDynamic,
-                    vk::ShaderStageFlagBits::eVertex
-                }
+                    // Матрицы трансформации всех объектов
+                    {0,1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex},
+                    // Параметры Phong материала для всех объектов
+                    {1,1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment},
+                    // Параметры PBR материала для всех объектов
+                    {2,1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment},
+                },
+                1
             },
             // set = 2: Object textures
             {
                 {
-                    0,
-                    1,
-                    MAX_OBJECTS,
-                    vk::DescriptorType::eCombinedImageSampler,
-                    vk::ShaderStageFlagBits::eFragment
-                }
+                    // Текстуры albedo/diffuse для всех объектов (Phong/PBR материал)
+                    {
+                        to<uint32_t>(TextureType::eAlbedoColor),
+                        MAX_OBJECTS,
+                        vk::DescriptorType::eCombinedImageSampler,
+                        vk::ShaderStageFlagBits::eFragment,
+                        vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                    },
+                    // Текстуры normal для всех объектов (Phong/PBR материал)
+                    {
+                        to<uint32_t>(TextureType::eNormal),
+                        MAX_OBJECTS,
+                        vk::DescriptorType::eCombinedImageSampler,
+                        vk::ShaderStageFlagBits::eFragment,
+                        vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                    },
+                    // Текстуры roughness/specular для всех объектов (Phong/PBR материал)
+                    {
+                        to<uint32_t>(TextureType::eRoughnessOrSpecular),
+                        MAX_OBJECTS,
+                        vk::DescriptorType::eCombinedImageSampler,
+                        vk::ShaderStageFlagBits::eFragment,
+                        vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                    },
+                    // Текстуры displace для всех объектов (Phong/PBR материал)
+                    {
+                        to<uint32_t>(TextureType::eHeight),
+                        MAX_OBJECTS,
+                        vk::DescriptorType::eCombinedImageSampler,
+                        vk::ShaderStageFlagBits::eFragment,
+                        vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                    },
+                    // Текстуры metallic для всех объектов (Phong/PBR материал)
+                    {
+                        to<uint32_t>(TextureType::eMetallicOrReflection),
+                        MAX_OBJECTS,
+                        vk::DescriptorType::eCombinedImageSampler,
+                        vk::ShaderStageFlagBits::eFragment,
+                        vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                    },
+                },
+                1
             }
         };
 
-        // Наборов для текстур может быть выделено столько, сколько объектов (поэтому 2 + MAX_OBJECTS)
+        // Создать pipeline layout для растеризации
         layouts[to<size_t>(UniformLayoutType::eBasicRasterization)] = std::make_unique<vk::utils::UniformLayout>(
             vk_device_,
-            set_layouts,
-            2 + MAX_OBJECTS);
+            set_layouts);
     }
 
     void Renderer::init_vk_texture_samplers(){
@@ -876,8 +917,10 @@ namespace nasral::rendering
 
         // Выделить дескрипторный набор для камеры
         ul->allocate_sets(0,1).front().swap(vk_dset_view_);
-        // Выделить дескрипторный набор для объектов
-        ul->allocate_sets(1,1).front().swap(vk_dset_objects_);
+        // Выделить дескрипторный набор для uniform-буферов объектов (трансформации, параметры материалов)
+        ul->allocate_sets(1,1).front().swap(vk_dset_objects_uniforms_);
+        // Выделить дескрипторный набор для текстур объектов (по массиву дескрипторов на каждый вид текстур)
+        ul->allocate_sets(2,1).front().swap(vk_dset_objects_textures_);
 
         // Выравнивание для uniform буферов
         const auto alignment = vk_device_->physical_device()
@@ -894,10 +937,24 @@ namespace nasral::rendering
                 vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-            // Выделить uniform буфер для объектов сцены
-            vk_ubo_objects_ = std::make_unique<vk::utils::Buffer>(
+            // Выделить uniform буфер для трансформаций объектов сцены
+            vk_ubo_objects_transforms_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
-                size_align(sizeof(ObjectUniforms), alignment) * MAX_OBJECTS,
+                size_align(sizeof(ObjectTransformUniforms), alignment) * MAX_OBJECTS,
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+            // Выделить uniform буфер для параметров материала объектов сцены (Blin-Phong)
+            vk_ubo_objects_phong_mat_ = std::make_unique<vk::utils::Buffer>(
+                vk_device_,
+                size_align(sizeof(ObjectPhongMatUniforms), alignment) * MAX_OBJECTS,
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+            // Выделить uniform буфер для параметров материала объектов сцены (PBR)
+            vk_ubo_objects_pbr_mat_ = std::make_unique<vk::utils::Buffer>(
+                vk_device_,
+                size_align(sizeof(ObjectPbrMatUniforms), alignment) * MAX_OBJECTS,
                 vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
@@ -921,20 +978,47 @@ namespace nasral::rendering
                     .setBufferInfo(cam_buffer_info)
             );
 
-            // Объекты (set = 1, binding = 0)
-            vk::DescriptorBufferInfo obj_buffer_info;
-            obj_buffer_info.setBuffer(vk_ubo_objects_->vk_buffer())
+            // Трансформации объектов (set = 1, binding = 0)
+            vk::DescriptorBufferInfo obj_transforms_buffer_info;
+            obj_transforms_buffer_info.setBuffer(vk_ubo_objects_transforms_->vk_buffer())
                            .setOffset(0)
-                           .setRange(size_align(sizeof(ObjectUniforms), alignment));
+                           .setRange(size_align(sizeof(ObjectTransformUniforms), alignment) * MAX_OBJECTS);
 
             writes.emplace_back(
                 vk::WriteDescriptorSet()
-                    .setDstSet(vk_dset_objects_.get())
+                    .setDstSet(vk_dset_objects_uniforms_.get())
                     .setDstBinding(0)
-                    .setDescriptorType(vk::DescriptorType::eUniformBufferDynamic)
+                    .setDescriptorType(vk::DescriptorType::eUniformBuffer)
                     .setDescriptorCount(1)
-                    .setBufferInfo(obj_buffer_info)
-            );
+                    .setBufferInfo(obj_transforms_buffer_info));
+
+            // Параметры материалов объектов (set = 1, binding = 1)
+            vk::DescriptorBufferInfo obj_ph_mtls_buffer_info;
+            obj_ph_mtls_buffer_info.setBuffer(vk_ubo_objects_phong_mat_->vk_buffer())
+                           .setOffset(0)
+                           .setRange(size_align(sizeof(ObjectPhongMatUniforms), alignment) * MAX_OBJECTS);
+
+            writes.emplace_back(
+                vk::WriteDescriptorSet()
+                    .setDstSet(vk_dset_objects_uniforms_.get())
+                    .setDstBinding(1)
+                    .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                    .setDescriptorCount(1)
+                    .setBufferInfo(obj_ph_mtls_buffer_info));
+
+            // Параметры материалов объектов (set = 1, binding = 2)
+            vk::DescriptorBufferInfo obj_pbr_mtls_buffer_info;
+            obj_pbr_mtls_buffer_info.setBuffer(vk_ubo_objects_pbr_mat_->vk_buffer())
+                           .setOffset(0)
+                           .setRange(size_align(sizeof(ObjectPbrMatUniforms), alignment) * MAX_OBJECTS);
+
+            writes.emplace_back(
+                vk::WriteDescriptorSet()
+                    .setDstSet(vk_dset_objects_uniforms_.get())
+                    .setDstBinding(2)
+                    .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                    .setDescriptorCount(1)
+                    .setBufferInfo(obj_pbr_mtls_buffer_info));
 
             vk_device_->logical_device().updateDescriptorSets(writes, {});
         }

@@ -58,9 +58,9 @@ namespace nasral::resources
                     vk::MemoryPropertyFlagBits::eDeviceLocal);
 
                 // Копировать данные во временный (staging) буфер
-                auto* p = staging_buffer.map();
+                auto* p = staging_buffer.map_unsafe();
                 memcpy(p, data->vertices.data(), sizeof(rendering::Vertex) * vertex_count_);
-                staging_buffer.unmap();
+                staging_buffer.unmap_unsafe();
 
                 // Копировать из временного в основной
                 staging_buffer.copy_to(*vertex_buffer_, transfer_group);
@@ -83,9 +83,9 @@ namespace nasral::resources
                     vk::MemoryPropertyFlagBits::eDeviceLocal);
 
                 // Копировать данные во временный (staging) буфер
-                auto* p = staging_buffer.map();
+                auto* p = staging_buffer.map_unsafe();
                 memcpy(p, data->indices.data(), sizeof(uint32_t) * index_count_);
-                staging_buffer.unmap();
+                staging_buffer.unmap_unsafe();
 
                 // Копировать из временного в основной
                 staging_buffer.copy_to(*index_buffer_, transfer_group);

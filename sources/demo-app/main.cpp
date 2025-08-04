@@ -52,7 +52,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
                 { nasral::resources::Type::eShader, "materials/uniforms/shader.frag.spv"},
                 { nasral::resources::Type::eMaterial, "materials/uniforms/material.xml"},
                 { nasral::resources::Type::eMesh, "meshes/quad/quad.obj"},
-                { nasral::resources::Type::eTexture, "textures/tiles_diff.png" }
+                { nasral::resources::Type::eTexture, "textures/tiles_diff.png" },
+                { nasral::resources::Type::eTexture, "textures/tiles_nor_gl.png" }
             };
 
             // Рендеринг
@@ -67,7 +68,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.rendering.color_space = vk::ColorSpaceKHR::eSrgbNonlinear;
             config.rendering.present_mode = vk::PresentModeKHR::eImmediate;
             config.rendering.use_opengl_style = true;
-            config.rendering.use_validation_layers = false;
+            config.rendering.use_validation_layers = true;
             config.rendering.max_frames_in_flight = 3;
             config.rendering.swap_chain_image_count = 4;
         }

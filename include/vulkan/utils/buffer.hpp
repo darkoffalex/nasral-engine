@@ -34,6 +34,7 @@ namespace vk::utils
          */
         Buffer()
         : size_(0)
+        , mapped_ptr_(nullptr)
         {}
 
         /**
@@ -55,6 +56,7 @@ namespace vk::utils
                const std::vector<uint32_t>& families = {})
         : vk_device_(device->logical_device())
         , size_(size)
+        , mapped_ptr_(nullptr)
         {
             assert(vk_device_);
 
@@ -120,27 +122,46 @@ namespace vk::utils
 
         /**
          * @brief Отображает (maps) часть буфера в память хоста, чтобы можно было изменить данные.
-         *
          * @param offset Смещение от начала буфера для отображения.
          * @param size Размер области, которую нужно отобразить. Если не указано, используется весь буфер.
          * @return Указатель на область памяти хоста.
          */
-        void* map(const vk::DeviceSize offset = 0, const vk::DeviceSize size = VK_WHOLE_SIZE){
+        void* map_unsafe(const vk::DeviceSize offset = 0, const vk::DeviceSize size = VK_WHOLE_SIZE){
             assert(vk_device_);
             assert(vk_memory_);
             assert(size_ > 0 && (offset + size <= size_ || size == VK_WHOLE_SIZE));
-            return vk_device_.mapMemory(vk_memory_.get(), offset, size, vk::MemoryMapFlags());
+            mapped_ptr_ = vk_device_.mapMemory(vk_memory_.get(), offset, size, vk::MemoryMapFlags());
+            return mapped_ptr_;
+        }
+
+        /**
+         * @brief Копирует данные в нужную область размеченного буфера
+         * @param offset Сдвиг относительно начала разметки
+         * @param size Размер копируемой области
+         * @param data Исходные данные для копирования
+         */
+        void update_mapped(const vk::DeviceSize offset, const vk::DeviceSize size, const void* data = nullptr) const{
+            assert(size <= size_);
+            assert(offset + size <= size_);
+            if (!mapped_ptr_) return;
+
+            auto* ptr = static_cast<char*>(mapped_ptr_) + offset;
+            if(data){
+                std::memcpy(ptr, data, size);
+            }else{
+                std::memset(ptr, 0, size);
+            }
         }
 
         /**
          * @brief Снимает отображение (unmaps) части или всю область буфера.
-         *
-         * После вызова этой функции данные, изменённые через `map()`, будут записаны в память устройства.
+         * @details После вызова этой функции данные, изменённые через `map()`, будут записаны в память устройства.
          */
-        void unmap(){
+        void unmap_unsafe(){
             assert(vk_device_);
             assert(vk_memory_);
             vk_device_.unmapMemory(vk_memory_.get());
+            mapped_ptr_ = nullptr;
         }
 
         /**
@@ -218,5 +239,7 @@ namespace vk::utils
         vk::UniqueDeviceMemory vk_memory_;
         /// Размер буфера в байтах.
         vk::DeviceSize size_;
+        /// Указатель на размеченную область
+        void* mapped_ptr_;
     };
 }

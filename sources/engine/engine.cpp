@@ -57,20 +57,20 @@ namespace nasral
             // Начало кадра
             renderer_->cmd_begin_frame();
 
-            // Привязать uniform-дескрипторы камеры
-            renderer_->cmd_bind_cam_descriptors();
+            // Обновление узлов сцены
+            for (auto& node : test_scene_nodes_){
+                node.update(renderer_);
+            }
 
-            // Отрисовка объектов
-            for (size_t i = 0; i < test_scene_nodes_.size(); ++i){
-                auto& node = test_scene_nodes_[i];
+            // Обновить данные камеры
+            renderer_->update_cam_ubo(0, camera_uniforms_);
 
-                // Если требуются изменения буфера
-                if (node.is_pending_ubo_update(true)){
-                    renderer_->update_obj_uniforms(node.uniforms(), i);
-                }
+            // Привязка всех необходимых дескрипторов
+            renderer_->cmd_bind_frame_descriptors();
 
-                // Отрисовка
-                node.render(renderer_, i);
+            // Рендеринг объектов сцены
+            for (auto& node : test_scene_nodes_){
+                node.render(renderer_);
             }
 
             // Конец кадра
@@ -115,30 +115,33 @@ namespace nasral
 
     /* ТОЛЬКО ДЛЯ ТЕСТИРОВАНИЯ */
 
-    void Engine::init_test_scene(){
+    void Engine::init_test_scene()
+    {
         // Камера (пока статична)
         const auto aspect = renderer_->get_rendering_aspect();
         camera_uniforms_.view = glm::identity<glm::mat4>();
         camera_uniforms_.projection = glm::ortho(-aspect, aspect, -1.0f, 1.0f, -1.0f, 1.0f);
-        renderer_->update_cam_uniforms(camera_uniforms_);
 
         // Объекты сцены
         test_scene_nodes_.reserve(2);
         for (size_t i = 0; i < 2; ++i){
-            test_scene_nodes_.emplace_back(this);
+            test_scene_nodes_.emplace_back(this, to<uint32_t>(i));
         }
 
         // Сдвинуть влево и право
         test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});
         test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
+        test_scene_nodes_[0].texture_ref_.set_path("textures/tiles_diff.png");
+        test_scene_nodes_[1].texture_ref_.set_path("textures/tiles_nor_gl.png");
 
         // Запросить ресурсы
         test_scene_nodes_[0].request_resources();
         test_scene_nodes_[1].request_resources();
     }
 
-    Engine::TestNode::TestNode(const Engine* engine)
+    Engine::TestNode::TestNode(const Engine* engine, const uint32_t index)
         : engine_(engine)
+        , obj_index_(index)
         , material_ref_(engine->resource_manager()->make_ref(resources::Type::eMaterial, "materials/uniforms/material.xml"))
         , mesh_ref_(engine->resource_manager()->make_ref(resources::Type::eMesh, "meshes/quad/quad.obj"))
         , texture_ref_(engine->resource_manager()->make_ref(resources::Type::eTexture, "textures/tiles_diff.png"))
@@ -164,13 +167,11 @@ namespace nasral
                 auto* texture = dynamic_cast<const resources::Texture*>(res);
                 assert(texture != nullptr);
                 texture_handles_ = texture->render_handles();
-                update_tex_d_set(engine_->renderer());
             }
         });
     }
 
     Engine::TestNode::~TestNode(){
-        remove_tex_d_set(engine_->renderer());
         release_resources();
     }
 
@@ -189,100 +190,67 @@ namespace nasral
         texture_ref_.release();
     }
 
-    void Engine::TestNode::render(const rendering::Renderer::Ptr& renderer, const size_t obj_index) const{
+    void Engine::TestNode::update(const rendering::Renderer::Ptr& renderer) {
+
+        // Здесь идет логика обновления узла...
+
+        // Обновить трансформации в UBO
+        if (pending_updates_ & eTransform){
+            rendering::ObjectTransformUniforms uniforms{};
+            auto& model = uniforms.model;
+            model = glm::translate(model, position_);
+            model = glm::rotate(model, glm::radians(rotation_.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, glm::radians(rotation_.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(rotation_.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::scale(model, scale_);
+            renderer->update_obj_ubo(obj_index_, uniforms);
+            pending_updates_ = static_cast<UpdateFlags>(pending_updates_ & ~eTransform);
+        }
+
+        // Обновить материал в UBO
+        if (pending_updates_ & eMaterial){
+            rendering::ObjectPhongMatUniforms uniforms{};
+            uniforms.color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); // TODO: Обновление
+            renderer->update_obj_ubo(obj_index_, uniforms);
+            pending_updates_ = static_cast<UpdateFlags>(pending_updates_ & ~eMaterial);
+        }
+
+        if (pending_updates_ & eTextures){
+            if (texture_handles_){
+                renderer->update_obj_tex(
+                obj_index_,
+                texture_handles_,
+                rendering::TextureType::eAlbedoColor,
+                rendering::TextureSamplerType::eNearest);
+                pending_updates_ = static_cast<UpdateFlags>(pending_updates_ & ~eTextures);
+            }
+        }
+    }
+
+    void Engine::TestNode::render(const rendering::Renderer::Ptr& renderer) const{
         if (!mesh_handles_ || !material_handles_ || !texture_handles_){
             return;
         }
 
-        // Привязка материала (конвейера)
-        renderer->cmd_bind_material_pipeline(material_handles_);
-
-        // Привязка дескрипторов
-        renderer->cmd_bind_obj_descriptors(to<uint32_t>(obj_index), texture_handles_);
+        // Привязка материала
+        renderer->cmd_bind_material(material_handles_);
 
         // Рисование объекта
-        renderer->cmd_draw_mesh(mesh_handles_);
+        renderer->cmd_draw_mesh(mesh_handles_, obj_index_);
     }
 
-    void Engine::TestNode::set_position(const glm::vec3& position, const bool update_mat){
+    void Engine::TestNode::set_position(const glm::vec3& position){
         position_ = position;
-        if (update_mat){
-            update_matrix();
-        }
+        pending_updates_ = static_cast<UpdateFlags>(pending_updates_ | eTransform);
     }
 
-    void Engine::TestNode::set_rotation(const glm::vec3& rotation, const bool update_mat){
+    void Engine::TestNode::set_rotation(const glm::vec3& rotation){
         rotation_ = rotation;
-        if (update_mat){
-            update_matrix();
-        }
+        pending_updates_ = static_cast<UpdateFlags>(pending_updates_ | eTransform);
     }
 
-    void Engine::TestNode::set_scale(const glm::vec3& scale, const bool update_mat){
+    void Engine::TestNode::set_scale(const glm::vec3& scale){
         scale_ = scale;
-        if (update_mat){
-            update_matrix();
-        }
-    }
-
-    bool Engine::TestNode::is_pending_ubo_update(const bool reset){
-        const bool result = pending_ubo_update_;
-        if (reset) pending_ubo_update_ = false;
-        return result;
-    }
-
-    void Engine::TestNode::update_matrix(){
-        auto& model = uniforms_.model;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, position_);
-        model = glm::rotate(model, glm::radians(rotation_.z), glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::rotate(model, glm::radians(rotation_.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotation_.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        model = glm::scale(model, scale_);
-        pending_ubo_update_ = true;
-    }
-
-    void Engine::TestNode::update_tex_d_set(const rendering::Renderer* renderer){
-        assert(texture_handles_.image_view);
-
-        // Удалить дескрипторный набор, если есть
-        if (texture_handles_.descriptor_set){
-            remove_tex_d_set(renderer);
-        }
-
-        // Выделить новый дескрипторный набор
-        vk::UniqueDescriptorSet set;
-        const auto& ul = renderer->vk_uniform_layout(rendering::UniformLayoutType::eBasicRasterization);
-        ul.allocate_sets(2, 1)[0].swap(set);
-
-        // Обновить дескрипторный набор - связать привязку, семплер и текстуру
-        const auto& sampler = renderer->vk_texture_sampler(rendering::TextureSamplerType::eNearest);
-        vk::DescriptorImageInfo image_info{};
-        image_info.setSampler(sampler)
-                  .setImageView(texture_handles_.image_view)
-                  .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
-
-        vk::WriteDescriptorSet write{};
-        write.setDstSet(set.get())
-             .setDstBinding(0)
-             .setDstArrayElement(0)
-             .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-             .setDescriptorCount(1)
-             .setImageInfo(image_info);
-
-        renderer->vk_device()->logical_device().updateDescriptorSets(write, {});
-
-        // Скопировать handle дескриптора и лишить владения unique объект
-        // Далее временем жизни набора управляет узел
-        texture_handles_.descriptor_set = set.get();
-        set.release();
-    }
-
-    void Engine::TestNode::remove_tex_d_set(const rendering::Renderer* renderer){
-        renderer->cmd_wait_for_frame();
-        const auto& device = renderer->vk_device();
-        const auto& ul = renderer->vk_uniform_layout(rendering::UniformLayoutType::eBasicRasterization);
-        const auto& pool = ul.vk_descriptor_pool();
-        device->logical_device().freeDescriptorSets(pool, {texture_handles_.descriptor_set});
+        pending_updates_ = static_cast<UpdateFlags>(pending_updates_ | eTransform);
     }
 }

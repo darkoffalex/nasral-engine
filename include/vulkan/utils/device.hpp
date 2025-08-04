@@ -428,17 +428,15 @@ namespace vk::utils
                 }
 
                 // Пропустить устройство без поддержки необходимых расширений
-                auto supports_ext = [&](const char* extension){
-                    const auto extensions = device.enumerateDeviceExtensionProperties();
-                    return std::any_of(extensions.begin(), extensions.end(),
-                        [extension](const auto& ext) {
-                            return strcmp(ext.extensionName, extension) == 0;
-                        });
-                };
-
                 if (!std::all_of(req_extensions.begin(),
                     req_extensions.end(),
-                    [this, supports_ext](const char* required_ext){return supports_ext(required_ext);}))
+                    [this, &device](const char* required_ext) {
+                        const auto extensions = device.enumerateDeviceExtensionProperties();
+                        return std::any_of(extensions.begin(), extensions.end(),
+                            [required_ext](const auto& ext) {
+                                return strcmp(ext.extensionName, required_ext) == 0;
+                            });
+                    }))
                 {
                     continue;
                 }
@@ -446,6 +444,16 @@ namespace vk::utils
                 // Пропустить устройство без поддержки необходимых особенностей
                 auto features = device.getFeatures();
                 if (!features.samplerAnisotropy || !features.geometryShader || !features.multiViewport) {
+                    continue;
+                }
+
+                // Проверка поддержки descriptor indexing (для bindless дескрипторов)
+                auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT().setPNext(nullptr);
+                auto features2 = vk::PhysicalDeviceFeatures2().setPNext(&indexing_features);
+                device.getFeatures2(&features2);
+                if (!indexing_features.descriptorBindingPartiallyBound
+                    || !indexing_features.descriptorBindingVariableDescriptorCount
+                    || !indexing_features.runtimeDescriptorArray){
                     continue;
                 }
 
@@ -508,18 +516,30 @@ namespace vk::utils
                         .setQueuePriorities(queue_priorities.back()));
             }
 
-            // Особенности
+            // Включить поддержку анизотропии, геометрического шейдера, анизотропии
             constexpr auto features = vk::PhysicalDeviceFeatures()
                     .setSamplerAnisotropy(true)
                     .setGeometryShader(true)
                     .setMultiViewport(true);
 
+            // Включить поддержку bindless дескрипторов
+            auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT()
+                .setPNext(nullptr)
+                .setDescriptorBindingPartiallyBound(true)
+                .setDescriptorBindingVariableDescriptorCount(true)
+                .setRuntimeDescriptorArray(true);
+
+            vk::PhysicalDeviceFeatures2 features2;
+            features2.setFeatures(features);
+            features2.setPNext(&indexing_features);
+
             // Создать устройство
             device_ = physical_device_.createDeviceUnique(
                     vk::DeviceCreateInfo()
+                    .setPNext(&features2)
                     .setQueueCreateInfos(queue_create_infos)
                     .setPEnabledExtensionNames(req_extensions)
-                    .setPEnabledFeatures(&features));
+                    .setPEnabledFeatures(nullptr));
 
             // Получить очереди и создать пулы для каждой группы
             for(size_t i = 0; i < req_queue_groups.size(); ++i)

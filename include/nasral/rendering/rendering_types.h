@@ -73,10 +73,9 @@ namespace nasral::rendering
         {
             vk::Image image = VK_NULL_HANDLE;
             vk::ImageView image_view = VK_NULL_HANDLE;
-            vk::DescriptorSet descriptor_set = VK_NULL_HANDLE;
 
             [[nodiscard]] explicit operator bool() const noexcept{
-                return image && image_view && descriptor_set;
+                return image && image_view;
             }
         };
     };
@@ -100,19 +99,48 @@ namespace nasral::rendering
         TOTAL
     };
 
+    enum class TextureType : unsigned
+    {
+        eAlbedoColor = 0,
+        eNormal,
+        eRoughnessOrSpecular,
+        eHeight,
+        eMetallicOrReflection,
+        TOTAL
+    };
+
     struct CameraUniforms
     {
         glm::mat4 view = glm::identity<glm::mat4>();
         glm::mat4 projection = glm::identity<glm::mat4>();
     };
 
-    struct ObjectUniforms
+    struct ObjectTransformUniforms
     {
         glm::mat4 model = glm::identity<glm::mat4>();
     };
 
+    struct ObjectPhongMatUniforms
+    {
+        glm::vec4 color = glm::vec4(1.0f);
+        glm::float32 shininess = 32.0f;
+        glm::float32 specular = 1.0f;
+        glm::vec2 _padding;
+    };
+
+    struct ObjectPbrMatUniforms
+    {
+        glm::vec4 color = glm::vec4(1.0f);
+        glm::float32 roughness = 0.5f;
+        glm::float32 metallic = 0.0f;
+        glm::float32 occlusion = 1.0f;
+        glm::float32 emissive = 0.0f;
+    };
+
     static_assert(sizeof(CameraUniforms) % 16 == 0, "CameraUniforms size must be multiple of 16 bytes");
-    static_assert(sizeof(ObjectUniforms) % 16 == 0, "ObjectUniforms size must be multiple of 16 bytes");
+    static_assert(sizeof(ObjectTransformUniforms) % 16 == 0, "ObjectUniforms size must be multiple of 16 bytes");
+    static_assert(sizeof(ObjectPhongMatUniforms) % 16 == 0, "ObjectPhongMaterialUniforms size must be multiple of 16 bytes");
+    static_assert(sizeof(ObjectPbrMatUniforms) % 16 == 0, "ObjectPbrMatUniforms size must be multiple of 16 bytes");
 
     class RenderingError final : public EngineError
     {

@@ -18,39 +18,44 @@ namespace nasral
         class TestNode
         {
         public:
+            enum UpdateFlags : uint32_t
+            {
+                eNone       = 0,
+                eTransform  = 1 << 0,
+                eMaterial   = 1 << 1,
+                eTextures   = 1 << 2,
+                eAll = eTransform | eMaterial | eTextures
+            };
+
             friend class Engine;
-            explicit TestNode(const Engine* engine);
+            explicit TestNode(const Engine* engine, uint32_t index);
             ~TestNode();
 
             void request_resources();
             void release_resources();
-            void render(const rendering::Renderer::Ptr& renderer, size_t obj_index) const;
-            void set_position(const glm::vec3& position, bool update_mat = true);
-            void set_rotation(const glm::vec3& rotation, bool update_mat = true);
-            void set_scale(const glm::vec3& scale, bool update_mat = true);
+            void update(const rendering::Renderer::Ptr& renderer);
+            void render(const rendering::Renderer::Ptr& renderer) const;
 
-            [[nodiscard]] bool is_pending_ubo_update(bool reset = false);
-            [[nodiscard]] const rendering::ObjectUniforms& uniforms() const { return uniforms_; }
-
-        private:
-            void update_matrix();
-            void update_tex_d_set(const rendering::Renderer* renderer);
-            void remove_tex_d_set(const rendering::Renderer* renderer);
+            void set_position(const glm::vec3& position);
+            void set_rotation(const glm::vec3& rotation);
+            void set_scale(const glm::vec3& scale);
 
         protected:
             SafeHandle<const Engine> engine_;
+            uint32_t obj_index_ = 0;
 
             resources::Ref material_ref_;
             resources::Ref mesh_ref_;
             resources::Ref texture_ref_;
+
             rendering::Handles::Mesh mesh_handles_;
             rendering::Handles::Material material_handles_;
             rendering::Handles::Texture texture_handles_;
+            
             glm::vec3 position_ = glm::vec3(0.0f, 0.0f, 0.0f);
             glm::vec3 rotation_ = glm::vec3(0.0f, 0.0f, 0.0f);
             glm::vec3 scale_ = glm::vec3(1.0f, 1.0f, 1.0f);
-            rendering::ObjectUniforms uniforms_ = {};
-            bool pending_ubo_update_ = false;
+            UpdateFlags pending_updates_ = UpdateFlags::eAll;
         };
 
         Engine();
