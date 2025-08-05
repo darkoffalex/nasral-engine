@@ -15,6 +15,7 @@
 #include <set>
 #include <vector>
 #include <optional>
+#include <mutex>
 #include <vulkan/vulkan.hpp>
 
 namespace vk::utils
@@ -40,8 +41,7 @@ namespace vk::utils
         {
             vk::QueueFlags  queue_flags     = vk::QueueFlagBits::eGraphics;  ///< Требуемые флаги очередей
             bool            require_present = false;                         ///< Требуется ли поддержка представления (показа)
-            uint32_t        queue_count     = 1;                             ///< Количество очередей в группе
-            uint32_t        pool_count      = 1;                             ///< Количество командных пулов
+            uint32_t        queue_count     = 1;                             ///< Количество очередей и пулов в группе
 
             /**
              * @brief Создает запрос для очередей графических команд
@@ -53,7 +53,6 @@ namespace vk::utils
                 return {
                     vk::QueueFlagBits::eGraphics,
                     present,
-                    queue_count,
                     queue_count
                 };
             }
@@ -67,7 +66,6 @@ namespace vk::utils
                 return {
                     vk::QueueFlagBits::eTransfer,
                     false,
-                    queue_count,
                     queue_count
                 };
             }
@@ -81,7 +79,6 @@ namespace vk::utils
                 return {
                     vk::QueueFlagBits::eCompute,
                     false,
-                    queue_count,
                     queue_count
                 };
             }
@@ -97,6 +94,7 @@ namespace vk::utils
             std::optional<uint32_t> family_index = 0;
             std::vector<vk::Queue> queues;
             std::vector<vk::UniqueCommandPool> command_pools;
+            std::vector<std::mutex> queue_mutexes;
         };
 
         /** @brief Конструктор по умолчанию */
@@ -541,24 +539,30 @@ namespace vk::utils
                     .setPEnabledExtensionNames(req_extensions)
                     .setPEnabledFeatures(nullptr));
 
-            // Получить очереди и создать пулы для каждой группы
+            // Получить очереди и создать пулы для каждой группы (на каждую очередь по пулу)
             for(size_t i = 0; i < req_queue_groups.size(); ++i)
             {
                 auto& qg = queue_groups_[i];
                 auto& family_index = qg.family_index.value();
                 auto& queues = qg.queues;
                 auto& command_pools = qg.command_pools;
+                auto& mutexes = qg.queue_mutexes;
 
+                // Получить очереди
                 for(uint32_t q = 0; q < req_queue_groups[i].queue_count; ++q){
                     queues.emplace_back(device_->getQueue(family_index, q));
                 }
 
-                for(uint32_t p = 0; p < req_queue_groups[i].pool_count; ++p){
+                // Создать пулы
+                for(uint32_t p = 0; p < req_queue_groups[i].queue_count; ++p){
                     command_pools.emplace_back(device_->createCommandPoolUnique(
                             vk::CommandPoolCreateInfo()
                             .setQueueFamilyIndex(family_index)
                             .setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)));
                 }
+
+                // Создать mutex'ы
+                mutexes = std::vector<std::mutex>(req_queue_groups[i].queue_count);
             }
         }
 

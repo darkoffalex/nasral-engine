@@ -169,40 +169,51 @@ namespace vk::utils
          * @param other Другой Vulkan буфер
          * @param queue_group Группа очередей устройства с поддержкой команд копирования/перемещения
          */
-        void copy_to(const Buffer& other, const Device::QueueGroup& queue_group){
+        void copy_to(const Buffer& other, Device::QueueGroup& queue_group){
             assert(vk_device_);
             assert(vk_buffer_);
 
-            // TODO: Вероятно нужно синхронизировать между разными потоками при асинхронной загрузке...
-
             // Командный пул и очередь из группы с поддержкой команд копирования
-            const auto& pool = queue_group.command_pools[0];
-            const auto& queue = queue_group.queues[0];
+            const auto& pool = queue_group.command_pools.back();
+            const auto& queue = queue_group.queues.back();
+            auto& queue_mutex = queue_group.queue_mutexes.back();
 
-            // Выделить командный буфер для исполнения команды копирования
-            auto cmd_buffers = vk_device_.allocateCommandBuffersUnique(
-                vk::CommandBufferAllocateInfo()
-                .setCommandBufferCount(1)
-                .setCommandPool(pool.get())
-                .setLevel(vk::CommandBufferLevel::ePrimary));
+            // Забор команд (для ожидания выполнения нужной команды)
+            vk::UniqueFence fence{};
+            // Командный буфер (выделяется из пула)
+            vk::UniqueCommandBuffer cmd_buffer{};
 
-            // Записать команду в буфер
-            cmd_buffers[0].get().begin(
-                vk::CommandBufferBeginInfo()
-                .setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+            // Критическая секция (возможен многопоточный доступ к пулу и очереди)
+            {
+                std::lock_guard lock(queue_mutex);
 
-            cmd_buffers[0].get().copyBuffer(vk_buffer_.get(), other.vk_buffer_.get(), vk::BufferCopy()
-                .setSrcOffset(0)
-                .setDstOffset(0)
-                .setSize(size_));
+                // Выделить командный буфер для исполнения команды копирования
+                vk_device_.allocateCommandBuffersUnique(
+                    vk::CommandBufferAllocateInfo()
+                    .setCommandBufferCount(1)
+                    .setCommandPool(pool.get())
+                    .setLevel(vk::CommandBufferLevel::ePrimary))
+                .back()
+                .swap(cmd_buffer);
 
-            cmd_buffers[0].get().end();
+                // Записать команду в буфер
+                cmd_buffer.get().begin(
+                    vk::CommandBufferBeginInfo()
+                    .setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
-            // Забор для ожидания выполнения
-            auto fence = vk_device_.createFenceUnique(vk::FenceCreateInfo());
+                cmd_buffer.get().copyBuffer(vk_buffer_.get(), other.vk_buffer_.get(), vk::BufferCopy()
+                    .setSrcOffset(0)
+                    .setDstOffset(0)
+                    .setSize(size_));
 
-            // Отправить команду в очередь и подождать выполнения
-            queue.submit(vk::SubmitInfo().setCommandBuffers({cmd_buffers[0].get()}), fence.get());
+                cmd_buffer.get().end();
+
+                // Забор для ожидания выполнения
+                fence = vk_device_.createFenceUnique(vk::FenceCreateInfo());
+
+                // Отправить команду в очередь и подождать выполнения
+                queue.submit(vk::SubmitInfo().setCommandBuffers({cmd_buffer.get()}), fence.get());
+            }
 
             // Подождать выполнения
             (void)vk_device_.waitForFences(

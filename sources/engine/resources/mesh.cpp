@@ -39,7 +39,7 @@ namespace nasral::resources
             // Получить устройство и группу очередей для копирования/перемещения
             const auto* renderer = resource_manager_->engine()->renderer();
             const auto& vd = renderer->vk_device();
-            const auto& transfer_group = vd->queue_group(to<std::size_t>(rendering::Renderer::CommandGroup::eTransfer));
+            auto& transfer_group = vd->queue_group(to<std::size_t>(rendering::Renderer::CommandGroup::eTransfer));
 
             // Вершины
             {

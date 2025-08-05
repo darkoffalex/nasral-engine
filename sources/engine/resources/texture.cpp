@@ -40,7 +40,7 @@ namespace nasral::resources
         try{
             const auto* renderer = resource_manager_->engine()->renderer();
             const auto& vd = renderer->vk_device();
-            const auto& cmd_group = vd->queue_group(to<std::size_t>(rendering::Renderer::CommandGroup::eGraphicsAndPresent));
+            auto& cmd_group = vd->queue_group(to<std::size_t>(rendering::Renderer::CommandGroup::eGraphicsAndPresent));
 
             // Получить формат в зависимости от кол-ва байт на пиксель
             const vk::Format desired_format = get_vk_format(data->channels, data->channel_depth);

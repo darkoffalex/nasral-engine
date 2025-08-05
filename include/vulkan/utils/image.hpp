@@ -320,7 +320,7 @@ namespace vk::utils
          * @param prepare_for_sampling Подготовить для sampling'а в shader'ах
          */
         void copy_to(const Image& dst_image
-                     , const Device::QueueGroup& queue_group
+                     , Device::QueueGroup& queue_group
                      , const vk::Extent3D& extent
                      , const vk::ImageAspectFlags& src_aspect = vk::ImageAspectFlagBits::eColor
                      , const vk::ImageAspectFlags& dst_aspect = vk::ImageAspectFlagBits::eColor
@@ -333,112 +333,121 @@ namespace vk::utils
             assert(dst_image.image() && dst_image.image_view());
             assert(!queue_group.queues.empty() && !queue_group.command_pools.empty());
 
-            // TODO: Вероятно нужно синхронизировать между разными потоками при асинхронной загрузке...
-
             // Командный пул и очередь для копирования
             const auto& pool = queue_group.command_pools.back();
             const auto& queue = queue_group.queues.back();
+            auto& queue_mutex = queue_group.queue_mutexes.back();
 
-            // Выделить командный буфер
-            auto cmd_buffers = vk_device_.allocateCommandBuffersUnique(
-                vk::CommandBufferAllocateInfo()
-                    .setCommandBufferCount(1)
-                    .setCommandPool(pool.get())
-                    .setLevel(vk::CommandBufferLevel::ePrimary));
+            // Забор команд (для ожидания выполнения нужной команды)
+            vk::UniqueFence fence{};
+            // Командный буфер (выделяется из пула)
+            vk::UniqueCommandBuffer cmd_buffer{};
 
-            const auto& cmd_buffer = cmd_buffers[0].get();
+            // Критическая секция (возможен многопоточный доступ к пулу и очереди)
+            {
+                std::lock_guard<std::mutex> lock(queue_mutex);
 
-            // Начать запись команд
-            cmd_buffer.begin(
-                vk::CommandBufferBeginInfo()
-                    .setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+                // Выделить командный буфер
+                vk_device_.allocateCommandBuffersUnique(
+                    vk::CommandBufferAllocateInfo()
+                        .setCommandBufferCount(1)
+                        .setCommandPool(pool.get())
+                        .setLevel(vk::CommandBufferLevel::ePrimary))
+                .back()
+                .swap(cmd_buffer);
 
-            // 1. Барьер: Перевести исходное изображение в eTransferSrcOptimal
-            vk::ImageMemoryBarrier src_barrier{};
-            src_barrier.setImage(image())
-                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                .setOldLayout(vk::ImageLayout::ePreinitialized)
-                .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                .setSrcAccessMask(vk::AccessFlagBits::eHostWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
-                .setSubresourceRange(vk::ImageSubresourceRange()
-                    .setAspectMask(src_aspect)
-                    .setBaseMipLevel(0)
-                    .setLevelCount(1)
-                    .setBaseArrayLayer(0)
-                    .setLayerCount(src_layer_count));
+                // Начать запись команд
+                cmd_buffer->begin(
+                    vk::CommandBufferBeginInfo()
+                        .setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
-            // 2. Барьер: Перевести целевое изображение в eTransferDstOptimal
-            vk::ImageMemoryBarrier dst_barrier{};
-            dst_barrier.setImage(dst_image.image())
-                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                .setOldLayout(vk::ImageLayout::ePreinitialized)
-                .setNewLayout(vk::ImageLayout::eTransferDstOptimal)
-                .setSrcAccessMask(vk::AccessFlagBits::eNone)
-                .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
-                .setSubresourceRange(vk::ImageSubresourceRange()
-                    .setAspectMask(dst_aspect)
-                    .setBaseMipLevel(0)
-                    .setLevelCount(1)
-                    .setBaseArrayLayer(0)
-                    .setLayerCount(dst_layer_count));
+                // 1. Барьер: Перевести исходное изображение в eTransferSrcOptimal
+                vk::ImageMemoryBarrier src_barrier{};
+                src_barrier.setImage(image())
+                    .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .setOldLayout(vk::ImageLayout::ePreinitialized)
+                    .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+                    .setSrcAccessMask(vk::AccessFlagBits::eHostWrite)
+                    .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
+                    .setSubresourceRange(vk::ImageSubresourceRange()
+                        .setAspectMask(src_aspect)
+                        .setBaseMipLevel(0)
+                        .setLevelCount(1)
+                        .setBaseArrayLayer(0)
+                        .setLayerCount(src_layer_count));
 
-            // Применить барьеры для обоих изображений
-            const std::array<vk::ImageMemoryBarrier, 2> barriers = {src_barrier, dst_barrier};
-            cmd_buffer.pipelineBarrier(
-                vk::PipelineStageFlagBits::eAllCommands,
-                vk::PipelineStageFlagBits::eTransfer,
-                {}, 0, nullptr, 0, nullptr, barriers.size(), barriers.data());
-
-
-            // 3. Копирование данных из исходного изображения в целевое
-            vk::ImageCopy copy_region{};
-            copy_region.setSrcSubresource(
-                vk::ImageSubresourceLayers()
-                    .setAspectMask(src_aspect)
-                    .setMipLevel(0)
-                    .setBaseArrayLayer(0)
-                    .setLayerCount(src_layer_count))
-                .setDstSubresource(
-                    vk::ImageSubresourceLayers()
+                // 2. Барьер: Перевести целевое изображение в eTransferDstOptimal
+                vk::ImageMemoryBarrier dst_barrier{};
+                dst_barrier.setImage(dst_image.image())
+                    .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                    .setOldLayout(vk::ImageLayout::ePreinitialized)
+                    .setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+                    .setSrcAccessMask(vk::AccessFlagBits::eNone)
+                    .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+                    .setSubresourceRange(vk::ImageSubresourceRange()
                         .setAspectMask(dst_aspect)
+                        .setBaseMipLevel(0)
+                        .setLevelCount(1)
+                        .setBaseArrayLayer(0)
+                        .setLayerCount(dst_layer_count));
+
+                // Применить барьеры для обоих изображений
+                const std::array<vk::ImageMemoryBarrier, 2> barriers = {src_barrier, dst_barrier};
+                cmd_buffer->pipelineBarrier(
+                    vk::PipelineStageFlagBits::eAllCommands,
+                    vk::PipelineStageFlagBits::eTransfer,
+                    {}, 0, nullptr, 0, nullptr, barriers.size(), barriers.data());
+
+
+                // 3. Копирование данных из исходного изображения в целевое
+                vk::ImageCopy copy_region{};
+                copy_region.setSrcSubresource(
+                    vk::ImageSubresourceLayers()
+                        .setAspectMask(src_aspect)
                         .setMipLevel(0)
                         .setBaseArrayLayer(0)
-                        .setLayerCount(dst_layer_count))
-                .setSrcOffset({0, 0, 0})
-                .setDstOffset({0, 0, 0})
-                .setExtent(extent);
+                        .setLayerCount(src_layer_count))
+                    .setDstSubresource(
+                        vk::ImageSubresourceLayers()
+                            .setAspectMask(dst_aspect)
+                            .setMipLevel(0)
+                            .setBaseArrayLayer(0)
+                            .setLayerCount(dst_layer_count))
+                    .setSrcOffset({0, 0, 0})
+                    .setDstOffset({0, 0, 0})
+                    .setExtent(extent);
 
-            cmd_buffer.copyImage(
-                image(),
-                vk::ImageLayout::eTransferSrcOptimal,
-                dst_image.image(),
-                vk::ImageLayout::eTransferDstOptimal,
-                1, &copy_region);
+                cmd_buffer->copyImage(
+                    image(),
+                    vk::ImageLayout::eTransferSrcOptimal,
+                    dst_image.image(),
+                    vk::ImageLayout::eTransferDstOptimal,
+                    1, &copy_region);
 
-            // 4. Барьер: Перевести целевое изображение в eShaderReadOnlyOptimal (если prepare_for_sampling)
-            if (prepare_for_sampling) {
-                dst_barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
-                    .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-                    .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-                    .setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+                // 4. Барьер: Перевести целевое изображение в eShaderReadOnlyOptimal (если prepare_for_sampling)
+                if (prepare_for_sampling) {
+                    dst_barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+                        .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+                        .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+                        .setDstAccessMask(vk::AccessFlagBits::eShaderRead);
 
-                cmd_buffer.pipelineBarrier(
-                    vk::PipelineStageFlagBits::eTransfer,
-                    vk::PipelineStageFlagBits::eFragmentShader,
-                    {}, 0, nullptr, 0, nullptr, 1, &dst_barrier);
+                    cmd_buffer->pipelineBarrier(
+                        vk::PipelineStageFlagBits::eTransfer,
+                        vk::PipelineStageFlagBits::eFragmentShader,
+                        {}, 0, nullptr, 0, nullptr, 1, &dst_barrier);
+                }
+
+                // Завершить запись команд
+                cmd_buffer->end();
+
+                // Забор для ожидания выполнения
+                fence = vk_device_.createFenceUnique(vk::FenceCreateInfo());
+
+                // Отправить команды в очередь
+                queue.submit(vk::SubmitInfo().setCommandBuffers({cmd_buffer.get()}), fence.get());
             }
-
-            // Завершить запись команд
-            cmd_buffer.end();
-
-            // Забор для ожидания выполнения
-            auto fence = vk_device_.createFenceUnique(vk::FenceCreateInfo());
-
-            // Отправить команды в очередь
-            queue.submit(vk::SubmitInfo().setCommandBuffers({cmd_buffer}), fence.get());
 
             // Подождать выполнения
             (void)vk_device_.waitForFences(
