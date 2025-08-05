@@ -80,9 +80,11 @@ namespace vk::utils
          * @brief Основной конструктор
          * @param device Устройство Vulkan (обертка из utils)
          * @param set_layouts Описания макетов дескрипторных наборов
+         * @param push_constant_ranges Описать пуш-констант макета конвейера
          */
         UniformLayout(const Device::Ptr& device,
-                      const std::vector<SetLayoutInfo>& set_layouts)
+                      const std::vector<SetLayoutInfo>& set_layouts,
+                      const std::vector<vk::PushConstantRange>& push_constant_ranges = {})
         : vk_device_(device->logical_device())
         {
             // Дескрипторный пул
@@ -154,7 +156,8 @@ namespace vk::utils
                 // Создать макет конвейера
                 vk_pipeline_layout_ = vk_device_.createPipelineLayoutUnique(
                     vk::PipelineLayoutCreateInfo()
-                    .setSetLayouts(vk_layouts));
+                    .setSetLayouts(vk_layouts)
+                    .setPushConstantRanges(push_constant_ranges));
             }
         }
 

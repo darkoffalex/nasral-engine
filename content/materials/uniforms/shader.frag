@@ -7,8 +7,11 @@ layout (location = 0) out vec4 color;
 layout (location = 0) in VS_OUT {
     vec3 color;
     vec2 uv;
-    flat uint obj_id;
 } fs_in;
+
+layout(push_constant) uniform PushConstants {
+    uint obj_index;
+} pc;
 
 struct MaterialSettings
 {
@@ -28,6 +31,6 @@ layout(set = 2, binding = 2) uniform sampler2D tex_spec[MAX_OBJECTS];
 
 void main()
 {
-    vec4 tex_color = texture(tex_color[fs_in.obj_id], fs_in.uv);
+    vec4 tex_color = texture(tex_color[pc.obj_index], fs_in.uv);
     color = vec4(tex_color.rgb, 1.0);
 }

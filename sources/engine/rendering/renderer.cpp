@@ -289,10 +289,22 @@ namespace nasral::rendering
         // Получить буфер команд
         auto& cmd_buffer = vk_command_buffers_[frame_index];
 
+        // Получить макет конвейера
+        const auto& ul = vk_uniform_layouts_[to<size_t>(UniformLayoutType::eBasicRasterization)];
+        static const auto& pl = ul->vk_pipeline_layout();
+
+        // Передать индекс объекта через push constant
+        cmd_buffer->pushConstants(
+            pl,
+            vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
+            0,
+            sizeof(uint32_t),
+            &obj_index);
+
         // Запись команд. Привязать геометрию и нарисовать её
         cmd_buffer->bindVertexBuffers(0, {handles.vertex_buffer}, {0});
         cmd_buffer->bindIndexBuffer(handles.index_buffer, 0, vk::IndexType::eUint32);
-        cmd_buffer->drawIndexed(handles.index_count, 1, 0, 0, obj_index);
+        cmd_buffer->drawIndexed(handles.index_count, 1, 0, 0, 0);
     }
 
     void Renderer::cmd_wait_for_frame() const{
@@ -788,10 +800,20 @@ namespace nasral::rendering
             }
         };
 
+        // Push-константы layout'а растеризации
+        std::vector push_constants{
+            // Индекс объекта
+            vk::PushConstantRange()
+                .setStageFlags(vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment)
+                .setSize(sizeof(uint32_t))
+                .setOffset(0)
+        };
+
         // Создать pipeline layout для растеризации
         layouts[to<size_t>(UniformLayoutType::eBasicRasterization)] = std::make_unique<vk::utils::UniformLayout>(
             vk_device_,
-            set_layouts);
+            set_layouts,
+            push_constants);
     }
 
     void Renderer::init_vk_texture_samplers(){
