@@ -99,6 +99,15 @@ namespace nasral::rendering
         TOTAL
     };
 
+    inline const std::array<std::string, static_cast<size_t>(TextureSamplerType::TOTAL)> kTextureSamplerNames = {
+        "Nearest",
+        "NearestClamped",
+        "Linear",
+        "LinearClamp",
+        "Anisotropic",
+        "AnisotropicClamp"
+    };
+
     enum class TextureType : unsigned
     {
         eAlbedoColor = 0,
@@ -107,6 +116,40 @@ namespace nasral::rendering
         eHeight,
         eMetallicOrReflection,
         TOTAL
+    };
+
+    inline const std::array<std::string, static_cast<size_t>(TextureType::TOTAL)> kTextureTypePhongNames = {
+        "Color",
+        "Normal",
+        "Specular",
+        "Height",
+        "Reflection"
+    };
+
+    inline const std::array<std::string, static_cast<size_t>(TextureType::TOTAL)> kTextureTypePbrNames = {
+        "Albedo",
+        "Normal",
+        "Roughness",
+        "Height",
+        "Metallic"
+    };
+
+    enum class MaterialType : unsigned
+    {
+        eDummy = 0,
+        eVertexColored,
+        eTextured,
+        ePhong,
+        ePbr,
+        TOTAL
+    };
+
+    inline const std::array<std::string, static_cast<size_t>(MaterialType::TOTAL)> kMaterialTypeNames = {
+        "Dummy",
+        "VertexColored",
+        "Textured",
+        "Phong",
+        "PBR"
     };
 
     struct CameraUniforms

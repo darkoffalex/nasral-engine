@@ -10,7 +10,9 @@ namespace nasral::resources
         , loader_(std::move(loader))
     {}
 
-    Shader::~Shader() = default;
+    Shader::~Shader(){
+        logger()->info("Shader resource destroyed (" + std::string(path_.data()) + ")");
+    }
 
     void Shader::load() noexcept{
         assert(loader_ != nullptr);
@@ -46,5 +48,7 @@ namespace nasral::resources
         }
 
         status_ = Status::eLoaded;
+        err_code_ = ErrorCode::eNoError;
+        logger()->info("Shader resource loaded (" + std::string(path_.data()) + ")");
     }
 }

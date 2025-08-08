@@ -58,6 +58,9 @@ namespace nasral::rendering
             init_vk_sync_objects();
             logger()->info("Vulkan: Sync primitives created.");
 
+            init_index_pools();
+            logger()->info("Index pools initialized.");
+
             is_rendering_ = true;
         }
         catch (const std::exception& e) {
@@ -369,6 +372,43 @@ namespace nasral::rendering
              .setImageInfo(image_info);
 
         vk_device_->logical_device().updateDescriptorSets({write}, {});
+    }
+
+    uint32_t Renderer::obj_id_acquire_unsafe(){
+        if (object_ids_.empty()){
+            throw std::runtime_error("No more object IDs available");
+        }
+
+        const uint32_t id = object_ids_.back();
+        object_ids_.pop_back();
+        return id;
+    }
+
+    uint32_t Renderer::obj_id_acquire(){
+        std::lock_guard lock(obj_ids_mutex_);
+        return obj_id_acquire_unsafe();
+    }
+
+    void Renderer::obj_id_release_unsafe(const uint32_t id){
+        assert(id < MAX_OBJECTS);
+        object_ids_.push_back(id);
+    }
+
+    void Renderer::obj_id_release(const uint32_t id){
+        std::lock_guard lock(obj_ids_mutex_);
+        obj_id_release_unsafe(id);
+    }
+
+    void Renderer::obj_ids_reset_unsafe(){
+        object_ids_.clear();
+        for (uint32_t i = MAX_OBJECTS; i > 0; --i){
+            object_ids_.push_back(i - 1);
+        }
+    }
+
+    void Renderer::obj_ids_reset(){
+        std::lock_guard lock(obj_ids_mutex_);
+        obj_ids_reset_unsafe();
     }
 
     vk::Extent2D Renderer::get_rendering_resolution() const{
@@ -1073,6 +1113,14 @@ namespace nasral::rendering
             vk_render_finished_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
             // Барьеры, которые показывают, что буфер был выполнен и готов к использованию
             vk_frame_fence_.emplace_back(ld.createFenceUnique(vk::FenceCreateInfo{vk::FenceCreateFlagBits::eSignaled}));
+        }
+    }
+
+    void Renderer::init_index_pools(){
+        object_ids_.reserve(MAX_OBJECTS);
+
+        for (uint32_t i = MAX_OBJECTS; i > 0; --i){
+            object_ids_.emplace_back(i - 1);
         }
     }
 

@@ -10,7 +10,9 @@ namespace nasral::resources
         , loader_(std::move(loader))
     {}
 
-    Texture::~Texture() = default;
+    Texture::~Texture(){
+        logger()->info("Texture resource destroyed (" + std::string(path_.data()) + ")");
+    }
 
     void Texture::load() noexcept{
         assert(loader_ != nullptr);
@@ -135,6 +137,8 @@ namespace nasral::resources
         }
 
         status_ = Status::eLoaded;
+        err_code_ = ErrorCode::eNoError;
+        logger()->info("Texture resource loaded (" + std::string(path_.data()) + ")");
     }
 
     rendering::Handles::Texture Texture::render_handles() const{
@@ -144,14 +148,14 @@ namespace nasral::resources
         };
     }
 
-    vk::Format Texture::get_vk_format(const uint32_t channels, const uint32_t channel_depth){
+    vk::Format Texture::get_vk_format(const uint32_t channels, const uint32_t channel_depth, const bool srgb){
         // Байт (8 бит) на канал
         if (channel_depth == 1) {
             switch (channels) {
-            case 1: return vk::Format::eR8Unorm;
-            case 2: return vk::Format::eR8G8Unorm;
-            case 3: return vk::Format::eR8G8B8Unorm;
-            case 4: return vk::Format::eR8G8B8A8Unorm;
+            case 1: return srgb ? vk::Format::eR8Srgb : vk::Format::eR8Unorm;
+            case 2: return srgb ? vk::Format::eR8G8Srgb : vk::Format::eR8G8Unorm;
+            case 3: return srgb ? vk::Format::eR8G8B8Srgb : vk::Format::eR8G8B8Unorm;
+            case 4: return srgb ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Unorm;
             default: return vk::Format::eUndefined;
             }
         }

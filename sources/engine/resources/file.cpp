@@ -13,6 +13,7 @@ namespace nasral::resources
         if (file_.is_open()){
             file_.close();
         }
+        logger()->info("File resource destroyed (" + std::string(path_.data()) + ")");
     }
 
     void File::load() noexcept{
@@ -26,6 +27,8 @@ namespace nasral::resources
             return;
         }
         status_ = Status::eLoaded;
+        err_code_ = ErrorCode::eNoError;
+        logger()->info("File resource loaded (" + std::string(path_.data()) + ")");
     }
 
     bool File::read(void* buffer, const size_t size){

@@ -6,6 +6,14 @@
 
 namespace nasral::resources
 {
+    Ref::Ref()
+        : type_(Type::eFile)
+        , resource_index_(std::nullopt)
+        , is_requested_(false)
+        , is_handled_(false)
+        , on_ready_(nullptr)
+    {}
+
     Ref::Ref(ResourceManager* manager, const Type type, const std::string& path)
         : type_(type)
         , resource_index_(std::nullopt)
@@ -76,14 +84,14 @@ namespace nasral::resources
         path_.assign(path);
     }
 
-    void Ref::set_callback(const std::function<void(IResource*)>& callback){
+    void Ref::set_callback(std::function<void(IResource*)> callback){
         if (is_requested_) {
             const auto msg = "Attempt to set callback for already requested resource (" + std::string(path_.data()) + ")";
             manager_->logger()->warning(msg);
             return;
         }
 
-        on_ready_ = callback;
+        on_ready_ = std::move(callback);
     }
 
     const IResource* Ref::resource() const{

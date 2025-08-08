@@ -12,7 +12,9 @@ namespace nasral::resources
         , index_count_(0)
     {}
 
-    Mesh::~Mesh() = default;
+    Mesh::~Mesh(){
+        logger()->info("Mesh resource destroyed (" + std::string(path_.data()) + ")");
+    }
 
     void Mesh::load() noexcept{
         assert(loader_ != nullptr);
@@ -104,6 +106,8 @@ namespace nasral::resources
         }
 
         status_ = Status::eLoaded;
+        err_code_ = ErrorCode::eNoError;
+        logger()->info("Mesh resource loaded (" + std::string(path_.data()) + ")");
     }
 
     rendering::Handles::Mesh Mesh::render_handles() const{

@@ -1,0 +1,6 @@
+<Material type="Textured">
+    <Shaders>
+        <Shader stage="vertex" path="materials/textured/shader.vert.spv"/>
+        <Shader stage="fragment" path="materials/textured/shader.frag.spv"/>
+    </Shaders>
+</Material>

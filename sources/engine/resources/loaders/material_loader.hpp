@@ -20,6 +20,8 @@ namespace nasral::resources
             }
 
             Material::Data data = {};
+            data.type_name = doc.child("Material").attribute("type").as_string("Dummy");
+
             for (auto shader_info : shaders_conf.children("Shader")){
                 const std::string shader_stage = shader_info.attribute("stage").as_string();
                 const std::string shader_path = shader_info.attribute("path").as_string();

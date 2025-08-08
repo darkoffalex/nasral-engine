@@ -1,0 +1,6 @@
+<Material type="VertexColored">
+    <Shaders>
+        <Shader stage="vertex" path="materials/vertex-colored/shader.vert.spv"/>
+        <Shader stage="fragment" path="materials/vertex-colored/shader.frag.spv"/>
+    </Shaders>
+</Material>

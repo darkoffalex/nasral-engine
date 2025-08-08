@@ -1,0 +1,6 @@
+<Material type="Dummy">
+    <Shaders>
+        <Shader stage="vertex" path="materials/dummy/shader.vert.spv"/>
+        <Shader stage="fragment" path="materials/dummy/shader.frag.spv"/>
+    </Shaders>
+</Material>

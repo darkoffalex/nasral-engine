@@ -39,6 +39,13 @@ namespace nasral::rendering
         void update_obj_ubo(uint32_t index, const ObjectPbrMatUniforms& uniforms) const;
         void update_obj_tex(uint32_t index, const Handles::Texture& handles, const TextureType& t_type, const TextureSamplerType& s_type);
 
+        [[nodiscard]] uint32_t obj_id_acquire_unsafe();
+        [[nodiscard]] uint32_t obj_id_acquire();
+        void obj_id_release_unsafe(uint32_t id);
+        void obj_id_release(uint32_t id);
+        void obj_ids_reset_unsafe();
+        void obj_ids_reset();
+
         [[nodiscard]] bool is_rendering() const { return is_rendering_; }
         [[nodiscard]] size_t current_frame() const { return current_frame_; }
         [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }
@@ -80,6 +87,7 @@ namespace nasral::rendering
         void init_vk_uniforms();
         void init_vk_command_buffers();
         void init_vk_sync_objects();
+        void init_index_pools();
         void refresh_vk_surface();
 
         template<typename T>
@@ -136,5 +144,9 @@ namespace nasral::rendering
         std::vector<vk::UniqueSemaphore> vk_render_available_semaphore_;
         std::vector<vk::UniqueSemaphore> vk_render_finished_semaphore_;
         std::vector<vk::UniqueFence> vk_frame_fence_;
+
+        // Индексы объектов
+        std::vector<uint32_t> object_ids_;
+        std::mutex obj_ids_mutex_;
     };
 }

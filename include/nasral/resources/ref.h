@@ -10,15 +10,18 @@ namespace nasral::resources
     {
     public:
         friend class ResourceManager;
+        Ref();
         Ref(ResourceManager* manager, Type type, const std::string& path);
         Ref(const Ref& other);
+        Ref(Ref&& other) = default;
         Ref& operator=(const Ref& other);
+        Ref& operator=(Ref&& other) = default;
         ~Ref();
 
         void request();
         void release();
         void set_path(const std::string& path);
-        void set_callback(const std::function<void(IResource*)>& callback);
+        void set_callback(std::function<void(IResource*)> callback);
 
         [[nodiscard]] const IResource* resource() const;
 

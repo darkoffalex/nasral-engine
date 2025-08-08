@@ -45,12 +45,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // Ресурсы
             config.resources.content_dir = "../../content/";
             config.resources.initial_resources = {
-                { nasral::resources::Type::eShader, "materials/triangle/shader.vert.spv"},
-                { nasral::resources::Type::eShader, "materials/triangle/shader.frag.spv"},
-                { nasral::resources::Type::eMaterial, "materials/triangle/material.xml"},
-                { nasral::resources::Type::eShader, "materials/uniforms/shader.vert.spv"},
-                { nasral::resources::Type::eShader, "materials/uniforms/shader.frag.spv"},
-                { nasral::resources::Type::eMaterial, "materials/uniforms/material.xml"},
+                { nasral::resources::Type::eShader, "materials/dummy/shader.vert.spv"},
+                { nasral::resources::Type::eShader, "materials/dummy/shader.frag.spv"},
+                { nasral::resources::Type::eMaterial, "materials/dummy/material.xml"},
+
+                { nasral::resources::Type::eShader, "materials/textured/shader.vert.spv"},
+                { nasral::resources::Type::eShader, "materials/textured/shader.frag.spv"},
+                { nasral::resources::Type::eMaterial, "materials/textured/material.xml"},
+
+                { nasral::resources::Type::eShader, "materials/vertex-colored/shader.vert.spv"},
+                { nasral::resources::Type::eShader, "materials/vertex-colored/shader.frag.spv"},
+                { nasral::resources::Type::eMaterial, "materials/vertex-colored/material.xml"},
+
                 { nasral::resources::Type::eMesh, "meshes/quad/quad.obj"},
                 { nasral::resources::Type::eTexture, "textures/tiles_diff.png" },
                 { nasral::resources::Type::eTexture, "textures/tiles_nor_gl.png" }

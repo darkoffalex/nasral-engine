@@ -59,7 +59,7 @@ namespace nasral
 
             // Обновление узлов сцены
             for (auto& node : test_scene_nodes_){
-                node.update(renderer_);
+                node.update();
             }
 
             // Обновить данные камеры
@@ -70,7 +70,7 @@ namespace nasral
 
             // Рендеринг объектов сцены
             for (auto& node : test_scene_nodes_){
-                node.render(renderer_);
+                node.render();
             }
 
             // Конец кадра
@@ -125,7 +125,7 @@ namespace nasral
         // Объекты сцены
         test_scene_nodes_.reserve(2);
         for (size_t i = 0; i < 2; ++i){
-            test_scene_nodes_.emplace_back(this, to<uint32_t>(i));
+            test_scene_nodes_.emplace_back(this, renderer_->obj_id_acquire());
         }
 
         // Сдвинуть влево и право
@@ -142,7 +142,7 @@ namespace nasral
     Engine::TestNode::TestNode(const Engine* engine, const uint32_t index)
         : engine_(engine)
         , obj_index_(index)
-        , material_ref_(engine->resource_manager()->make_ref(resources::Type::eMaterial, "materials/uniforms/material.xml"))
+        , material_ref_(engine->resource_manager()->make_ref(resources::Type::eMaterial, "materials/textured/material.xml"))
         , mesh_ref_(engine->resource_manager()->make_ref(resources::Type::eMesh, "meshes/quad/quad.obj"))
         , texture_ref_(engine->resource_manager()->make_ref(resources::Type::eTexture, "textures/tiles_diff.png"))
     {
@@ -190,9 +190,9 @@ namespace nasral
         texture_ref_.release();
     }
 
-    void Engine::TestNode::update(const rendering::Renderer::Ptr& renderer) {
-
-        // Здесь идет логика обновления узла...
+    void Engine::TestNode::update() {
+        // Получить renderer движка
+        auto& renderer = engine_->renderer_;
 
         // Обновить трансформации в UBO
         if (pending_updates_ & eTransform){
@@ -227,10 +227,13 @@ namespace nasral
         }
     }
 
-    void Engine::TestNode::render(const rendering::Renderer::Ptr& renderer) const{
+    void Engine::TestNode::render() const{
         if (!mesh_handles_ || !material_handles_ || !texture_handles_){
             return;
         }
+
+        // Получить renderer движка
+        auto& renderer = engine_->renderer_;
 
         // Привязка материала
         renderer->cmd_bind_material(material_handles_);

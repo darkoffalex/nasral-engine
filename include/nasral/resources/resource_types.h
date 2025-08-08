@@ -22,6 +22,12 @@ namespace nasral::resources
         TOTAL
     };
 
+    inline const std::array<std::string, static_cast<size_t>(Status::TOTAL)> kStatusNames = {
+        "Unloaded",
+        "Loaded",
+        "Error"
+    };
+
     enum class ErrorCode : unsigned
     {
         eNoError = 0,
@@ -34,6 +40,16 @@ namespace nasral::resources
         TOTAL
     };
 
+    inline const std::array<std::string, static_cast<size_t>(ErrorCode::TOTAL)> kErrorNames = {
+        "No error",
+        "Loading error",
+        "Unknown resource",
+        "Cannot open file",
+        "Memory allocation failed",
+        "Vulkan error",
+        "Bad format"
+    };
+
     enum class Type : unsigned
     {
         eFile = 0,
@@ -42,6 +58,14 @@ namespace nasral::resources
         eShader,
         eMaterial,
         TOTAL
+    };
+
+    inline const std::array<std::string, static_cast<size_t>(Type::TOTAL)> kTypeNames = {
+        "File",
+        "Texture",
+        "Mesh",
+        "Shader",
+        "Material"
     };
 
     class ResourceManager;

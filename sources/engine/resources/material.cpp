@@ -7,6 +7,7 @@ namespace nasral::resources
 {
     Material::Material(ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader)
         : IResource(Type::eMaterial, manager, manager->engine()->logger())
+        , material_type_(rendering::MaterialType::eDummy)
         , path_(path)
         , loader_(std::move(loader))
         , vert_shader_res_(manager, Type::eShader, "")
@@ -15,7 +16,9 @@ namespace nasral::resources
         , vk_frag_shader_(std::nullopt)
     {}
 
-    Material::~Material() = default;
+    Material::~Material(){
+        logger()->info("Material resource destroyed (" + std::string(path_.data()) + ")");
+    }
 
     void Material::load() noexcept {
         assert(loader_ != nullptr);
@@ -34,6 +37,15 @@ namespace nasral::resources
                     logger()->error("Wrong file format: " + path);
                 }
                 return;
+            }
+
+            // Тип материала
+            const auto type = enum_of<rendering::MaterialType>(data->type_name, rendering::kMaterialTypeNames);
+            if (type.has_value()){
+                material_type_ = type.value();
+            }else{
+                logger()->warning("Wrong material type: " + data->type_name);
+                material_type_ = rendering::MaterialType::eDummy;
             }
 
             // Запрос под-ресурса вершинного shader'а
@@ -67,7 +79,7 @@ namespace nasral::resources
         }
     }
 
-    rendering::Handles::Material Material::render_handles() const{
+    rendering::Handles::Material Material::render_handles() const {
         return {vk_pipeline()};
     }
 
@@ -300,5 +312,6 @@ namespace nasral::resources
         // Ресурс готов
         status_ = Status::eLoaded;
         err_code_ = ErrorCode::eNoError;
+        logger()->info("Material resource loaded (" + std::string(path_.data()) + ")");
     }
 }

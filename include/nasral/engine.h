@@ -28,13 +28,15 @@ namespace nasral
             };
 
             friend class Engine;
+            friend class rendering::Renderer;
+
             explicit TestNode(const Engine* engine, uint32_t index);
             ~TestNode();
 
             void request_resources();
             void release_resources();
-            void update(const rendering::Renderer::Ptr& renderer);
-            void render(const rendering::Renderer::Ptr& renderer) const;
+            void update();
+            void render() const;
 
             void set_position(const glm::vec3& position);
             void set_rotation(const glm::vec3& rotation);

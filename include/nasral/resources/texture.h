@@ -36,7 +36,7 @@ namespace nasral::resources
         [[nodiscard]] rendering::Handles::Texture render_handles() const;
 
     private:
-        static vk::Format get_vk_format(uint32_t channels, uint32_t channel_depth);
+        static vk::Format get_vk_format(uint32_t channels, uint32_t channel_depth, bool srgb = false);
 
     protected:
         std::string_view path_;

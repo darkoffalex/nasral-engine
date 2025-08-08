@@ -7,7 +7,7 @@
 
 namespace nasral::resources
 {
-    class Material : public IResource
+    class Material final : public IResource
     {
     public:
         typedef std::unique_ptr<Material> Ptr;
@@ -16,7 +16,7 @@ namespace nasral::resources
         {
             std::string vert_shader_path;
             std::string frag_shader_path;
-            glm::vec4 color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            std::string type_name;
         };
 
         Material(ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader);
@@ -28,11 +28,14 @@ namespace nasral::resources
         void load() noexcept override;
         [[nodiscard]] const vk::Pipeline& vk_pipeline() const {return *vk_pipeline_;}
         [[nodiscard]] rendering::Handles::Material render_handles() const;
+        [[nodiscard]] rendering::MaterialType material_type() const {return material_type_;}
+        [[nodiscard]] const std::string_view& path() const {return path_;}
 
     private:
         void try_init_vk_objects();
 
     protected:
+        rendering::MaterialType material_type_;
         std::string_view path_;
         std::unique_ptr<Loader<Data>> loader_;
         Ref vert_shader_res_;

@@ -10,6 +10,7 @@
 #include <cassert>
 #include <memory>
 #include <vector>
+#include <array>
 #include <string>
 #include <string_view>
 #include <thread>
