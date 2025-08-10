@@ -19,9 +19,9 @@ namespace nasral::rendering
         // TODO: Задать текстуры по умолчанию
 
         for (size_t i = 0; i < tex_paths.size(); ++i){
-            texture_refs_[i] = static_cast<const resources::Ref&>(manager->make_ref(
+            texture_refs_[i] = manager->make_ref(
                 resources::Type::eTexture,
-                tex_paths[i]));
+                tex_paths[i]);
         }
 
         bind_callbacks();
@@ -56,10 +56,10 @@ namespace nasral::rendering
         release_resources();
 
         material_type_ = std::exchange(other.material_type_, MaterialType::eDummy);
-        material_ref_ = static_cast<const resources::Ref&>(resources::Ref(
+        material_ref_ = resources::Ref(
             other.material_ref_.manager().get(),
             other.material_ref_.type(),
-            std::string(other.material_ref_.path().data())));
+            std::string(other.material_ref_.path().data()));
 
         material_handles_ = {};
 

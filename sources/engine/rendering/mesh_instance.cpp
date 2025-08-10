@@ -38,10 +38,10 @@ namespace nasral::rendering
         unbind_callbacks();
         release_resources();
 
-        mesh_ref_ = static_cast<const resources::Ref&>(resources::Ref(
+        mesh_ref_ = resources::Ref(
             other.mesh_ref_.manager().get(),
             other.mesh_ref_.type(),
-            std::string(other.mesh_ref_.path().data())));
+            std::string(other.mesh_ref_.path().data()));
 
         mesh_handles_ = {};
 

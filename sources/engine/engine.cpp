@@ -85,7 +85,7 @@ namespace nasral
             if (!test_scene_nodes_.empty()){
                 renderer_->cmd_wait_for_frame();
                 test_scene_nodes_.clear();
-                resource_manager_->update(0.0f);
+                resource_manager_->finalize();
                 logger()->info("Test scene destroyed.");
             }
 

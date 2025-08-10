@@ -47,6 +47,7 @@ namespace nasral::resources
         void remove_all_unsafe();
         void await_all_tasks() const;
         void update(float delta);
+        void finalize();
 
         [[nodiscard]] size_t ref_count(const std::string& path) const;
         [[nodiscard]] Ref make_ref(Type type, const std::string& path) const;
@@ -60,6 +61,7 @@ namespace nasral::resources
         [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path) const noexcept;
         [[nodiscard]] IResource::Ptr make_resource(const Slot& slot);
         [[nodiscard]] const IResource* get_resource(size_t index) const;
+        [[nodiscard]] bool has_pending_unloads() const;
         [[nodiscard]] const logging::Logger* logger() const;
 
     protected:

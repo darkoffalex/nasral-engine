@@ -13,9 +13,7 @@ namespace nasral::resources
         Ref();
         Ref(ResourceManager* manager, Type type, const std::string& path);
         Ref(const Ref& other);
-        Ref(Ref&& other) = delete;
         Ref& operator=(const Ref& other);
-        Ref& operator=(Ref&& other) = delete;
         ~Ref();
 
         void request();

@@ -290,6 +290,16 @@ namespace nasral::resources
         return slots_[index].resource.get();
     }
 
+    bool ResourceManager::has_pending_unloads() const {
+        return std::any_of(active_slots_.begin(), active_slots_.end(),
+            [this](const size_t index){
+                const auto& slot = slots_[index];
+                return slot.refs.count.load(std::memory_order_acquire) == 0
+                    && static_cast<bool>(slot.resource);
+            });
+    }
+
+
     void ResourceManager::await_all_tasks() const{
         for (const size_t index : active_slots_){
             if (auto& slot = slots_[index]; slot.loading.task.valid()){
@@ -375,6 +385,13 @@ namespace nasral::resources
             if (slot.refs.count.load(std::memory_order_acquire) == 0 && slot.resource) {
                 slot.resource.reset();
             }
+        }
+    }
+
+    void ResourceManager::finalize(){
+        await_all_tasks();
+        while (has_pending_unloads()){
+            update(0.0f);
         }
     }
 }
