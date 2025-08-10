@@ -1,6 +1,8 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <nasral/rendering/rendering_types.h>
+#include <nasral/rendering/mesh_instance.h>
+#include <nasral/rendering/material_instance.h>
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/buffer.hpp>
 #include <vulkan/utils/uniform_layout.hpp>

@@ -18,19 +18,17 @@ namespace nasral
         class TestNode
         {
         public:
-            enum UpdateFlags : uint32_t
+            friend class rendering::Renderer;
+            struct SpatialSettings
             {
-                eNone       = 0,
-                eTransform  = 1 << 0,
-                eMaterial   = 1 << 1,
-                eTextures   = 1 << 2,
-                eAll = eTransform | eMaterial | eTextures
+                glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
+                glm::vec3 rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+                glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
+                bool updated = true;
             };
 
-            friend class Engine;
-            friend class rendering::Renderer;
-
-            explicit TestNode(const Engine* engine, uint32_t index);
+            TestNode() = default;
+            explicit TestNode(const Engine* engine);
             ~TestNode();
 
             void request_resources();
@@ -41,23 +39,19 @@ namespace nasral
             void set_position(const glm::vec3& position);
             void set_rotation(const glm::vec3& rotation);
             void set_scale(const glm::vec3& scale);
+            void set_material(rendering::MaterialInstance instance);
+            void set_mesh(rendering::MeshInstance instance);
 
-        protected:
+            [[nodiscard]] const SpatialSettings& spatial_settings() const {return spatial_settings_;}
+            [[nodiscard]] rendering::MeshInstance& mesh_instance() {return mesh_;}
+            [[nodiscard]] rendering::MaterialInstance& material_instance() {return material_;}
+
+        private:
             SafeHandle<const Engine> engine_;
             uint32_t obj_index_ = 0;
-
-            resources::Ref material_ref_;
-            resources::Ref mesh_ref_;
-            resources::Ref texture_ref_;
-
-            rendering::Handles::Mesh mesh_handles_;
-            rendering::Handles::Material material_handles_;
-            rendering::Handles::Texture texture_handles_;
-            
-            glm::vec3 position_ = glm::vec3(0.0f, 0.0f, 0.0f);
-            glm::vec3 rotation_ = glm::vec3(0.0f, 0.0f, 0.0f);
-            glm::vec3 scale_ = glm::vec3(1.0f, 1.0f, 1.0f);
-            UpdateFlags pending_updates_ = UpdateFlags::eAll;
+            rendering::MaterialInstance material_ = {};
+            rendering::MeshInstance mesh_ = {};
+            SpatialSettings spatial_settings_ = {};
         };
 
         Engine();

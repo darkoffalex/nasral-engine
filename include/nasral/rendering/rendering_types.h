@@ -1,4 +1,5 @@
 #pragma once
+#include <variant>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vulkan/vulkan.hpp>
@@ -180,10 +181,48 @@ namespace nasral::rendering
         glm::float32 emissive = 0.0f;
     };
 
+    using ObjectMatUniforms = std::variant<ObjectPhongMatUniforms, ObjectPbrMatUniforms>;
+
     static_assert(sizeof(CameraUniforms) % 16 == 0, "CameraUniforms size must be multiple of 16 bytes");
     static_assert(sizeof(ObjectTransformUniforms) % 16 == 0, "ObjectUniforms size must be multiple of 16 bytes");
     static_assert(sizeof(ObjectPhongMatUniforms) % 16 == 0, "ObjectPhongMaterialUniforms size must be multiple of 16 bytes");
     static_assert(sizeof(ObjectPbrMatUniforms) % 16 == 0, "ObjectPbrMatUniforms size must be multiple of 16 bytes");
+
+    class Instance
+    {
+    public:
+        Instance() = default;
+        ~Instance() = default;
+
+        template<typename MaskType>
+        void mark_changed(const MaskType& mask){
+            change_mask_ |= static_cast<uint32_t>(mask);
+        }
+
+        template<typename MaskType>
+        void unmark_changed(const MaskType& mask){
+            change_mask_ &= ~static_cast<uint32_t>(mask);
+        }
+
+        template<typename MaskType>
+        [[nodiscard]] bool check_changes(
+            const MaskType& mask,
+            const bool require_all = false,
+            const bool unmark = false)
+        {
+            bool result = false;
+            if(require_all){
+                result = (change_mask_ & static_cast<uint32_t>(mask)) == static_cast<uint32_t>(mask);
+            } else{
+                result = (change_mask_ & static_cast<uint32_t>(mask)) != 0;
+            }
+            if(unmark) unmark_changed(mask);
+            return result;
+        }
+
+    protected:
+        uint32_t change_mask_ = 0;
+    };
 
     class RenderingError final : public EngineError
     {

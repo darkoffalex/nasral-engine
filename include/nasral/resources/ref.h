@@ -13,9 +13,9 @@ namespace nasral::resources
         Ref();
         Ref(ResourceManager* manager, Type type, const std::string& path);
         Ref(const Ref& other);
-        Ref(Ref&& other) = default;
+        Ref(Ref&& other) = delete;
         Ref& operator=(const Ref& other);
-        Ref& operator=(Ref&& other) = default;
+        Ref& operator=(Ref&& other) = delete;
         ~Ref();
 
         void request();
@@ -30,6 +30,7 @@ namespace nasral::resources
         [[nodiscard]] const std::optional<size_t>& index() const { return resource_index_; }
         [[nodiscard]] bool is_requested() const { return is_requested_; }
         [[nodiscard]] bool is_handled() const { return is_handled_; }
+        [[nodiscard]] SafeHandle<ResourceManager> manager() const { return manager_; }
 
     protected:
         Type type_;

@@ -1,10 +1,6 @@
 #include "pch.h"
 #include <nasral/engine.h>
 
-#include "nasral/resources/material.h"
-#include "nasral/resources/mesh.h"
-#include "nasral/resources/texture.h"
-
 namespace nasral
 {
     Engine::Engine()= default;
@@ -125,135 +121,133 @@ namespace nasral
         // Объекты сцены
         test_scene_nodes_.reserve(2);
         for (size_t i = 0; i < 2; ++i){
-            test_scene_nodes_.emplace_back(this, renderer_->obj_id_acquire());
+            test_scene_nodes_.emplace_back(this);
         }
 
-        // Сдвинуть влево и право
+        // Задать ресурсы узлам
+        test_scene_nodes_[0].set_material(rendering::MaterialInstance(
+            resource_manager_.get(),
+            rendering::MaterialType::eTextured,
+            "materials/textured/material.xml",
+            {"textures/tiles_diff.png"}));
+
+        test_scene_nodes_[0].set_mesh(rendering::MeshInstance(
+            resource_manager_.get(), "meshes/quad/quad.obj"));
+
+        test_scene_nodes_[1].set_material(rendering::MaterialInstance(
+            resource_manager_.get(),
+            rendering::MaterialType::eVertexColored,
+            "materials/vertex-colored/material.xml"));
+
+        test_scene_nodes_[1].set_mesh(rendering::MeshInstance(
+            resource_manager_.get(), "meshes/quad/quad.obj"));
+
+        // Задать параметры (пространственные) узлам
         test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});
         test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
-        test_scene_nodes_[0].texture_ref_.set_path("textures/tiles_diff.png");
-        test_scene_nodes_[1].texture_ref_.set_path("textures/tiles_nor_gl.png");
 
-        // Запросить ресурсы
+        // Запросить ресурсы узлов
         test_scene_nodes_[0].request_resources();
         test_scene_nodes_[1].request_resources();
     }
 
-    Engine::TestNode::TestNode(const Engine* engine, const uint32_t index)
+    Engine::TestNode::TestNode(const Engine* engine)
         : engine_(engine)
-        , obj_index_(index)
-        , material_ref_(engine->resource_manager()->make_ref(resources::Type::eMaterial, "materials/textured/material.xml"))
-        , mesh_ref_(engine->resource_manager()->make_ref(resources::Type::eMesh, "meshes/quad/quad.obj"))
-        , texture_ref_(engine->resource_manager()->make_ref(resources::Type::eTexture, "textures/tiles_diff.png"))
-    {
-        material_ref_.set_callback([&](const resources::IResource* res){
-            if (res->status() == resources::Status::eLoaded){
-                auto* material = dynamic_cast<const resources::Material*>(res);
-                assert(material != nullptr);
-                material_handles_ = material->render_handles();
-            }
-        });
-
-        mesh_ref_.set_callback([&](const resources::IResource* res){
-            if (res->status() == resources::Status::eLoaded){
-                auto* mesh = dynamic_cast<const resources::Mesh*>(res);
-                assert(mesh != nullptr);
-                mesh_handles_ = mesh->render_handles();
-            }
-        });
-
-        texture_ref_.set_callback([&](const resources::IResource* res){
-            if (res->status() == resources::Status::eLoaded){
-                auto* texture = dynamic_cast<const resources::Texture*>(res);
-                assert(texture != nullptr);
-                texture_handles_ = texture->render_handles();
-            }
-        });
-    }
+        , obj_index_(engine->renderer_->obj_id_acquire())
+    {}
 
     Engine::TestNode::~TestNode(){
+        engine_->renderer_->obj_id_release(obj_index_);
         release_resources();
     }
 
     void Engine::TestNode::request_resources(){
-        material_ref_.request();
-        mesh_ref_.request();
-        texture_ref_.request();
+        material_.request_resources();
+        mesh_.request_resources();
     }
 
     void Engine::TestNode::release_resources(){
-        material_handles_ = {};
-        mesh_handles_ = {};
-
-        material_ref_.release();
-        mesh_ref_.release();
-        texture_ref_.release();
+        material_.release_resources();
+        mesh_.release_resources();
     }
 
-    void Engine::TestNode::update() {
-        // Получить renderer движка
+    void Engine::TestNode::update(){
         auto& renderer = engine_->renderer_;
 
-        // Обновить трансформации в UBO
-        if (pending_updates_ & eTransform){
+        // Если текстуры материала были обновлены
+        if (material_.check_changes(rendering::MaterialInstance::eTextureChanged, false, true)){
+            for (uint32_t i = 0; i < static_cast<uint32_t>(rendering::TextureType::TOTAL); ++i){
+                if (auto& th = material_.tex_render_handles(static_cast<rendering::TextureType>(i))){
+                    renderer->update_obj_tex(obj_index_
+                        , th
+                        , static_cast<rendering::TextureType>(i)
+                        , rendering::TextureSamplerType::eNearest);
+                }
+            }
+        }
+
+        // Если параметры материала были обновлены
+        if (material_.check_changes(rendering::MaterialInstance::eSettingsChanged, false, true)){
+            if (material_.settings().has_value()){
+                auto& settings = material_.settings().value();
+                std::visit([&](const auto& s){
+                    using T = std::decay_t<decltype(s)>;
+                    if constexpr (
+                        std::is_same_v<T, rendering::ObjectPhongMatUniforms> ||
+                        std::is_same_v<T, rendering::ObjectPbrMatUniforms>)
+                    {
+                        renderer->update_obj_ubo(obj_index_, s);
+                    }
+                }, settings);
+            }
+        }
+
+        // Если параметры узла были обновлены
+        if (spatial_settings_.updated){
             rendering::ObjectTransformUniforms uniforms{};
             auto& model = uniforms.model;
-            model = glm::translate(model, position_);
-            model = glm::rotate(model, glm::radians(rotation_.z), glm::vec3(0.0f, 0.0f, 1.0f));
-            model = glm::rotate(model, glm::radians(rotation_.y), glm::vec3(0.0f, 1.0f, 0.0f));
-            model = glm::rotate(model, glm::radians(rotation_.x), glm::vec3(1.0f, 0.0f, 0.0f));
-            model = glm::scale(model, scale_);
+            model = glm::translate(model, spatial_settings_.position);
+            model = glm::rotate(model, glm::radians(spatial_settings_.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, glm::radians(spatial_settings_.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(spatial_settings_.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
             renderer->update_obj_ubo(obj_index_, uniforms);
-            pending_updates_ = static_cast<UpdateFlags>(pending_updates_ & ~eTransform);
-        }
-
-        // Обновить материал в UBO
-        if (pending_updates_ & eMaterial){
-            rendering::ObjectPhongMatUniforms uniforms{};
-            uniforms.color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); // TODO: Обновление
-            renderer->update_obj_ubo(obj_index_, uniforms);
-            pending_updates_ = static_cast<UpdateFlags>(pending_updates_ & ~eMaterial);
-        }
-
-        if (pending_updates_ & eTextures){
-            if (texture_handles_){
-                renderer->update_obj_tex(
-                obj_index_,
-                texture_handles_,
-                rendering::TextureType::eAlbedoColor,
-                rendering::TextureSamplerType::eNearest);
-                pending_updates_ = static_cast<UpdateFlags>(pending_updates_ & ~eTextures);
-            }
+            spatial_settings_.updated = false;
         }
     }
 
     void Engine::TestNode::render() const{
-        if (!mesh_handles_ || !material_handles_ || !texture_handles_){
+        auto& renderer = engine_->renderer_;
+
+        if (!mesh_.mesh_render_handles()
+            || !material_.mat_render_handles())
+        {
             return;
         }
 
-        // Получить renderer движка
-        auto& renderer = engine_->renderer_;
-
-        // Привязка материала
-        renderer->cmd_bind_material(material_handles_);
-
-        // Рисование объекта
-        renderer->cmd_draw_mesh(mesh_handles_, obj_index_);
+        renderer->cmd_bind_material(material_.mat_render_handles());
+        renderer->cmd_draw_mesh(mesh_.mesh_render_handles(), obj_index_);
     }
 
     void Engine::TestNode::set_position(const glm::vec3& position){
-        position_ = position;
-        pending_updates_ = static_cast<UpdateFlags>(pending_updates_ | eTransform);
+        spatial_settings_.position = position;
+        spatial_settings_.updated = true;
     }
 
     void Engine::TestNode::set_rotation(const glm::vec3& rotation){
-        rotation_ = rotation;
-        pending_updates_ = static_cast<UpdateFlags>(pending_updates_ | eTransform);
+        spatial_settings_.rotation = rotation;
+        spatial_settings_.updated = true;
     }
 
     void Engine::TestNode::set_scale(const glm::vec3& scale){
-        scale_ = scale;
-        pending_updates_ = static_cast<UpdateFlags>(pending_updates_ | eTransform);
+        spatial_settings_.scale = scale;
+        spatial_settings_.updated = true;
+    }
+
+    void Engine::TestNode::set_material(rendering::MaterialInstance instance){
+        material_ = std::move(instance);
+    }
+
+    void Engine::TestNode::set_mesh(rendering::MeshInstance instance){
+        mesh_ = std::move(instance);
     }
 }

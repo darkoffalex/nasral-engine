@@ -12,7 +12,9 @@ namespace nasral::resources
         , is_requested_(false)
         , is_handled_(false)
         , on_ready_(nullptr)
-    {}
+    {
+        path_.assign("");
+    }
 
     Ref::Ref(ResourceManager* manager, const Type type, const std::string& path)
         : type_(type)
@@ -27,7 +29,7 @@ namespace nasral::resources
 
     Ref::Ref(const Ref& other)
         : type_(other.type_)
-        , resource_index_(other.resource_index_)
+        , resource_index_(std::nullopt)
         , is_requested_(false)
         , is_handled_(false)
         , manager_(other.manager_)
@@ -41,7 +43,8 @@ namespace nasral::resources
 
         release();
         type_ = other.type_;
-        resource_index_ = other.resource_index_;
+        path_ = other.path_;
+        resource_index_ = std::nullopt;
         is_requested_ = false;
         is_handled_ = false;
         manager_ = other.manager_;

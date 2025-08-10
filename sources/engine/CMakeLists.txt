@@ -22,6 +22,8 @@ add_library(Engine OBJECT
 
         # Рендеринг
         rendering/renderer.cpp
+        rendering/material_instance.cpp
+        rendering/mesh_instance.cpp
 )
 add_default_configurations(Engine demo_app)
 
