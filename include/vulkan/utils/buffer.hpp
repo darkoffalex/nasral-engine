@@ -157,6 +157,16 @@ namespace vk::utils
         }
 
         /**
+         * @brief Получить указатель на размеченную область памяти с учетом смещения
+         * @param offset Смещение
+         * @return Указатель на память
+         */
+        [[nodiscard]] void* mapped_ptr(const vk::DeviceSize offset = 0) const {
+            auto* ptr = static_cast<char*>(mapped_ptr_) + offset;
+            return ptr;
+        }
+
+        /**
          * @brief Снимает отображение (unmaps) части или всю область буфера.
          * @details После вызова этой функции данные, изменённые через `map()`, будут записаны в память устройства.
          */

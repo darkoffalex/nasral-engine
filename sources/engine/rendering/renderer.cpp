@@ -88,6 +88,8 @@ namespace nasral::rendering
         vk_ubo_objects_transforms_->map_unsafe();
         vk_ubo_objects_phong_mat_->map_unsafe();
         vk_ubo_objects_pbr_mat_->map_unsafe();
+        vk_ubo_light_sources_->map_unsafe();
+        vk_ubo_light_indices_->map_unsafe();
 
         // Текущий индекс кадра
         const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
@@ -172,6 +174,8 @@ namespace nasral::rendering
         vk_ubo_objects_transforms_->unmap_unsafe();
         vk_ubo_objects_phong_mat_->unmap_unsafe();
         vk_ubo_objects_pbr_mat_->unmap_unsafe();
+        vk_ubo_light_sources_->unmap_unsafe();
+        vk_ubo_light_indices_->unmap_unsafe();
 
         // Семафоры, ожидаемые для исполнения команд рендеринга
         std::array<vk::Semaphore, 1> wait_semaphores{
@@ -374,9 +378,16 @@ namespace nasral::rendering
         vk_device_->logical_device().updateDescriptorSets({write}, {});
     }
 
+    void Renderer::update_light_ubo(const uint32_t index, const LightUniforms &uniforms) const {
+        vk_ubo_light_sources_->update_mapped(
+            ubo_offset<LightUniforms>(index),
+            aligned_size<LightUniforms>(),
+            &uniforms);
+    }
+
     uint32_t Renderer::obj_id_acquire_unsafe(){
         if (object_ids_.empty()){
-            throw std::runtime_error("No more object IDs available");
+            throw RenderingError("No more object IDs available");
         }
 
         const uint32_t id = object_ids_.back();
@@ -409,6 +420,87 @@ namespace nasral::rendering
     void Renderer::obj_ids_reset(){
         std::lock_guard lock(obj_ids_mutex_);
         obj_ids_reset_unsafe();
+    }
+
+    uint32_t Renderer::light_id_acquire_unsafe() {
+        if (light_ids_.empty()) {
+            throw RenderingError("No more light IDs available");
+        }
+
+        const uint32_t id = light_ids_.back();
+        light_ids_.pop_back();
+        return id;
+    }
+
+    uint32_t Renderer::light_id_acquire() {
+        std::lock_guard lock(light_ids_mutex_);
+        return light_id_acquire_unsafe();
+    }
+
+    void Renderer::light_id_release_unsafe(const uint32_t id) {
+        assert(id < MAX_LIGHTS);
+        light_ids_.push_back(id);
+    }
+
+    void Renderer::light_id_release(const uint32_t id) {
+        std::lock_guard lock(obj_ids_mutex_);
+        light_id_release_unsafe(id);
+    }
+
+    void Renderer::light_ids_reset_unsafe() {
+        light_ids_.clear();
+        for (uint32_t i = MAX_LIGHTS; i > 0; --i) {
+            light_ids_.push_back(i - 1);
+        }
+    }
+
+    void Renderer::light_ids_reset() {
+        std::lock_guard lock(obj_ids_mutex_);
+        light_ids_reset_unsafe();
+    }
+
+    void Renderer::light_ids_activate_unsafe(const std::vector<uint32_t> &ids) {
+        assert(std::all_of(ids.begin(), ids.end(), [](const uint32_t id) { return id < MAX_LIGHTS; }));
+        assert(ids.size() <= MAX_LIGHTS);
+
+        auto& active = active_light_ids_;
+        for (const auto id : ids) {
+            if (std::find(active.begin(), active.end(), id) == active.end()) {
+                active.push_back(id);
+            }
+        }
+
+        auto* pids = static_cast<LightIndices*>(vk_ubo_light_indices_->mapped_ptr());
+        pids->count = static_cast<uint32_t>(ids.size());
+        std::fill_n(pids->indices, MAX_LIGHTS, 0);
+        std::copy(ids.begin(), ids.end(), pids->indices);
+    }
+
+    void Renderer::light_ids_activate(const std::vector<uint32_t> &ids) {
+        std::lock_guard lock(light_ids_mutex_);
+        light_ids_activate_unsafe(ids);
+    }
+
+    void Renderer::light_ids_deactivate_unsafe(const std::vector<uint32_t> &ids) {
+        assert(std::all_of(ids.begin(), ids.end(), [](const uint32_t id) { return id < MAX_LIGHTS; }));
+        assert(ids.size() <= MAX_LIGHTS);
+
+        auto& active = active_light_ids_;
+        for (const auto id : ids) {
+            if (auto it = std::find(active.begin(), active.end(), id); it != active.end()) {
+                active.erase(it);
+            }
+        }
+
+        auto* pids = static_cast<LightIndices*>(vk_ubo_light_indices_->mapped_ptr());
+        pids->count = static_cast<uint32_t>(ids.size());
+        std::fill_n(pids->indices, MAX_LIGHTS, 0);
+        std::copy(ids.begin(), ids.end(), pids->indices);
+    }
+
+    void Renderer::light_ids_deactivate(const std::vector<uint32_t> &ids) {
+        std::lock_guard lock(light_ids_mutex_);
+        light_ids_deactivate_unsafe(ids);
     }
 
     vk::Extent2D Renderer::get_rendering_resolution() const{
@@ -837,6 +929,26 @@ namespace nasral::rendering
                     },
                 },
                 1
+            },
+            // set = 3: Light sources
+            {
+                {
+                    // Источники света (параметры источников)
+                    {
+                        0,
+                        1,
+                        vk::DescriptorType::eUniformBuffer,
+                        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
+                    },
+                    // Индексы источников
+                    {
+                        1,
+                        1,
+                        vk::DescriptorType::eUniformBuffer,
+                        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
+                    }
+                },
+                1
             }
         };
 
@@ -983,6 +1095,8 @@ namespace nasral::rendering
         ul->allocate_sets(1,1).front().swap(vk_dset_objects_uniforms_);
         // Выделить дескрипторный набор для текстур объектов (по массиву дескрипторов на каждый вид текстур)
         ul->allocate_sets(2,1).front().swap(vk_dset_objects_textures_);
+        // Выделить дескрипторный набор для источников света
+        ul->allocate_sets(3,1).front().swap(vk_dset_light_sources_);
 
         // Выравнивание для uniform буферов
         const auto alignment = vk_device_->physical_device()
@@ -1017,6 +1131,20 @@ namespace nasral::rendering
             vk_ubo_objects_pbr_mat_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
                 size_align(sizeof(ObjectPbrMatUniforms), alignment) * MAX_OBJECTS,
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+            // Выделить uniform буфер для источников света
+            vk_ubo_light_sources_ = std::make_unique<vk::utils::Buffer>(
+                vk_device_,
+                size_align(sizeof(LightUniforms), alignment) * MAX_LIGHTS,
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+            // Выделить uniform буфер для индексов источников
+            vk_ubo_light_indices_ = std::make_unique<vk::utils::Buffer>(
+                vk_device_,
+                size_align(sizeof(LightIndices), alignment),
                 vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
@@ -1082,6 +1210,34 @@ namespace nasral::rendering
                     .setDescriptorCount(1)
                     .setBufferInfo(obj_pbr_mtls_buffer_info));
 
+            // Источники света (set = 3, binding = 0)
+            vk::DescriptorBufferInfo light_sources_buffer_info;
+            light_sources_buffer_info.setBuffer(vk_ubo_light_sources_->vk_buffer())
+                        .setOffset(0)
+                        .setRange(size_align(sizeof(LightUniforms), alignment) * MAX_LIGHTS);
+
+            writes.emplace_back(
+                vk::WriteDescriptorSet()
+                .setDstSet(vk_dset_light_sources_.get())
+                .setDstBinding(0)
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorCount(1)
+                .setBufferInfo(light_sources_buffer_info));
+
+            // Индексы источников света (set = 3, binding = 1)
+            vk::DescriptorBufferInfo light_indices_buffer_info;
+            light_indices_buffer_info.setBuffer(vk_ubo_light_indices_->vk_buffer())
+                    .setOffset(0)
+                    .setRange(size_align(sizeof(LightIndices), alignment));
+
+            writes.emplace_back(
+                vk::WriteDescriptorSet()
+                .setDstSet(vk_dset_light_sources_.get())
+                .setDstBinding(1)
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorCount(1)
+                .setBufferInfo(light_sources_buffer_info));
+
             vk_device_->logical_device().updateDescriptorSets(writes, {});
         }
     }
@@ -1118,9 +1274,15 @@ namespace nasral::rendering
 
     void Renderer::init_index_pools(){
         object_ids_.reserve(MAX_OBJECTS);
+        light_ids_.reserve(MAX_LIGHTS);
+        active_light_ids_.reserve(MAX_LIGHTS);
 
         for (uint32_t i = MAX_OBJECTS; i > 0; --i){
             object_ids_.emplace_back(i - 1);
+        }
+
+        for (uint32_t i = MAX_LIGHTS; i > 0; --i){
+            light_ids_.emplace_back(i - 1);
         }
     }
 

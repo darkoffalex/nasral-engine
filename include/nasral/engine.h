@@ -2,6 +2,8 @@
 #include <nasral/logging/logger.h>
 #include <nasral/resources/resource_manager.h>
 #include <nasral/rendering/renderer.h>
+#include <nasral/rendering/material_instance.h>
+#include <nasral/rendering/mesh_instance.h>
 
 namespace nasral
 {

@@ -1,8 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <nasral/rendering/rendering_types.h>
-#include <nasral/rendering/mesh_instance.h>
-#include <nasral/rendering/material_instance.h>
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/buffer.hpp>
 #include <vulkan/utils/uniform_layout.hpp>
@@ -40,6 +38,7 @@ namespace nasral::rendering
         void update_obj_ubo(uint32_t index, const ObjectPhongMatUniforms& uniforms) const;
         void update_obj_ubo(uint32_t index, const ObjectPbrMatUniforms& uniforms) const;
         void update_obj_tex(uint32_t index, const Handles::Texture& handles, const TextureType& t_type, const TextureSamplerType& s_type);
+        void update_light_ubo(uint32_t index, const LightUniforms& uniforms) const;
 
         [[nodiscard]] uint32_t obj_id_acquire_unsafe();
         [[nodiscard]] uint32_t obj_id_acquire();
@@ -47,6 +46,17 @@ namespace nasral::rendering
         void obj_id_release(uint32_t id);
         void obj_ids_reset_unsafe();
         void obj_ids_reset();
+
+        [[nodiscard]] uint32_t light_id_acquire_unsafe();
+        [[nodiscard]] uint32_t light_id_acquire();
+        void light_id_release_unsafe(uint32_t id);
+        void light_id_release(uint32_t id);
+        void light_ids_reset_unsafe();
+        void light_ids_reset();
+        void light_ids_activate_unsafe(const std::vector<uint32_t>& ids);
+        void light_ids_activate(const std::vector<uint32_t>& ids);
+        void light_ids_deactivate_unsafe(const std::vector<uint32_t>& ids);
+        void light_ids_deactivate(const std::vector<uint32_t>& ids);
 
         [[nodiscard]] bool is_rendering() const { return is_rendering_; }
         [[nodiscard]] size_t current_frame() const { return current_frame_; }
@@ -133,11 +143,14 @@ namespace nasral::rendering
         vk::UniqueDescriptorSet vk_dset_view_;
         vk::UniqueDescriptorSet vk_dset_objects_uniforms_;
         vk::UniqueDescriptorSet vk_dset_objects_textures_;
-        // Uniform буферы объектов (камера, трансформации, материалы)
+        vk::UniqueDescriptorSet vk_dset_light_sources_;
+        // Uniform буферы объектов (камера, трансформации, материалы, источники света)
         vk::utils::Buffer::Ptr vk_ubo_view_;
         vk::utils::Buffer::Ptr vk_ubo_objects_transforms_;
         vk::utils::Buffer::Ptr vk_ubo_objects_phong_mat_;
         vk::utils::Buffer::Ptr vk_ubo_objects_pbr_mat_;
+        vk::utils::Buffer::Ptr vk_ubo_light_sources_;
+        vk::utils::Buffer::Ptr vk_ubo_light_indices_;
 
         // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
         size_t current_frame_;
@@ -150,5 +163,10 @@ namespace nasral::rendering
         // Индексы объектов
         std::vector<uint32_t> object_ids_;
         std::mutex obj_ids_mutex_;
+
+        // Индексы источников света
+        std::vector<uint32_t> light_ids_;
+        std::vector<uint32_t> active_light_ids_;
+        std::mutex light_ids_mutex_;
     };
 }
