@@ -231,7 +231,7 @@ namespace nasral::rendering
         : EngineError(message) {}
     };
 
-    inline uint32_t size_align(const uint32_t size, const uint32_t alignment){
+    inline vk::DeviceSize size_align(const vk::DeviceSize size, const vk::DeviceSize alignment){
         return (size + alignment - 1) & ~(alignment - 1);
     }
 }

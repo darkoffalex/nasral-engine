@@ -398,7 +398,7 @@ namespace vk::utils
                 cmd_buffer->pipelineBarrier(
                     vk::PipelineStageFlagBits::eAllCommands,
                     vk::PipelineStageFlagBits::eTransfer,
-                    {}, 0, nullptr, 0, nullptr, barriers.size(), barriers.data());
+                    {}, 0, nullptr, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data());
 
 
                 // 3. Копирование данных из исходного изображения в целевое

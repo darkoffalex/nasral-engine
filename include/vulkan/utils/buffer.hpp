@@ -83,10 +83,13 @@ namespace vk::utils
             // Выделить память буфера
             try
             {
+                // Размер с учетом выравнивания
+                const auto aligned_size = ((size_ + mem_reqs.alignment - 1) / mem_reqs.alignment) * mem_reqs.alignment;
+
                 // Выделить память
                 vk_memory_ = vk_device_.allocateMemoryUnique(
                     vk::MemoryAllocateInfo()
-                    .setAllocationSize(size_)
+                    .setAllocationSize(aligned_size)
                     .setMemoryTypeIndex(mem_type_id.value())
                     .setPNext(usage & vk::BufferUsageFlagBits::eShaderDeviceAddress ? &allocate_flags : nullptr));
 
