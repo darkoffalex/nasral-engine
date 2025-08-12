@@ -53,6 +53,11 @@ namespace nasral
             // Начало кадра
             renderer_->cmd_begin_frame();
 
+            // Источники света
+            for (auto& light : test_light_sources_){
+                light.update();
+            }
+
             // Обновление узлов сцены
             for (auto& node : test_scene_nodes_){
                 node.update();
@@ -85,6 +90,7 @@ namespace nasral
             if (!test_scene_nodes_.empty()){
                 renderer_->cmd_wait_for_frame();
                 test_scene_nodes_.clear();
+                test_light_sources_.clear();
                 resource_manager_->finalize();
                 logger()->info("Test scene destroyed.");
             }
@@ -124,11 +130,17 @@ namespace nasral
             test_scene_nodes_.emplace_back(this);
         }
 
+        // Источники света
+        // test_light_sources_.reserve(2);
+        for (size_t i = 0; i < 2; ++i){
+            test_light_sources_.emplace_back(this);
+        }
+
         // Задать ресурсы узлам
         test_scene_nodes_[0].set_material(rendering::MaterialInstance(
             resource_manager_.get(),
             rendering::MaterialType::eTextured,
-            "materials/textured/material.xml",
+            "materials/phong/material.xml",
             {"textures/tiles_diff.png"}));
 
         test_scene_nodes_[0].set_mesh(rendering::MeshInstance(
@@ -149,6 +161,12 @@ namespace nasral
         // Запросить ресурсы узлов
         test_scene_nodes_[0].request_resources();
         test_scene_nodes_[1].request_resources();
+
+        // Задать параметры источников
+        test_light_sources_[0].set_position({-0.9f, 0.0f, 0.0f});
+        test_light_sources_[0].set_radius(0.1f);
+        test_light_sources_[1].set_position({-0.6f, 0.0f, 0.0f});
+        test_light_sources_[1].set_radius(0.2f);
     }
 
     Engine::TestNode::TestNode(const Engine* engine)
@@ -249,5 +267,62 @@ namespace nasral
 
     void Engine::TestNode::set_mesh(rendering::MeshInstance instance){
         mesh_ = std::move(instance);
+    }
+
+    Engine::LightSource::LightSource(const Engine* engine)
+        : engine_(engine)
+        , light_index_(engine->renderer_->light_id_acquire())
+        , active_(true)
+    {
+        state_updated_ = true;
+        settings_updated_ = true;
+    }
+
+    Engine::LightSource::~LightSource(){
+        engine_->renderer_->light_ids_deactivate({light_index_});
+        engine_->renderer_->light_id_release(light_index_);
+    }
+
+    void Engine::LightSource::update(){
+        auto& renderer = engine_->renderer_;
+
+        if (settings_updated_){
+            renderer->update_light_ubo(light_index_, light_uniforms_);
+            settings_updated_ = false;
+        }
+
+        if (state_updated_){
+            if (active_){
+                renderer->light_ids_activate({light_index_});
+            }else{
+                renderer->light_ids_deactivate({light_index_});
+            }
+            state_updated_ = false;
+        }
+    }
+
+    void Engine::LightSource::set_position(const glm::vec3& position){
+        light_uniforms_.position = glm::vec4(position, 1.0f);
+        settings_updated_ = true;
+    }
+
+    void Engine::LightSource::set_color(const glm::vec3& color){
+        light_uniforms_.color = glm::vec4(color, 1.0f);
+        settings_updated_ = true;
+    }
+
+    void Engine::LightSource::set_intensity(const float intensity){
+        light_uniforms_.intensity = intensity;
+        settings_updated_ = true;
+    }
+
+    void Engine::LightSource::set_radius(const float radius){
+        light_uniforms_.radius = radius;
+        settings_updated_ = true;
+    }
+
+    void Engine::LightSource::set_active(bool active){
+        active_ = active;
+        state_updated_ = true;
     }
 }

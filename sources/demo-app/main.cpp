@@ -57,6 +57,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
                 { nasral::resources::Type::eShader, "materials/vertex-colored/shader.frag.spv"},
                 { nasral::resources::Type::eMaterial, "materials/vertex-colored/material.xml"},
 
+                { nasral::resources::Type::eShader, "materials/phong/shader.vert.spv"},
+                { nasral::resources::Type::eShader, "materials/phong/shader.frag.spv"},
+                { nasral::resources::Type::eMaterial, "materials/phong/material.xml"},
+
                 { nasral::resources::Type::eMesh, "meshes/quad/quad.obj"},
                 { nasral::resources::Type::eTexture, "textures/tiles_diff.png" },
                 { nasral::resources::Type::eTexture, "textures/tiles_nor_gl.png" }

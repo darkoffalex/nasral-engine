@@ -83,7 +83,7 @@ namespace vk::utils
             // Выделить память буфера
             try
             {
-                // Размер с учетом выравнивания
+                // Размер, с учётом выравнивания
                 const auto aligned_size = ((size_ + mem_reqs.alignment - 1) / mem_reqs.alignment) * mem_reqs.alignment;
 
                 // Выделить память
@@ -164,6 +164,14 @@ namespace vk::utils
         [[nodiscard]] void* mapped_ptr(const vk::DeviceSize offset = 0) const {
             auto* ptr = static_cast<char*>(mapped_ptr_) + offset;
             return ptr;
+        }
+
+        /**
+         * @brief Проверить была ли размечена память буфера
+         * @return Состояние разметки
+         */
+        [[nodiscard]] bool is_mapped() const {
+            return mapped_ptr_ != nullptr;
         }
 
         /**

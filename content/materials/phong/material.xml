@@ -1,0 +1,6 @@
+<Material type="Phong">
+    <Shaders>
+        <Shader stage="vertex" path="materials/phong/shader.vert.spv"/>
+        <Shader stage="fragment" path="materials/phong/shader.frag.spv"/>
+    </Shaders>
+</Material>

@@ -282,7 +282,12 @@ namespace nasral::rendering
         cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
             pl,
             0,
-            {vk_dset_view_.get(), vk_dset_objects_uniforms_.get(), vk_dset_objects_textures_.get()},
+            {
+                vk_dset_view_.get(),
+                vk_dset_objects_uniforms_.get(),
+                vk_dset_objects_textures_.get(),
+                vk_dset_light_sources_.get()
+            },
             {});
     }
 
@@ -323,31 +328,35 @@ namespace nasral::rendering
     }
 
     void Renderer::update_cam_ubo(const uint32_t index, const CameraUniforms& uniforms) const{
+        assert(vk_ubo_view_->is_mapped());
         vk_ubo_view_->update_mapped(
             ubo_offset<CameraUniforms>(index),
-            aligned_size<CameraUniforms>(),
+            aligned_ubo_size<CameraUniforms>(),
             &uniforms);
     }
 
     void Renderer::update_obj_ubo(const uint32_t index, const ObjectTransformUniforms& uniforms) const{
+        assert(vk_ubo_objects_transforms_->is_mapped());
         vk_ubo_objects_transforms_->update_mapped(
-            ubo_offset<ObjectTransformUniforms>(index),
-            aligned_size<ObjectTransformUniforms>(),
+            sbo_offset<ObjectTransformUniforms>(index),
+            aligned_sbo_size<ObjectTransformUniforms>(),
             &uniforms);
     }
 
     void Renderer::update_obj_ubo(const uint32_t index, const ObjectPhongMatUniforms& uniforms) const{
+        assert(vk_ubo_objects_phong_mat_->is_mapped());
         vk_ubo_objects_phong_mat_->update_mapped(
-            ubo_offset<ObjectPhongMatUniforms>(index),
-            aligned_size<ObjectPhongMatUniforms>(),
+            sbo_offset<ObjectPhongMatUniforms>(index),
+            aligned_sbo_size<ObjectPhongMatUniforms>(),
             &uniforms
         );
     }
 
     void Renderer::update_obj_ubo(const uint32_t index, const ObjectPbrMatUniforms& uniforms) const{
+        assert(vk_ubo_objects_pbr_mat_->is_mapped());
         vk_ubo_objects_pbr_mat_->update_mapped(
-            ubo_offset<ObjectPbrMatUniforms>(index),
-            aligned_size<ObjectPbrMatUniforms>(),
+            sbo_offset<ObjectPbrMatUniforms>(index),
+            aligned_sbo_size<ObjectPbrMatUniforms>(),
             &uniforms
         );
     }
@@ -379,9 +388,10 @@ namespace nasral::rendering
     }
 
     void Renderer::update_light_ubo(const uint32_t index, const LightUniforms &uniforms) const {
+        assert(vk_ubo_light_sources_->is_mapped());
         vk_ubo_light_sources_->update_mapped(
-            ubo_offset<LightUniforms>(index),
-            aligned_size<LightUniforms>(),
+            sbo_offset<LightUniforms>(index),
+            aligned_sbo_size<LightUniforms>(),
             &uniforms);
     }
 
@@ -460,6 +470,7 @@ namespace nasral::rendering
     }
 
     void Renderer::light_ids_activate_unsafe(const std::vector<uint32_t> &ids) {
+        assert(vk_ubo_light_indices_->is_mapped());
         assert(std::all_of(ids.begin(), ids.end(), [](const uint32_t id) { return id < MAX_LIGHTS; }));
         assert(ids.size() <= MAX_LIGHTS);
 
@@ -471,9 +482,9 @@ namespace nasral::rendering
         }
 
         auto* pids = static_cast<LightIndices*>(vk_ubo_light_indices_->mapped_ptr());
-        pids->count = static_cast<uint32_t>(ids.size());
+        pids->count = static_cast<uint32_t>(active.size());
         std::fill_n(pids->indices, MAX_LIGHTS, 0);
-        std::copy(ids.begin(), ids.end(), pids->indices);
+        std::memcpy(pids->indices, active.data(), active.size() * sizeof(uint32_t));
     }
 
     void Renderer::light_ids_activate(const std::vector<uint32_t> &ids) {
@@ -482,6 +493,7 @@ namespace nasral::rendering
     }
 
     void Renderer::light_ids_deactivate_unsafe(const std::vector<uint32_t> &ids) {
+        if (!vk_ubo_light_indices_->is_mapped()) return;
         assert(std::all_of(ids.begin(), ids.end(), [](const uint32_t id) { return id < MAX_LIGHTS; }));
         assert(ids.size() <= MAX_LIGHTS);
 
@@ -493,9 +505,9 @@ namespace nasral::rendering
         }
 
         auto* pids = static_cast<LightIndices*>(vk_ubo_light_indices_->mapped_ptr());
-        pids->count = static_cast<uint32_t>(ids.size());
+        pids->count = static_cast<uint32_t>(active.size());
         std::fill_n(pids->indices, MAX_LIGHTS, 0);
-        std::copy(ids.begin(), ids.end(), pids->indices);
+        std::memcpy(pids->indices, active.data(), active.size() * sizeof(uint32_t));
     }
 
     void Renderer::light_ids_deactivate(const std::vector<uint32_t> &ids) {
@@ -876,11 +888,11 @@ namespace nasral::rendering
             {
                 {
                     // Матрицы трансформации всех объектов
-                    {0,1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex},
+                    {0,1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex},
                     // Параметры Phong материала для всех объектов
-                    {1,1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment},
+                    {1,1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment},
                     // Параметры PBR материала для всех объектов
-                    {2,1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eFragment},
+                    {2,1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eFragment},
                 },
                 1
             },
@@ -937,14 +949,14 @@ namespace nasral::rendering
                     {
                         0,
                         1,
-                        vk::DescriptorType::eUniformBuffer,
+                        vk::DescriptorType::eStorageBuffer,
                         vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
                     },
                     // Индексы источников
                     {
                         1,
                         1,
-                        vk::DescriptorType::eUniformBuffer,
+                        vk::DescriptorType::eStorageBuffer,
                         vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
                     }
                 },
@@ -1099,53 +1111,59 @@ namespace nasral::rendering
         ul->allocate_sets(3,1).front().swap(vk_dset_light_sources_);
 
         // Выравнивание для uniform буферов
-        const auto alignment = vk_device_->physical_device()
+        const auto ubo_alignment = vk_device_->physical_device()
             .getProperties()
             .limits
             .minUniformBufferOffsetAlignment;
+
+        // Выравнивание для storage буферов
+        const auto sbo_alignment = vk_device_->physical_device()
+            .getProperties()
+            .limits
+            .minStorageBufferOffsetAlignment;
 
         // Uniform буферы
         {
             // Выделить uniform буфер для камеры (вид, проекция)
             vk_ubo_view_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
-                size_align(sizeof(CameraUniforms), alignment),
+                size_align(sizeof(CameraUniforms), ubo_alignment),
                 vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для трансформаций объектов сцены
             vk_ubo_objects_transforms_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
-                size_align(sizeof(ObjectTransformUniforms), alignment) * MAX_OBJECTS,
-                vk::BufferUsageFlagBits::eUniformBuffer,
+                size_align(sizeof(ObjectTransformUniforms), sbo_alignment) * MAX_OBJECTS,
+                vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для параметров материала объектов сцены (Blin-Phong)
             vk_ubo_objects_phong_mat_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
-                size_align(sizeof(ObjectPhongMatUniforms), alignment) * MAX_OBJECTS,
-                vk::BufferUsageFlagBits::eUniformBuffer,
+                size_align(sizeof(ObjectPhongMatUniforms), sbo_alignment) * MAX_OBJECTS,
+                vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для параметров материала объектов сцены (PBR)
             vk_ubo_objects_pbr_mat_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
-                size_align(sizeof(ObjectPbrMatUniforms), alignment) * MAX_OBJECTS,
-                vk::BufferUsageFlagBits::eUniformBuffer,
+                size_align(sizeof(ObjectPbrMatUniforms), sbo_alignment) * MAX_OBJECTS,
+                vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для источников света
             vk_ubo_light_sources_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
-                size_align(sizeof(LightUniforms), alignment) * MAX_LIGHTS,
-                vk::BufferUsageFlagBits::eUniformBuffer,
+                size_align(sizeof(LightUniforms), sbo_alignment) * MAX_LIGHTS,
+                vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для индексов источников
             vk_ubo_light_indices_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
-                size_align(sizeof(LightIndices), alignment),
-                vk::BufferUsageFlagBits::eUniformBuffer,
+                size_align(sizeof(LightIndices), sbo_alignment),
+                vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
 
@@ -1157,7 +1175,7 @@ namespace nasral::rendering
             vk::DescriptorBufferInfo cam_buffer_info;
             cam_buffer_info.setBuffer(vk_ubo_view_->vk_buffer())
                            .setOffset(0)
-                           .setRange(size_align(sizeof(CameraUniforms), alignment));
+                           .setRange(size_align(sizeof(CameraUniforms), ubo_alignment));
 
             writes.emplace_back(
                 vk::WriteDescriptorSet()
@@ -1172,13 +1190,13 @@ namespace nasral::rendering
             vk::DescriptorBufferInfo obj_transforms_buffer_info;
             obj_transforms_buffer_info.setBuffer(vk_ubo_objects_transforms_->vk_buffer())
                            .setOffset(0)
-                           .setRange(size_align(sizeof(ObjectTransformUniforms), alignment) * MAX_OBJECTS);
+                           .setRange(size_align(sizeof(ObjectTransformUniforms), sbo_alignment) * MAX_OBJECTS);
 
             writes.emplace_back(
                 vk::WriteDescriptorSet()
                     .setDstSet(vk_dset_objects_uniforms_.get())
                     .setDstBinding(0)
-                    .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                    .setDescriptorType(vk::DescriptorType::eStorageBuffer)
                     .setDescriptorCount(1)
                     .setBufferInfo(obj_transforms_buffer_info));
 
@@ -1186,13 +1204,13 @@ namespace nasral::rendering
             vk::DescriptorBufferInfo obj_ph_mtls_buffer_info;
             obj_ph_mtls_buffer_info.setBuffer(vk_ubo_objects_phong_mat_->vk_buffer())
                            .setOffset(0)
-                           .setRange(size_align(sizeof(ObjectPhongMatUniforms), alignment) * MAX_OBJECTS);
+                           .setRange(size_align(sizeof(ObjectPhongMatUniforms), sbo_alignment) * MAX_OBJECTS);
 
             writes.emplace_back(
                 vk::WriteDescriptorSet()
                     .setDstSet(vk_dset_objects_uniforms_.get())
                     .setDstBinding(1)
-                    .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                    .setDescriptorType(vk::DescriptorType::eStorageBuffer)
                     .setDescriptorCount(1)
                     .setBufferInfo(obj_ph_mtls_buffer_info));
 
@@ -1200,13 +1218,13 @@ namespace nasral::rendering
             vk::DescriptorBufferInfo obj_pbr_mtls_buffer_info;
             obj_pbr_mtls_buffer_info.setBuffer(vk_ubo_objects_pbr_mat_->vk_buffer())
                            .setOffset(0)
-                           .setRange(size_align(sizeof(ObjectPbrMatUniforms), alignment) * MAX_OBJECTS);
+                           .setRange(size_align(sizeof(ObjectPbrMatUniforms), sbo_alignment) * MAX_OBJECTS);
 
             writes.emplace_back(
                 vk::WriteDescriptorSet()
                     .setDstSet(vk_dset_objects_uniforms_.get())
                     .setDstBinding(2)
-                    .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                    .setDescriptorType(vk::DescriptorType::eStorageBuffer)
                     .setDescriptorCount(1)
                     .setBufferInfo(obj_pbr_mtls_buffer_info));
 
@@ -1214,13 +1232,13 @@ namespace nasral::rendering
             vk::DescriptorBufferInfo light_sources_buffer_info;
             light_sources_buffer_info.setBuffer(vk_ubo_light_sources_->vk_buffer())
                         .setOffset(0)
-                        .setRange(size_align(sizeof(LightUniforms), alignment) * MAX_LIGHTS);
+                        .setRange(size_align(sizeof(LightUniforms), sbo_alignment) * MAX_LIGHTS);
 
             writes.emplace_back(
                 vk::WriteDescriptorSet()
                 .setDstSet(vk_dset_light_sources_.get())
                 .setDstBinding(0)
-                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
                 .setDescriptorCount(1)
                 .setBufferInfo(light_sources_buffer_info));
 
@@ -1228,15 +1246,15 @@ namespace nasral::rendering
             vk::DescriptorBufferInfo light_indices_buffer_info;
             light_indices_buffer_info.setBuffer(vk_ubo_light_indices_->vk_buffer())
                     .setOffset(0)
-                    .setRange(size_align(sizeof(LightIndices), alignment));
+                    .setRange(size_align(sizeof(LightIndices), sbo_alignment));
 
             writes.emplace_back(
                 vk::WriteDescriptorSet()
                 .setDstSet(vk_dset_light_sources_.get())
                 .setDstBinding(1)
-                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
                 .setDescriptorCount(1)
-                .setBufferInfo(light_sources_buffer_info));
+                .setBufferInfo(light_indices_buffer_info));
 
             vk_device_->logical_device().updateDescriptorSets(writes, {});
         }

@@ -7,7 +7,7 @@
 
 #define MAX_CAMERAS 1
 #define MAX_OBJECTS 1000
-#define MAX_LIGHTS 63
+#define MAX_LIGHTS 100
 
 namespace nasral::rendering
 {
@@ -158,6 +158,7 @@ namespace nasral::rendering
         glm::mat4 view = glm::identity<glm::mat4>();
         glm::mat4 projection = glm::identity<glm::mat4>();
     };
+    static_assert(sizeof(CameraUniforms) % 16 == 0, "CameraUniforms size must be multiple of 16 bytes");
 
     struct ObjectTransformUniforms
     {
@@ -169,7 +170,6 @@ namespace nasral::rendering
         glm::vec4 color = glm::vec4(1.0f);
         glm::float32 shininess = 32.0f;
         glm::float32 specular = 1.0f;
-        glm::vec2 _padding = {};
     };
 
     struct ObjectPbrMatUniforms
@@ -186,10 +186,9 @@ namespace nasral::rendering
         glm::vec4 position = glm::vec4(0.0f);
         glm::vec4 direction = glm::vec4(0.0f);
         glm::vec4 color = glm::vec4(1.0f);
-        glm::mat4 light_space = glm::identity<glm::mat4>();
+        glm::mat4 space = glm::identity<glm::mat4>();
         glm::float32 radius = 0.0f;
         glm::float32 intensity = 1.0f;
-        glm::vec2 _padding = {};
     };
 
     struct LightIndices
@@ -199,13 +198,6 @@ namespace nasral::rendering
     };
 
     using ObjectMatUniforms = std::variant<ObjectPhongMatUniforms, ObjectPbrMatUniforms>;
-
-    static_assert(sizeof(CameraUniforms) % 16 == 0, "CameraUniforms size must be multiple of 16 bytes");
-    static_assert(sizeof(ObjectTransformUniforms) % 16 == 0, "ObjectUniforms size must be multiple of 16 bytes");
-    static_assert(sizeof(ObjectPhongMatUniforms) % 16 == 0, "ObjectPhongMaterialUniforms size must be multiple of 16 bytes");
-    static_assert(sizeof(ObjectPbrMatUniforms) % 16 == 0, "ObjectPbrMatUniforms size must be multiple of 16 bytes");
-    static_assert(sizeof(LightUniforms) % 16 == 0, "LightUniforms size must be multiple of 16 bytes");
-    static_assert(sizeof(LightIndices) % 16 == 0, "LightIndices size must be multiple of 16 bytes");
 
     class Instance
     {

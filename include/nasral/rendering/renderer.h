@@ -103,7 +103,7 @@ namespace nasral::rendering
         void refresh_vk_surface();
 
         template<typename T>
-        [[nodiscard]] vk::DeviceSize aligned_size() const{
+        [[nodiscard]] vk::DeviceSize aligned_ubo_size() const{
             assert(vk_device_);
             auto& d = vk_device_->physical_device();
             static const auto alignment = d.getProperties().limits.minUniformBufferOffsetAlignment;
@@ -111,10 +111,23 @@ namespace nasral::rendering
         }
 
         template<typename T>
+        [[nodiscard]] vk::DeviceSize aligned_sbo_size() const{
+            assert(vk_device_);
+            auto& d = vk_device_->physical_device();
+            static const auto alignment = d.getProperties().limits.minStorageBufferOffsetAlignment;
+            return size_align(sizeof(T), alignment);
+        }
+
+        template<typename T>
         [[nodiscard]] vk::DeviceSize ubo_offset(const uint32_t index) const{
             assert(vk_device_);
-            const auto offset = aligned_size<T>() * index;
-            return offset;
+            return aligned_ubo_size<T>() * index;
+        }
+
+        template<typename T>
+        [[nodiscard]] vk::DeviceSize sbo_offset(const uint32_t index) const{
+            assert(vk_device_);
+            return aligned_sbo_size<T>() * index;
         }
 
     protected:

@@ -56,6 +56,32 @@ namespace nasral
             SpatialSettings spatial_settings_ = {};
         };
 
+        class LightSource
+        {
+        public:
+            friend class rendering::Renderer;
+
+            LightSource() = default;
+            explicit LightSource(const Engine* engine);
+            ~LightSource();
+
+            void update();
+
+            void set_position(const glm::vec3& position);
+            void set_color(const glm::vec3& color);
+            void set_intensity(float intensity);
+            void set_radius(float radius);
+            void set_active(bool active);
+
+        private:
+            SafeHandle<const Engine> engine_;
+            uint32_t light_index_ = 0;
+            rendering::LightUniforms light_uniforms_ = {};
+            bool settings_updated_ = false;
+            bool state_updated_ = false;
+            bool active_ = false;
+        };
+
         Engine();
         ~Engine();
 
@@ -89,6 +115,7 @@ namespace nasral
 
         // Только для тестирования
         std::vector<TestNode> test_scene_nodes_;
+        std::vector<LightSource> test_light_sources_;
         rendering::CameraUniforms camera_uniforms_;
     };
 }
