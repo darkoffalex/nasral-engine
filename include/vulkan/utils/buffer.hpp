@@ -241,6 +241,12 @@ namespace vk::utils
                 {fence.get()},
                 true,
                 std::numeric_limits<uint64_t>::max());
+
+            // Критическая секция (возможен многопоточный доступ к пулу)
+            {
+                std::lock_guard lock(queue_mutex);
+                cmd_buffer.reset();
+            }
         }
 
         /**

@@ -16,6 +16,7 @@ namespace nasral::resources
         {
             std::string vert_shader_path;
             std::string frag_shader_path;
+            std::string geom_shader_path;
             std::string type_name;
         };
 
@@ -40,8 +41,10 @@ namespace nasral::resources
         std::unique_ptr<Loader<Data>> loader_;
         Ref vert_shader_res_;
         Ref frag_shader_res_;
+        Ref geom_shader_res_;
         std::optional<vk::ShaderModule> vk_vert_shader_;
         std::optional<vk::ShaderModule> vk_frag_shader_;
+        std::optional<vk::ShaderModule> vk_geom_shader_;
         vk::UniquePipeline vk_pipeline_;
     };
 }

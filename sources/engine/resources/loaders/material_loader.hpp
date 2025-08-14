@@ -30,6 +30,8 @@ namespace nasral::resources
                     data.vert_shader_path = shader_path;
                 }else if (shader_stage == "fragment"){
                     data.frag_shader_path = shader_path;
+                }else if (shader_stage == "geometry"){
+                    data.geom_shader_path = shader_path;
                 }
             }
 

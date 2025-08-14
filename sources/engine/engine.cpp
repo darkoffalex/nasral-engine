@@ -121,52 +121,75 @@ namespace nasral
     {
         // Камера (пока статична)
         const auto aspect = renderer_->get_rendering_aspect();
-        camera_uniforms_.view = glm::identity<glm::mat4>();
-        camera_uniforms_.projection = glm::ortho(-aspect, aspect, -1.0f, 1.0f, -1.0f, 1.0f);
+        camera_uniforms_.position = glm::vec4(0.0f, 0.0f, 2.0f, 1.0f);
+        camera_uniforms_.view = glm::translate(glm::mat4(1.0f), -make_vec3(camera_uniforms_.position));
+        camera_uniforms_.projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
-        // Объекты сцены
-        test_scene_nodes_.reserve(2);
-        for (size_t i = 0; i < 2; ++i){
-            test_scene_nodes_.emplace_back(this);
+        // Узлы сцены
+        {
+            // Добавить объекты
+            test_scene_nodes_.reserve(2);
+            for (size_t i = 0; i < 2; ++i){
+                test_scene_nodes_.emplace_back(this);
+
+                // Задать материал узлу
+                test_scene_nodes_[i].set_material(rendering::MaterialInstance(
+                    resource_manager_.get(),
+                    rendering::MaterialType::ePhong,
+                    "materials/phong/material.xml",
+                    {
+                        "textures/tiles_diff.png",
+                        "textures/tiles_nor_gl.png",
+                        "textures/tiles_rough.png"
+                    }));
+
+                // Задать параметры материала
+                test_scene_nodes_[i].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
+                    glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+                    glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+                    64.0f,
+                    1.0f
+                });
+
+                // Задать меш узлу
+                auto quad_res_name = name_of(resources::BuiltinResources::eQuadMesh, resources::kBuiltinResources);
+                test_scene_nodes_[i].set_mesh(rendering::MeshInstance(
+                    resource_manager_.get(),
+                    quad_res_name));
+            }
+
+            test_scene_nodes_[1].material_instance().set_texture(
+                rendering::TextureType::eAlbedoColor,
+                name_of(resources::BuiltinResources::eWhitePixel, resources::kBuiltinResources));
+
+            // Задать параметры узла
+            test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});
+            test_scene_nodes_[0].set_rotation({-15.0f, 0.0f, 0.0f});
+
+            test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
+            test_scene_nodes_[1].set_rotation({-15.0f, 0.0f, 0.0f});
+
+            // Запросить ресурсы
+            test_scene_nodes_[0].request_resources();
+            test_scene_nodes_[1].request_resources();
         }
 
-        // Источники света
-        // test_light_sources_.reserve(2);
-        for (size_t i = 0; i < 2; ++i){
-            test_light_sources_.emplace_back(this);
+        // Освещение
+        {
+            // Добавить источники света
+            for (size_t i = 0; i < 2; ++i){
+                test_light_sources_.emplace_back(this);
+            }
+
+            // Задать параметры источника
+            test_light_sources_[0].set_position({-0.6f, 0.4f, 0.3f});
+            test_light_sources_[0].set_color({1.0f, 1.0f, 1.0f});
+            test_light_sources_[0].set_intensity(1.5f);
+
+            test_light_sources_[1].set_position({0.6f, 0.4f, 0.3f});
+            test_light_sources_[1].set_color({1.0f, 1.0f, 1.0f});
+            test_light_sources_[1].set_intensity(1.5f);
         }
-
-        // Задать ресурсы узлам
-        test_scene_nodes_[0].set_material(rendering::MaterialInstance(
-            resource_manager_.get(),
-            rendering::MaterialType::eTextured,
-            "materials/phong/material.xml",
-            {"textures/tiles_diff.png"}));
-
-        test_scene_nodes_[0].set_mesh(rendering::MeshInstance(
-            resource_manager_.get(), "meshes/quad/quad.obj"));
-
-        test_scene_nodes_[1].set_material(rendering::MaterialInstance(
-            resource_manager_.get(),
-            rendering::MaterialType::eVertexColored,
-            "materials/vertex-colored/material.xml"));
-
-        test_scene_nodes_[1].set_mesh(rendering::MeshInstance(
-            resource_manager_.get(), "meshes/quad/quad.obj"));
-
-        // Задать параметры (пространственные) узлам
-        test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});
-        test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
-
-        // Запросить ресурсы узлов
-        test_scene_nodes_[0].request_resources();
-        test_scene_nodes_[1].request_resources();
-
-        // Задать параметры источников
-        test_light_sources_[0].set_position({-0.9f, 0.0f, 0.0f});
-        test_light_sources_[0].set_radius(0.1f);
-        test_light_sources_[1].set_position({-0.6f, 0.0f, 0.0f});
-        test_light_sources_[1].set_radius(0.2f);
     }
 
     Engine::TestNode::TestNode(const Engine* engine)
@@ -321,7 +344,7 @@ namespace nasral
         settings_updated_ = true;
     }
 
-    void Engine::LightSource::set_active(bool active){
+    void Engine::LightSource::set_active(const bool active){
         active_ = active;
         state_updated_ = true;
     }

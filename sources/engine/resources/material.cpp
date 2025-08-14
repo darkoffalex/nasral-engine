@@ -12,6 +12,7 @@ namespace nasral::resources
         , loader_(std::move(loader))
         , vert_shader_res_(manager, Type::eShader, "")
         , frag_shader_res_(manager, Type::eShader, "")
+        , geom_shader_res_(manager, Type::eShader, "")
         , vk_vert_shader_(std::nullopt)
         , vk_frag_shader_(std::nullopt)
     {}
@@ -60,6 +61,7 @@ namespace nasral::resources
             });
             vert_shader_res_.request();
 
+
             // Запрос под-ресурса фрагментного shader'а
             // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_objects()
             frag_shader_res_.set_path(data->frag_shader_path);
@@ -71,6 +73,21 @@ namespace nasral::resources
                 }
             });
             frag_shader_res_.request();
+
+
+            // Опционально - запрос под-ресурсы геометрического shader'а
+            // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_objects()
+            if (!data->geom_shader_path.empty()){
+                geom_shader_res_.set_path(data->geom_shader_path);
+                geom_shader_res_.set_callback([this](IResource* resource){
+                    const auto* g_shader = dynamic_cast<Shader*>(resource);
+                    if (g_shader && g_shader->status() == Status::eLoaded){
+                        vk_geom_shader_ = g_shader->vk_shader_module();
+                        try_init_vk_objects();
+                    }
+                });
+                geom_shader_res_.request();
+            }
         }
         catch([[maybe_unused]] std::exception& e){
             status_ = Status::eError;
@@ -85,15 +102,19 @@ namespace nasral::resources
 
     void Material::try_init_vk_objects(){
         // Если не все обработчики были вызваны - выход
-        if (!vert_shader_res_.is_handled() || !frag_shader_res_.is_handled()){
+        // Геометрический шейдер опционален (проверяем, если был запрос)
+        if (!vert_shader_res_.is_handled()
+            || !frag_shader_res_.is_handled()
+            || (geom_shader_res_.is_requested() && !geom_shader_res_.is_handled()))
+        {
             return;
         }
 
-        // Если после вызова обработчиков не все shaders загружены - ошибка и выход
+        // Если после вызова обработчиков не все необходимые shaders загружены - ошибка и выход
         if (!vk_vert_shader_.has_value() || !vk_frag_shader_.has_value()){
             status_ = Status::eError;
             err_code_ = ErrorCode::eLoadingError;
-            logger()->error("Can't init vulkan graphics pipeline. Some shader modules are missing.");
+            logger()->error("Can't init vulkan graphics pipeline. Some required shader modules are missing.");
             return;
         }
 
@@ -163,19 +184,33 @@ namespace nasral::resources
         /** 3. программируемые стадии (shaders) **/
 
         // Описываем программируемые стадии конвейера
-        std::array<vk::PipelineShaderStageCreateInfo, 2> shader_stages{
-            // Вершинный шейдер
-            vk::PipelineShaderStageCreateInfo()
-            .setStage(vk::ShaderStageFlagBits::eVertex)
-            .setModule(vk_vert_shader_.value())
-            .setPName("main"),
+        assert(vk_vert_shader_.has_value());
+        assert(vk_frag_shader_.has_value());
+        std::vector<vk::PipelineShaderStageCreateInfo> shader_stages;
+        shader_stages.reserve(3);
 
-            // Фрагментный шейдер
+        // Вершинный шейдер
+        shader_stages.emplace_back(
             vk::PipelineShaderStageCreateInfo()
-            .setStage(vk::ShaderStageFlagBits::eFragment)
-            .setModule(vk_frag_shader_.value())
-            .setPName("main")
-        };
+                .setStage(vk::ShaderStageFlagBits::eVertex)
+                .setModule(vk_vert_shader_.value())
+                .setPName("main"));
+
+        // Фрагментный шейдер
+        shader_stages.emplace_back(
+            vk::PipelineShaderStageCreateInfo()
+                .setStage(vk::ShaderStageFlagBits::eFragment)
+                .setModule(vk_frag_shader_.value())
+                .setPName("main"));
+
+        // Геометрический шейдер (если нужно)
+        if (vk_geom_shader_.has_value()){
+            shader_stages.emplace_back(
+                vk::PipelineShaderStageCreateInfo()
+                    .setStage(vk::ShaderStageFlagBits::eGeometry)
+                    .setModule(vk_geom_shader_.value())
+                    .setPName("main"));
+        }
 
         /** 4. View-port **/
 

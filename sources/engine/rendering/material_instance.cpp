@@ -150,6 +150,7 @@ namespace nasral::rendering
         material_ref_.set_callback([this](resources::IResource* resource){
             const auto* material = dynamic_cast<resources::Material*>(resource);
             if (material && resource->status() == resources::Status::eLoaded){
+                assert(material->material_type() == material_type_);
                 material_handles_ = material->render_handles();
                 mark_changed(eShadersChanged);
             }

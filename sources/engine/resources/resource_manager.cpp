@@ -9,8 +9,10 @@
 
 #include "loaders/shader_loader.hpp"
 #include "loaders/material_loader.hpp"
-#include "loaders/mesh_mock_loader.hpp"
+#include "loaders/mesh_loader.hpp"
+#include "loaders/mesh_builtin_loader.hpp"
 #include "loaders/texture_loader.hpp"
+#include "loaders/texture_builtin_loader.hpp"
 
 namespace fs = std::filesystem;
 namespace nasral::resources
@@ -43,6 +45,18 @@ namespace nasral::resources
         for (const auto& [type, path] : config.initial_resources){
             add_unsafe(type, path);
         }
+
+        // Добавить встроенные ресурсы (ресурсы по умолчанию) в список
+        for (size_t i = 0; i < to<size_t>(BuiltinResources::TOTAL); ++i){
+            auto path = name_of(i, kBuiltinResources);
+            const auto type = builtin_res_type(path);
+            if (type != Type::TOTAL){
+                add_unsafe(type, path);
+            }
+        }
+
+        // Запросить встроенные ресурсы
+        request_builtin();
     }
 
     ResourceManager::~ResourceManager(){
@@ -55,9 +69,12 @@ namespace nasral::resources
             return;
         }
 
-        const auto fp = full_path(path);
-        if (!fs::exists(fp)){
-            throw ResourceError("Resource file not found (" + path + ")");
+        // Если это не встроенный ресурс - проверить наличие файла
+        if (path.find("builtin:") == std::string::npos){
+            const auto fp = full_path(path);
+            if (!fs::exists(fp)){
+                throw ResourceError("Resource file not found (" + path + ")");
+            }
         }
 
         // Получить индекс свободного слота в списке ресурсов
@@ -225,6 +242,23 @@ namespace nasral::resources
         }
     }
 
+    void ResourceManager::request_builtin(){
+        for (size_t i = 0; i < to<size_t>(BuiltinResources::TOTAL); ++i){
+            auto path = name_of(i, kBuiltinResources);
+            const auto type = builtin_res_type(path);
+            if (type != Type::TOTAL){
+                builtin_resources_[i] = make_ref(type, path);
+                builtin_resources_[i].request();
+            }
+        }
+    }
+
+    void ResourceManager::release_builtin(){
+        for (size_t i = 0; i < to<size_t>(BuiltinResources::TOTAL); ++i){
+            builtin_resources_[i].release();
+        }
+    }
+
     IResource::Ptr ResourceManager::make_resource(const Slot& slot){
         try {
             std::unique_ptr<IResource> res;
@@ -251,16 +285,31 @@ namespace nasral::resources
                 }
             case Type::eMesh:
                 {
-                    res = std::make_unique<Mesh>(this,
-                        slot.info.path.view(),
-                        std::make_unique<MeshMockLoader>());
+                    const auto path = slot.info.path.view();
+                    if (path.find("builtin:mesh") != std::string_view::npos){
+                        res = std::make_unique<Mesh>(this,
+                            slot.info.path.view(),
+                            std::make_unique<MeshBuiltinLoader>());
+                    }else{
+                        res = std::make_unique<Mesh>(this,
+                            slot.info.path.view(),
+                            std::make_unique<MeshLoader>());
+                    }
                     break;
                 }
             case Type::eTexture:
                 {
-                    res = std::make_unique<Texture>(this,
-                        slot.info.path.view(),
-                        std::make_unique<TextureLoader>());
+                    const auto path = slot.info.path.view();
+                    if (path.find("builtin:tex") != std::string_view::npos){
+                        res = std::make_unique<Texture>(this,
+                            slot.info.path.view(),
+                            std::make_unique<TextureBuiltinLoader>());
+                    }
+                    else{
+                        res = std::make_unique<Texture>(this,
+                             slot.info.path.view(),
+                             std::make_unique<TextureLoader>());
+                    }
                     break;
                 }
             default:
@@ -309,6 +358,9 @@ namespace nasral::resources
     }
 
     std::string ResourceManager::full_path(const std::string& path) const{
+        if (path.find("builtin:") != std::string::npos){
+            return path;
+        }
         try {
             const fs::path full = fs::path(content_dir_) / path;
             if (!fs::exists(full)) {
@@ -390,6 +442,7 @@ namespace nasral::resources
 
     void ResourceManager::finalize(){
         await_all_tasks();
+        release_builtin();
         while (has_pending_unloads()){
             update(0.0f);
         }

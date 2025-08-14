@@ -45,6 +45,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // Ресурсы
             config.resources.content_dir = "../../content/";
             config.resources.initial_resources = {
+                // Для теста
                 { nasral::resources::Type::eShader, "materials/dummy/shader.vert.spv"},
                 { nasral::resources::Type::eShader, "materials/dummy/shader.frag.spv"},
                 { nasral::resources::Type::eMaterial, "materials/dummy/material.xml"},
@@ -59,11 +60,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
 
                 { nasral::resources::Type::eShader, "materials/phong/shader.vert.spv"},
                 { nasral::resources::Type::eShader, "materials/phong/shader.frag.spv"},
+                { nasral::resources::Type::eShader, "materials/phong/shader.geom.spv"},
                 { nasral::resources::Type::eMaterial, "materials/phong/material.xml"},
 
-                { nasral::resources::Type::eMesh, "meshes/quad/quad.obj"},
                 { nasral::resources::Type::eTexture, "textures/tiles_diff.png" },
-                { nasral::resources::Type::eTexture, "textures/tiles_nor_gl.png" }
+                { nasral::resources::Type::eTexture, "textures/tiles_nor_gl.png" },
+                { nasral::resources::Type::eTexture, "textures/tiles_rough.png" }
             };
 
             // Рендеринг

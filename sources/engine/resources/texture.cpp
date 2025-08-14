@@ -21,7 +21,7 @@ namespace nasral::resources
         std::optional<Data> data = {};
 
         try{
-            data = std::move(loader_->load(path));
+            data = loader_->load(path);
             if (!data.has_value()){
                 status_ = Status::eError;
                 err_code_ = loader_->err_code();
@@ -124,10 +124,12 @@ namespace nasral::resources
                 , true);
 
             // Генерация мип-уровней
-            image_->generate_mipmaps(cmd_group
-                , vk::Extent3D{data->width, data->height, 1}
-                , vk::ImageAspectFlagBits::eColor
-                , 1);
+            if (image_->mip_levels() > 1){
+                image_->generate_mipmaps(cmd_group
+                    , vk::Extent3D{data->width, data->height, 1}
+                    , vk::ImageAspectFlagBits::eColor
+                    , 1);
+            }
         }
         catch([[maybe_unused]] const std::exception& e){
             status_ = Status::eError;

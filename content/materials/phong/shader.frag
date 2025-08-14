@@ -7,11 +7,14 @@
 #define MAX_LIGHTS 100
 
 // Входные данные фрагмента
-layout(location = 0) in VS_OUT {
+layout(location = 0) in GS_OUT {
     vec3 color;
     vec3 position;
     vec3 normal;
     vec2 uv;
+    vec3 tangent;
+    vec3 bitangent;
+    mat3 TBN;
 } fs_in;
 
 // Выход фрагмента (цветовое вложение 0)
@@ -25,6 +28,7 @@ layout(push_constant) uniform PushConstants {
 // Параметры одиночного материала
 struct MaterialSettings {
     vec4 color;
+    vec4 ambient;
     float shininess;
     float specular;
 };
@@ -35,15 +39,23 @@ struct LightSource {
     vec4 direction;
     vec4 color;
     mat4 space;
+    float quadratic;
     float radius;
     float intensity;
 };
 
-// Индексы актичных источников света
+// Индексы активных источников света
 struct LightIndices {
     uint count;
     uint active_indices[MAX_LIGHTS];
 };
+
+// Uniform buffer для матриц камеры
+layout(set = 0, binding = 0, std140) uniform UCamera {
+    mat4 view;
+    mat4 proj;
+    vec4 position;
+} u_camera;
 
 // Storage buffer для материалов объектов
 layout(set = 1, binding = 1, std430) readonly buffer SMaterials {
@@ -67,26 +79,53 @@ layout(set = 2, binding = 2) uniform sampler2D t_spec[MAX_OBJECTS];
 
 void main()
 {
-    // Цвет из текстуры
+    // Получаем данные из текстур
     vec4 tex_color = texture(t_color[pc_push.obj_index], fs_in.uv);
+    vec3 tex_normal = texture(t_normal[pc_push.obj_index], fs_in.uv).rgb;
+    //float tex_specular = texture(t_spec[pc_push.obj_index], fs_in.uv).r;
 
-    // Цвет выхода по умолчанию: из текстуры
-    color = vec4(tex_color.rgb, 1.0);
+    // Получаем настройки материала
+    MaterialSettings material = s_materials[pc_push.obj_index];
 
-    // Обработать активные источники
+    // Преобразуем нормаль из пространства касательных в мировое пространство
+    vec3 normal = normalize(tex_normal * 2.0 - 1.0); // Из [0,1] в [-1,1]
+    normal = normalize(fs_in.TBN * normal);
+
+    // Инициализируем итоговый цвет
+    vec3 final_color = vec3(0.0);
+
+    // Параметры окружающего освещения
+    vec3 ambient = material.ambient.rgb;
+
+    // Обработка активных источников света
     for (uint i = 0u; i < s_light_indices.count; ++i)
     {
+        // Получить источник
         uint idx = s_light_indices.active_indices[i];
         if (idx >= MAX_LIGHTS) continue;
-
         LightSource light = s_lights[idx];
 
-        // TODO: Реализовать модель Фонга
+        // Вычисляем расстояние и направление к источнику света
         float dist = length(fs_in.position - light.position.xyz);
-        if (dist <= light.radius)
-        {
-            color = vec4(1.0, 0.0, 0.0, 1.0);
-            break;
-        }
+        vec3 light_dir = normalize(light.position.xyz - fs_in.position);
+
+        // Вычисляем затухание
+        float attenuation = 1.0 / (1.0 + light.quadratic * dist * dist);
+
+        // Диффузное освещение
+        float diff = max(dot(normal, light_dir), 0.0);
+        vec3 diffuse = diff * tex_color.rgb * light.color.rgb * light.intensity;
+
+        // Спекулярное освещение
+        vec3 view_dir = normalize(-u_camera.position.xyz);
+        vec3 reflect_dir = reflect(-light_dir, normal);
+        float spec = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
+        vec3 specular = material.specular * spec * light.color.rgb * light.intensity;
+
+        // Суммируем вклад света с учетом затухания
+        final_color += (diffuse + specular) * attenuation;
     }
+
+    // Итоговый цвет: окружающее + вклад от всех источников
+    color = vec4(ambient + final_color, tex_color.a);
 }

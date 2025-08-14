@@ -274,6 +274,14 @@ namespace vk::utils
         }
 
         /**
+         * @brief Получить мип-уровни
+         * @return Количество мир-уровней
+         */
+        [[nodiscard]] uint32_t mip_levels() const{
+            return mip_levels_;
+        }
+
+        /**
          * @brief Отображает (maps) память изображения в память хоста, чтобы можно было изменить данные.
          * @warning Изображение должно быть с MemoryPropertyFlagBits::eHostVisible и vk::ImageLayout::ePreinitialized
          * @param aspect Аспект изображения для разметки (цвет, глубина и прочее)
@@ -454,6 +462,12 @@ namespace vk::utils
                 {fence.get()},
                 true,
                 std::numeric_limits<uint64_t>::max());
+
+            // Критическая секция (возможен многопоточный доступ к пулу)
+            {
+                std::lock_guard lock(queue_mutex);
+                cmd_buffer.reset();
+            }
         }
 
         /**
@@ -632,6 +646,12 @@ namespace vk::utils
                 {fence.get()},
                 true,
                 std::numeric_limits<uint64_t>::max());
+
+            // Критическая секция (возможен многопоточный доступ к пулу)
+            {
+                std::lock_guard lock(queue_mutex);
+                cmd_buffer.reset();
+            }
         }
 
     private:

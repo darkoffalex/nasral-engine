@@ -880,7 +880,12 @@ namespace nasral::rendering
             // set = 0: Camera
             {
                 {
-                    {0,1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex}
+                    {
+                        0,
+                        1,
+                        vk::DescriptorType::eUniformBuffer,
+                        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
+                    }
                 },
                 1
             },

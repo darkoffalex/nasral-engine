@@ -57,6 +57,8 @@ namespace nasral::resources
     private:
         void request(Ref* ref, bool unsafe = false);
         void release(const Ref* ref, bool unsafe = false);
+        void request_builtin();
+        void release_builtin();
 
         [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path) const noexcept;
         [[nodiscard]] IResource::Ptr make_resource(const Slot& slot);
@@ -65,11 +67,19 @@ namespace nasral::resources
         [[nodiscard]] const logging::Logger* logger() const;
 
     protected:
-        SafeHandle<const Engine> engine_;                       // Указатель на владельца (корневой объект)
-        std::string content_dir_;                               // Путь к директории ресурсов
-        std::array<Slot, MAX_RESOURCE_COUNT> slots_;            // Фиксированный массив слотов ресурсов
-        std::vector<size_t> free_slots_;                        // Индексы свободных (не задействованных) слотов
-        std::vector<size_t> active_slots_;                      // Индексы активных (задействованных) слотов
-        std::unordered_map<std::string_view, size_t> indices_;  // Карта "путь" -> "индекс", для доступа по пути
+        /// Указатель на владельца (корневой объект)
+        SafeHandle<const Engine> engine_;
+        /// Путь к директории ресурсов
+        std::string content_dir_;
+        /// Фиксированный массив слотов ресурсов
+        std::array<Slot, MAX_RESOURCE_COUNT> slots_;
+        /// Индексы свободных (не задействованных) слотов
+        std::vector<size_t> free_slots_;
+        /// Индексы активных (задействованных) слотов
+        std::vector<size_t> active_slots_;
+        /// Карта "путь" -> "индекс", для доступа по пути
+        std::unordered_map<std::string_view, size_t> indices_;
+        /// Ссылки на встроенные ресурсы (запрашиваются по умолчанию)
+        std::array<Ref, static_cast<size_t>(BuiltinResources::TOTAL)> builtin_resources_;
     };
 }

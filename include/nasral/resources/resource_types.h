@@ -14,6 +14,8 @@ namespace nasral::logging
 
 namespace nasral::resources
 {
+
+
     enum class Status : unsigned
     {
         eUnloaded = 0,
@@ -67,6 +69,45 @@ namespace nasral::resources
         "Shader",
         "Material"
     };
+
+    enum class BuiltinResources : unsigned
+    {
+        eWhitePixel = 0,
+        eBlackPixel,
+        eNormalPixel,
+        eCheckerboardTexture,
+        eQuadMesh,
+        eCubeMesh,
+        TOTAL
+    };
+
+    inline const std::array<std::string, static_cast<size_t>(BuiltinResources::TOTAL)> kBuiltinResources = {
+        "builtin:tex/white-pixel",
+        "builtin:tex/black-pixel",
+        "builtin:tex/normal-pixel",
+        "builtin:tex/chessboard-64-16",
+        "builtin:mesh/quad",
+        "builtin:mesh/cube"
+    };
+
+    inline Type builtin_res_type(const std::string& path){
+        auto type = Type::TOTAL;
+        if (path.find("builtin:tex") != std::string_view::npos){
+            type = Type::eTexture;
+        }else if (path.find("builtin:mesh") != std::string_view::npos){
+            type = Type::eMesh;
+        }else if (path.find("builtin:shd") != std::string_view::npos){
+            type = Type::eShader;
+        }else if (path.find("builtin:mtl") != std::string_view::npos){
+            type = Type::eMaterial;
+        }
+        return type;
+    }
+
+    inline Type builtin_res_type(const BuiltinResources res){
+        const auto path = name_of(res, kBuiltinResources);
+        return builtin_res_type(path);
+    }
 
     class ResourceManager;
     class IResource
