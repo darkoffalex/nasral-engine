@@ -14,14 +14,18 @@ namespace nasral::rendering
     : material_type_(type)
     , material_ref_(manager, resources::Type::eMaterial, mat_path)
     {
-        assert(tex_paths.size() <= static_cast<size_t>(TextureType::TOTAL));
+        for (size_t i = 0; i < static_cast<size_t>(TextureType::TOTAL); ++i)
+        {
+            const auto builtin_tex = builtin_tex_for_type(static_cast<TextureType>(i));
+            std::string path = resources::builtin_res_path(builtin_tex);
 
-        // TODO: Задать текстуры по умолчанию
+            if (i < tex_paths.size() && !tex_paths[i].empty()){
+                path = tex_paths[i];
+            }
 
-        for (size_t i = 0; i < tex_paths.size(); ++i){
             texture_refs_[i] = manager->make_ref(
                 resources::Type::eTexture,
-                tex_paths[i]);
+                path);
         }
 
         bind_callbacks();
@@ -95,7 +99,12 @@ namespace nasral::rendering
         ref.release();
         mark_changed(eTextureChanged);
 
-        ref.set_path(path);
+        if (path.empty()){
+            ref.set_path(resources::builtin_res_path(builtin_tex_for_type(type)));
+        }else{
+            ref.set_path(path);
+        }
+
         if (request){
             ref.request();
         }
@@ -144,6 +153,22 @@ namespace nasral::rendering
 
     const std::optional<ObjectMatUniforms>& MaterialInstance::settings() const{
         return settings_;
+    }
+
+    resources::BuiltinResources MaterialInstance::builtin_tex_for_type(const TextureType type){
+        switch (type)
+        {
+        case TextureType::eAlbedoColor:
+        case TextureType::eRoughnessOrSpecular:
+            return resources::BuiltinResources::eWhitePixel;
+        case TextureType::eNormal:
+            return resources::BuiltinResources::eNormalPixel;
+        case TextureType::eHeight:
+        case TextureType::eMetallicOrReflection:
+            return resources::BuiltinResources::eBlackPixel;
+        default:
+            return resources::BuiltinResources::eCheckerboardTexture;
+        }
     }
 
     void MaterialInstance::bind_callbacks(){

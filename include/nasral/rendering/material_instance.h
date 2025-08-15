@@ -41,6 +41,7 @@ namespace nasral::rendering
         [[nodiscard]] const Handles::Material& mat_render_handles() const;
         [[nodiscard]] const Handles::Texture& tex_render_handles(TextureType type) const;
         [[nodiscard]] const std::optional<ObjectMatUniforms>& settings() const;
+        [[nodiscard]] static resources::BuiltinResources builtin_tex_for_type(TextureType type);
 
     private:
         void bind_callbacks();

@@ -90,6 +90,10 @@ namespace nasral::resources
         "builtin:mesh/cube"
     };
 
+    inline std::string builtin_res_path(const BuiltinResources res){
+        return name_of(res, kBuiltinResources);
+    }
+
     inline Type builtin_res_type(const std::string& path){
         auto type = Type::TOTAL;
         if (path.find("builtin:tex") != std::string_view::npos){

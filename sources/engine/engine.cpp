@@ -158,9 +158,9 @@ namespace nasral
                     quad_res_name));
             }
 
-            test_scene_nodes_[1].material_instance().set_texture(
-                rendering::TextureType::eAlbedoColor,
-                name_of(resources::BuiltinResources::eWhitePixel, resources::kBuiltinResources));
+            //test_scene_nodes_[0].material_instance().set_texture(rendering::TextureType::eAlbedoColor, "");
+            test_scene_nodes_[1].material_instance().set_texture(rendering::TextureType::eAlbedoColor, "");
+            test_scene_nodes_[1].material_instance().set_texture(rendering::TextureType::eNormal, "");
 
             // Задать параметры узла
             test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});

@@ -48,7 +48,7 @@ namespace nasral::resources
 
         // Добавить встроенные ресурсы (ресурсы по умолчанию) в список
         for (size_t i = 0; i < to<size_t>(BuiltinResources::TOTAL); ++i){
-            auto path = name_of(i, kBuiltinResources);
+            const auto path = builtin_res_path(to<BuiltinResources>(i));
             const auto type = builtin_res_type(path);
             if (type != Type::TOTAL){
                 add_unsafe(type, path);
@@ -244,7 +244,7 @@ namespace nasral::resources
 
     void ResourceManager::request_builtin(){
         for (size_t i = 0; i < to<size_t>(BuiltinResources::TOTAL); ++i){
-            auto path = name_of(i, kBuiltinResources);
+            const auto path = builtin_res_path(to<BuiltinResources>(i));
             const auto type = builtin_res_type(path);
             if (type != Type::TOTAL){
                 builtin_resources_[i] = make_ref(type, path);
