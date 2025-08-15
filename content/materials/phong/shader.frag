@@ -114,7 +114,11 @@ void main()
 
         // Диффузное освещение
         float diff = max(dot(normal, light_dir), 0.0);
-        vec3 diffuse = diff * tex_color.rgb * light.color.rgb * light.intensity;
+        vec3 diffuse = diff
+            * material.color.rgb
+            * tex_color.rgb
+            * light.color.rgb
+            * light.intensity;
 
         // Спекулярное освещение
         vec3 view_dir = normalize(-u_camera.position.xyz);

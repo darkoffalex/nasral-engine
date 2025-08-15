@@ -83,14 +83,6 @@ namespace nasral::rendering
         // Если рендеринг отключен
         if (!is_rendering_) return;
 
-        // Подготовить uniform буферы к записи
-        vk_ubo_view_->map_unsafe();
-        vk_ubo_objects_transforms_->map_unsafe();
-        vk_ubo_objects_phong_mat_->map_unsafe();
-        vk_ubo_objects_pbr_mat_->map_unsafe();
-        vk_ubo_light_sources_->map_unsafe();
-        vk_ubo_light_indices_->map_unsafe();
-
         // Текущий индекс кадра
         const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
 
@@ -136,6 +128,26 @@ namespace nasral::rendering
             cmd_buffer->reset();
             cmd_buffer->begin(vk::CommandBufferBeginInfo());
 
+            // Убедиться, что все необходимые storage buffer'ы доступны
+            /*
+            vk::BufferMemoryBarrier barrier{};
+            barrier.setSrcAccessMask(vk::AccessFlagBits::eHostWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setBuffer(vk_ubo_objects_transforms_->vk_buffer())
+                .setSize(vk_ubo_objects_transforms_->size())
+                .setOffset(0);
+
+            cmd_buffer->pipelineBarrier(
+                vk::PipelineStageFlagBits::eHost,
+                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader,
+                {},
+                {},
+                {barrier},
+                {});
+            */
+
             // Начать проход рендеринга, используя полученный ранее кадровый буфер
             cmd_buffer->beginRenderPass(
                 vk::RenderPassBeginInfo()
@@ -168,14 +180,6 @@ namespace nasral::rendering
 
         // Завершения командного буфера
         cmd_buffer->end();
-
-        // Убрать разметку с uniform буферов (сделать данные доступными для шейдера)
-        vk_ubo_view_->unmap_unsafe();
-        vk_ubo_objects_transforms_->unmap_unsafe();
-        vk_ubo_objects_phong_mat_->unmap_unsafe();
-        vk_ubo_objects_pbr_mat_->unmap_unsafe();
-        vk_ubo_light_sources_->unmap_unsafe();
-        vk_ubo_light_indices_->unmap_unsafe();
 
         // Семафоры, ожидаемые для исполнения команд рендеринга
         std::array<vk::Semaphore, 1> wait_semaphores{
@@ -348,8 +352,7 @@ namespace nasral::rendering
         vk_ubo_objects_phong_mat_->update_mapped(
             sbo_offset<ObjectPhongMatUniforms>(index),
             aligned_sbo_size<ObjectPhongMatUniforms>(),
-            &uniforms
-        );
+            &uniforms);
     }
 
     void Renderer::update_obj_ubo(const uint32_t index, const ObjectPbrMatUniforms& uniforms) const{
@@ -357,8 +360,7 @@ namespace nasral::rendering
         vk_ubo_objects_pbr_mat_->update_mapped(
             sbo_offset<ObjectPbrMatUniforms>(index),
             aligned_sbo_size<ObjectPbrMatUniforms>(),
-            &uniforms
-        );
+            &uniforms);
     }
 
     void Renderer::update_obj_tex(const uint32_t index
@@ -1263,6 +1265,14 @@ namespace nasral::rendering
 
             vk_device_->logical_device().updateDescriptorSets(writes, {});
         }
+
+        // Подготовить uniform буферы к записи
+        vk_ubo_view_->map_unsafe();
+        vk_ubo_objects_transforms_->map_unsafe();
+        vk_ubo_objects_phong_mat_->map_unsafe();
+        vk_ubo_objects_pbr_mat_->map_unsafe();
+        vk_ubo_light_sources_->map_unsafe();
+        vk_ubo_light_indices_->map_unsafe();
     }
 
     void Renderer::init_vk_command_buffers(){

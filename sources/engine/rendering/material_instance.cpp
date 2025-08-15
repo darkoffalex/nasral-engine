@@ -28,6 +28,18 @@ namespace nasral::rendering
                 path);
         }
 
+        switch (material_type_)
+        {
+        case MaterialType::ePhong:
+            set_settings(ObjectPhongMatUniforms{});
+            break;
+        case MaterialType::ePbr:
+            set_settings(ObjectPbrMatUniforms{});
+            break;
+        default:
+            settings_ = std::nullopt;
+        }
+
         bind_callbacks();
     }
 
@@ -45,6 +57,7 @@ namespace nasral::rendering
         }
 
         settings_ = other.settings_;
+        change_mask_ = other.change_mask_;
 
         other.unbind_callbacks();
         other.release_resources();
@@ -73,6 +86,7 @@ namespace nasral::rendering
         }
 
         settings_ = other.settings_;
+        change_mask_ = other.change_mask_;
 
         other.unbind_callbacks();
         other.release_resources();

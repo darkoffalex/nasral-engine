@@ -84,12 +84,12 @@ namespace vk::utils
             try
             {
                 // Размер, с учётом выравнивания
-                const auto aligned_size = ((size_ + mem_reqs.alignment - 1) / mem_reqs.alignment) * mem_reqs.alignment;
+                allocated_size_ = ((size_ + mem_reqs.alignment - 1) / mem_reqs.alignment) * mem_reqs.alignment;
 
                 // Выделить память
                 vk_memory_ = vk_device_.allocateMemoryUnique(
                     vk::MemoryAllocateInfo()
-                    .setAllocationSize(aligned_size)
+                    .setAllocationSize(allocated_size_)
                     .setMemoryTypeIndex(mem_type_id.value())
                     .setPNext(usage & vk::BufferUsageFlagBits::eShaderDeviceAddress ? &allocate_flags : nullptr));
 
@@ -114,7 +114,11 @@ namespace vk::utils
         }
 
         /** @brief Деструктор */
-        ~Buffer() = default;
+        ~Buffer()
+        {
+            // Снять разметку, если она есть
+            if (is_mapped()) unmap_unsafe();
+        }
 
         /** @brief Запрет копирования */
         Buffer(const Buffer&) = delete;
@@ -142,10 +146,16 @@ namespace vk::utils
          * @param offset Сдвиг относительно начала разметки
          * @param size Размер копируемой области
          * @param data Исходные данные для копирования
+         * @param flush_size Если требуется синхронизировать доступ при помощи flush
          */
-        void update_mapped(const vk::DeviceSize offset, const vk::DeviceSize size, const void* data = nullptr) const{
-            assert(size <= size_);
-            assert(offset + size <= size_);
+        void update_mapped(
+            const vk::DeviceSize offset,
+            const vk::DeviceSize size,
+            const void* data = nullptr,
+            const vk::DeviceSize flush_size = 0) const
+        {
+            assert(size <= allocated_size_);
+            assert(offset + size <= allocated_size_);
             if (!mapped_ptr_) return;
 
             auto* ptr = static_cast<char*>(mapped_ptr_) + offset;
@@ -153,6 +163,16 @@ namespace vk::utils
                 std::memcpy(ptr, data, size);
             }else{
                 std::memset(ptr, 0, size);
+            }
+
+            if (flush_size > 0){
+                assert(offset + flush_size <= allocated_size_);
+                vk_device_.flushMappedMemoryRanges({
+                    vk::MappedMemoryRange()
+                    .setMemory(vk_memory_.get())
+                    .setOffset(offset)
+                    .setSize(flush_size)
+                });
             }
         }
 
@@ -275,8 +295,10 @@ namespace vk::utils
         vk::UniqueBuffer vk_buffer_;
         /// Handle-объект памяти Vulkan
         vk::UniqueDeviceMemory vk_memory_;
-        /// Размер буфера в байтах.
+        /// Размер буфера в байтах (запрашиваемая).
         vk::DeviceSize size_;
+        /// Размер выделенной памяти в байтах (выравненная)
+        vk::DeviceSize allocated_size_;
         /// Указатель на размеченную область
         void* mapped_ptr_;
     };

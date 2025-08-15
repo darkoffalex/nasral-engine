@@ -169,7 +169,7 @@ namespace nasral::rendering
     struct ObjectPhongMatUniforms
     {
         glm::vec4 color = glm::vec4(1.0f);
-        glm::vec4 ambient = glm::vec4(0.2f);
+        glm::vec4 ambient = glm::vec4(0.05f);
         glm::float32 shininess = 32.0f;
         glm::float32 specular = 1.0f;
     };

@@ -28,46 +28,69 @@ namespace nasral::resources
             if (path.find(cube_name) != std::string_view::npos){
                 constexpr float size = 1.0f;
                 constexpr float half_size = size / 2.0f;
-                std::vector<rendering::Vertex> vertices = {
-                    {{-half_size, -half_size,  half_size}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-                    {{-half_size,  half_size,  half_size}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-                    {{ half_size,  half_size,  half_size}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-                    {{ half_size, -half_size,  half_size}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
 
-                    {{-half_size, -half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-                    {{-half_size,  half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-                    {{ half_size,  half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-                    {{ half_size, -half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+                std::vector<rendering::Vertex> vertices;
+                std::vector<uint32_t> indices;
 
-                    {{ half_size, -half_size, -half_size}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-                    {{ half_size,  half_size, -half_size}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-                    {{ half_size,  half_size,  half_size}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-                    {{ half_size, -half_size,  half_size}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+                // Грань +Z (передняя, как в вашем квадрате)
+                vertices.insert(vertices.end(), {
+                    {{-half_size, -half_size, half_size}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                    {{-half_size, half_size, half_size}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+                    {{half_size, half_size, half_size}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                    {{half_size, -half_size, half_size}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
+                });
+                uint32_t base = vertices.size() - 4;
+                indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
+                // Грань -Z (задняя)
+                vertices.insert(vertices.end(), {
+                    {{half_size, -half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                    {{half_size, half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+                    {{-half_size, half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                    {{-half_size, -half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
+                });
+                base = vertices.size() - 4;
+                indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
+
+                // Грань +X (правая)
+                vertices.insert(vertices.end(), {
+                    {{half_size, -half_size, half_size}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                    {{half_size, half_size, half_size}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+                    {{half_size, half_size, -half_size}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                    {{half_size, -half_size, -half_size}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
+                });
+                base = vertices.size() - 4;
+                indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
+
+                // Грань -X (левая)
+                vertices.insert(vertices.end(), {
                     {{-half_size, -half_size, -half_size}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-                    {{-half_size,  half_size, -half_size}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-                    {{-half_size,  half_size,  half_size}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-                    {{-half_size, -half_size,  half_size}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+                    {{-half_size, half_size, -half_size}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+                    {{-half_size, half_size, half_size}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                    {{-half_size, -half_size, half_size}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
+                });
+                base = vertices.size() - 4;
+                indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
-                    {{-half_size,  half_size, -half_size}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-                    {{-half_size,  half_size,  half_size}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-                    {{ half_size,  half_size,  half_size}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-                    {{ half_size,  half_size, -half_size}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+                // Грань +Y (верхняя)
+                vertices.insert(vertices.end(), {
+                    {{-half_size, half_size, half_size}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+                    {{-half_size, half_size, -half_size}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+                    {{half_size, half_size, -half_size}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                    {{half_size, half_size, half_size}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
+                });
+                base = vertices.size() - 4;
+                indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
+                // Грань -Y (нижняя)
+                vertices.insert(vertices.end(), {
                     {{-half_size, -half_size, -half_size}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-                    {{-half_size, -half_size,  half_size}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-                    {{ half_size, -half_size,  half_size}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-                    {{ half_size, -half_size, -half_size}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
-                };
-
-                std::vector<uint32_t> indices = {
-                    0, 1, 2,  0, 2, 3,
-                    4, 6, 5,  4, 7, 6,
-                    8, 9, 10, 8, 10, 11,
-                    12, 14, 13, 12, 15, 14,
-                    16, 17, 18, 16, 18, 19,
-                    20, 22, 21, 20, 23, 22
-                };
+                    {{-half_size, -half_size, half_size}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+                    {{half_size, -half_size, half_size}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+                    {{half_size, -half_size, -half_size}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
+                });
+                base = vertices.size() - 4;
+                indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
                 return std::optional{Mesh::Data{
                     std::move(vertices),

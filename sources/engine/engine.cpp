@@ -50,21 +50,25 @@ namespace nasral
         assert(renderer_ != nullptr);
 
         try{
-            // Начало кадра
-            renderer_->cmd_begin_frame();
-
             // Источники света
             for (auto& light : test_light_sources_){
                 light.update();
             }
 
             // Обновление узлов сцены
+            static float angle = 0.0f;
+            angle += delta * 10.0f;
+
             for (auto& node : test_scene_nodes_){
+                node.set_rotation({angle, 0.0f, 0.0f});
                 node.update();
             }
 
             // Обновить данные камеры
             renderer_->update_cam_ubo(0, camera_uniforms_);
+
+            // Начало кадра
+            renderer_->cmd_begin_frame();
 
             // Привязка всех необходимых дескрипторов
             renderer_->cmd_bind_frame_descriptors();
@@ -121,75 +125,66 @@ namespace nasral
     {
         // Камера (пока статична)
         const auto aspect = renderer_->get_rendering_aspect();
-        camera_uniforms_.position = glm::vec4(0.0f, 0.0f, 2.0f, 1.0f);
+        camera_uniforms_.position = glm::vec4(0.0f, 0.0f, 2.5f, 1.0f);
         camera_uniforms_.view = glm::translate(glm::mat4(1.0f), -make_vec3(camera_uniforms_.position));
         camera_uniforms_.projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
         // Узлы сцены
-        {
-            // Добавить объекты
-            test_scene_nodes_.reserve(2);
-            for (size_t i = 0; i < 2; ++i){
-                test_scene_nodes_.emplace_back(this);
+        test_scene_nodes_.reserve(2);
+        test_scene_nodes_.emplace_back(this);
+        test_scene_nodes_.emplace_back(this);
 
-                // Задать материал узлу
-                test_scene_nodes_[i].set_material(rendering::MaterialInstance(
-                    resource_manager_.get(),
-                    rendering::MaterialType::ePhong,
-                    "materials/phong/material.xml",
-                    {
-                        "textures/tiles_diff.png",
-                        "textures/tiles_nor_gl.png",
-                        "textures/tiles_rough.png"
-                    }));
+        // Параметры узла
+        test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});
+        test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
 
-                // Задать параметры материала
-                test_scene_nodes_[i].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
-                    glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-                    glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-                    64.0f,
-                    1.0f
-                });
+        // Ресурсы узла
+        test_scene_nodes_[0].set_material(rendering::MaterialInstance(
+            resource_manager_.get(),
+            rendering::MaterialType::ePhong,
+            "materials/phong/material.xml", {
+                "textures/tiles_diff.png",
+                "textures/tiles_nor_gl.png",
+                ""
+            }));
 
-                // Задать меш узлу
-                auto quad_res_name = name_of(resources::BuiltinResources::eQuadMesh, resources::kBuiltinResources);
-                test_scene_nodes_[i].set_mesh(rendering::MeshInstance(
-                    resource_manager_.get(),
-                    quad_res_name));
-            }
+        test_scene_nodes_[1].set_material(rendering::MaterialInstance(
+            resource_manager_.get(),
+            rendering::MaterialType::eVertexColored,
+            "materials/vertex-colored/material.xml"));
 
-            //test_scene_nodes_[0].material_instance().set_texture(rendering::TextureType::eAlbedoColor, "");
-            test_scene_nodes_[1].material_instance().set_texture(rendering::TextureType::eAlbedoColor, "");
-            test_scene_nodes_[1].material_instance().set_texture(rendering::TextureType::eNormal, "");
+        test_scene_nodes_[0].set_mesh(rendering::MeshInstance(
+            resource_manager_.get(),
+            resources::builtin_res_path(resources::BuiltinResources::eCubeMesh)));
 
-            // Задать параметры узла
-            test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});
-            test_scene_nodes_[0].set_rotation({-15.0f, 0.0f, 0.0f});
+        test_scene_nodes_[1].set_mesh(rendering::MeshInstance(
+            resource_manager_.get(),
+            resources::builtin_res_path(resources::BuiltinResources::eCubeMesh)));
 
-            test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
-            test_scene_nodes_[1].set_rotation({-15.0f, 0.0f, 0.0f});
+        /*
+        test_scene_nodes_[0].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
+            glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+            glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+            128.0f,
+            0.0f
+        });
+        */
 
-            // Запросить ресурсы
-            test_scene_nodes_[0].request_resources();
-            test_scene_nodes_[1].request_resources();
-        }
+        test_scene_nodes_[0].request_resources();
+        test_scene_nodes_[1].request_resources();
 
         // Освещение
-        {
-            // Добавить источники света
-            for (size_t i = 0; i < 2; ++i){
-                test_light_sources_.emplace_back(this);
-            }
+        test_light_sources_.reserve(2);
+        test_light_sources_.emplace_back(this);
+        test_light_sources_.emplace_back(this);
 
-            // Задать параметры источника
-            test_light_sources_[0].set_position({-0.6f, 0.4f, 0.3f});
-            test_light_sources_[0].set_color({1.0f, 1.0f, 1.0f});
-            test_light_sources_[0].set_intensity(1.5f);
+        test_light_sources_[0].set_position({-0.6f, 0.0f, 1.2f});
+        test_light_sources_[0].set_color({1.0f, 1.0f, 1.0f});
+        test_light_sources_[0].set_intensity(1.5f);
 
-            test_light_sources_[1].set_position({0.6f, 0.4f, 0.3f});
-            test_light_sources_[1].set_color({1.0f, 1.0f, 1.0f});
-            test_light_sources_[1].set_intensity(1.5f);
-        }
+        test_light_sources_[1].set_position({0.6f, 0.0f, 1.2f});
+        test_light_sources_[1].set_color({1.0f, 1.0f, 1.0f});
+        test_light_sources_[1].set_intensity(1.5f);
     }
 
     Engine::TestNode::TestNode(const Engine* engine)
@@ -222,7 +217,7 @@ namespace nasral
                     renderer->update_obj_tex(obj_index_
                         , th
                         , static_cast<rendering::TextureType>(i)
-                        , rendering::TextureSamplerType::eNearest);
+                        , rendering::TextureSamplerType::eAnisotropic);
                 }
             }
         }
