@@ -63,9 +63,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
                 { nasral::resources::Type::eShader, "materials/phong/shader.geom.spv"},
                 { nasral::resources::Type::eMaterial, "materials/phong/material.xml"},
 
-                { nasral::resources::Type::eTexture, "textures/tiles_diff.png" },
-                { nasral::resources::Type::eTexture, "textures/tiles_nor_gl.png" },
-                { nasral::resources::Type::eTexture, "textures/tiles_rough.png" }
+                { nasral::resources::Type::eTexture, "textures/tiles_diff.png"},
+                { nasral::resources::Type::eTexture, "textures/tiles_nor_gl.png"},
+                { nasral::resources::Type::eTexture, "textures/tiles_rough.png"},
+                { nasral::resources::Type::eTexture, "textures/tiles_spec.png"}
             };
 
             // Рендеринг

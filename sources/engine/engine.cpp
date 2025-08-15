@@ -145,7 +145,7 @@ namespace nasral
             "materials/phong/material.xml", {
                 "textures/tiles_diff.png",
                 "textures/tiles_nor_gl.png",
-                ""
+                "textures/tiles_spec.png"
             }));
 
         test_scene_nodes_[1].set_material(rendering::MaterialInstance(
@@ -161,14 +161,12 @@ namespace nasral
             resource_manager_.get(),
             resources::builtin_res_path(resources::BuiltinResources::eCubeMesh)));
 
-        /*
         test_scene_nodes_[0].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
             glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
             glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-            128.0f,
-            0.0f
+            16.0f,
+            1.0f
         });
-        */
 
         test_scene_nodes_[0].request_resources();
         test_scene_nodes_[1].request_resources();
@@ -178,13 +176,13 @@ namespace nasral
         test_light_sources_.emplace_back(this);
         test_light_sources_.emplace_back(this);
 
-        test_light_sources_[0].set_position({-0.6f, 0.0f, 1.2f});
+        test_light_sources_[0].set_position({-0.6f, 0.1f, 1.2f});
         test_light_sources_[0].set_color({1.0f, 1.0f, 1.0f});
-        test_light_sources_[0].set_intensity(1.5f);
+        test_light_sources_[0].set_intensity(1.0f);
 
-        test_light_sources_[1].set_position({0.6f, 0.0f, 1.2f});
+        test_light_sources_[1].set_position({0.6f, 0.1f, 1.2f});
         test_light_sources_[1].set_color({1.0f, 1.0f, 1.0f});
-        test_light_sources_[1].set_intensity(1.5f);
+        test_light_sources_[1].set_intensity(1.0f);
     }
 
     Engine::TestNode::TestNode(const Engine* engine)

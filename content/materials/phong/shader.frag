@@ -82,7 +82,7 @@ void main()
     // Получаем данные из текстур
     vec4 tex_color = texture(t_color[pc_push.obj_index], fs_in.uv);
     vec3 tex_normal = texture(t_normal[pc_push.obj_index], fs_in.uv).rgb;
-    //float tex_specular = texture(t_spec[pc_push.obj_index], fs_in.uv).r;
+    float tex_specular = texture(t_spec[pc_push.obj_index], fs_in.uv).r;
 
     // Получаем настройки материала
     MaterialSettings material = s_materials[pc_push.obj_index];
@@ -121,10 +121,15 @@ void main()
             * light.intensity;
 
         // Спекулярное освещение
-        vec3 view_dir = normalize(-u_camera.position.xyz);
+        vec3 view_dir = normalize(u_camera.position.xyz - fs_in.position);
         vec3 reflect_dir = reflect(-light_dir, normal);
         float spec = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
-        vec3 specular = material.specular * spec * light.color.rgb * light.intensity;
+
+        vec3 specular = spec
+            * material.specular
+            * tex_specular
+            * light.color.rgb
+            * light.intensity;
 
         // Суммируем вклад света с учетом затухания
         final_color += (diffuse + specular) * attenuation;
