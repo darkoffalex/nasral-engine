@@ -43,5 +43,6 @@ target_link_libraries(Engine PRIVATE
         glm::glm
         stb::stb
         pugixml::pugixml
+        assimp::assimp
         Vulkan::Vulkan
 )

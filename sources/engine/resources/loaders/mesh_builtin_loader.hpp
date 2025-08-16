@@ -25,6 +25,7 @@ namespace nasral::resources
                     std::move(indices)
                 }};
             }
+
             if (path.find(cube_name) != std::string_view::npos){
                 constexpr float size = 1.0f;
                 constexpr float half_size = size / 2.0f;
@@ -92,12 +93,14 @@ namespace nasral::resources
                 base = vertices.size() - 4;
                 indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
+                err_code_ = ErrorCode::eNoError;
                 return std::optional{Mesh::Data{
                     std::move(vertices),
                     std::move(indices)
                 }};
             }
 
+            err_code_ = ErrorCode::eUnknownResource;
             return std::nullopt;
         }
     };

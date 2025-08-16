@@ -60,7 +60,7 @@ namespace nasral
             angle += delta * 10.0f;
 
             for (auto& node : test_scene_nodes_){
-                node.set_rotation({angle, 0.0f, 0.0f});
+                node.set_rotation({0.0f, angle, 0.0f});
                 node.update();
             }
 
@@ -136,36 +136,50 @@ namespace nasral
 
         // Параметры узла
         test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});
+        test_scene_nodes_[0].set_scale({4.0f, 4.0f, 4.0f});
+
         test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
+        test_scene_nodes_[1].set_scale({2.0f, 2.0f, 2.0f});
 
         // Ресурсы узла
         test_scene_nodes_[0].set_material(rendering::MaterialInstance(
             resource_manager_.get(),
             rendering::MaterialType::ePhong,
             "materials/phong/material.xml", {
-                "textures/tiles_diff.png",
-                "textures/tiles_nor_gl.png",
-                "textures/tiles_spec.png"
+                "textures/football/fb_diff_1k.png",
+                "textures/football/fb_nor_gl_1k.png",
+                "textures/football/fb_spec_1k.png"
             }));
 
         test_scene_nodes_[1].set_material(rendering::MaterialInstance(
             resource_manager_.get(),
-            rendering::MaterialType::eVertexColored,
-            "materials/vertex-colored/material.xml"));
+            rendering::MaterialType::ePhong,
+            "materials/phong/material.xml", {
+                "textures/box/b_diff_1k.png",
+                "textures/box/b_nor_gl_1k.png",
+                "textures/box/b_spec_1k.png"
+            }));
 
         test_scene_nodes_[0].set_mesh(rendering::MeshInstance(
             resource_manager_.get(),
-            resources::builtin_res_path(resources::BuiltinResources::eCubeMesh)));
+            "meshes/football/fb.obj"));
 
         test_scene_nodes_[1].set_mesh(rendering::MeshInstance(
             resource_manager_.get(),
-            resources::builtin_res_path(resources::BuiltinResources::eCubeMesh)));
+            "meshes/box/box.obj"));
 
         test_scene_nodes_[0].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
             glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
             glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-            16.0f,
+            32.0f,
             1.0f
+        });
+
+        test_scene_nodes_[1].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
+            glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+            glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+            16.0f,
+            0.5f
         });
 
         test_scene_nodes_[0].request_resources();
@@ -244,6 +258,7 @@ namespace nasral
             model = glm::rotate(model, glm::radians(spatial_settings_.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
             model = glm::rotate(model, glm::radians(spatial_settings_.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::rotate(model, glm::radians(spatial_settings_.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::scale(model, spatial_settings_.scale);
             renderer->update_obj_ubo(obj_index_, uniforms);
             spatial_settings_.updated = false;
         }
