@@ -164,6 +164,7 @@ namespace nasral::rendering
     struct ObjectTransformUniforms
     {
         glm::mat4 model = glm::identity<glm::mat4>();
+        glm::mat4 normals = glm::identity<glm::mat4>();
     };
 
     struct ObjectPhongMatUniforms

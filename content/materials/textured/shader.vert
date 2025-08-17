@@ -22,6 +22,13 @@ layout(push_constant) uniform PushConstants {
     uint obj_index;
 } pc_push;
 
+// Параметры трансформаций одиночного объекта
+struct ObjectTransforms
+{
+    mat4 model;
+    mat4 normals;
+};
+
 // Uniform buffer для матриц камеры
 layout(set = 0, binding = 0, std140) uniform UCamera {
     mat4 view;
@@ -30,12 +37,12 @@ layout(set = 0, binding = 0, std140) uniform UCamera {
 
 // Storage buffer для матриц объектов
 layout(set = 1, binding = 0, std430) readonly buffer SObjectTransforms {
-    mat4 models[MAX_OBJECTS];
-} s_objects;
+    ObjectTransforms s_objects[MAX_OBJECTS];
+};
 
 void main()
 {
-    gl_Position = u_camera.proj * u_camera.view * s_objects.models[pc_push.obj_index] * vec4(in_position, 1.0);
+    gl_Position = u_camera.proj * u_camera.view * s_objects[pc_push.obj_index].model * vec4(in_position, 1.0);
     vs_out.color = in_color.rgb;
     vs_out.uv = in_uv;
 }

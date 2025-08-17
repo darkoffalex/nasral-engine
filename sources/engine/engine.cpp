@@ -254,11 +254,13 @@ namespace nasral
         if (spatial_settings_.updated){
             rendering::ObjectTransformUniforms uniforms{};
             auto& model = uniforms.model;
+            auto& normals = uniforms.normals;
             model = glm::translate(model, spatial_settings_.position);
             model = glm::rotate(model, glm::radians(spatial_settings_.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
             model = glm::rotate(model, glm::radians(spatial_settings_.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
             model = glm::rotate(model, glm::radians(spatial_settings_.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
             model = glm::scale(model, spatial_settings_.scale);
+            normals = glm::transpose(glm::inverse(glm::mat3(model)));
             renderer->update_obj_ubo(obj_index_, uniforms);
             spatial_settings_.updated = false;
         }

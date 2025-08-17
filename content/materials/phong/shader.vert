@@ -24,6 +24,13 @@ layout(push_constant) uniform PushConstants {
     uint obj_index;
 } pc_push;
 
+// Параметры трансформаций одиночного объекта
+struct ObjectTransforms
+{
+    mat4 model;
+    mat4 normals;
+};
+
 // Uniform buffer для матриц камеры
 layout(set = 0, binding = 0, std140) uniform UCamera {
     mat4 view;
@@ -33,19 +40,22 @@ layout(set = 0, binding = 0, std140) uniform UCamera {
 
 // Storage buffer для матриц объектов
 layout(set = 1, binding = 0, std430) readonly buffer SObjectTransforms {
-    mat4 models[MAX_OBJECTS];
-} s_objects;
+    ObjectTransforms s_objects[MAX_OBJECTS];
+};
 
 void main()
 {
-    // Позиция и нормаль в мировом пространстве
-    vec4 world_pos = s_objects.models[pc_push.obj_index] * vec4(in_position, 1.0);
-    vec4 world_normal = s_objects.models[pc_push.obj_index] * vec4(in_normal, 0.0);
+    // Матрицы модели и нормалей
+    mat4 model = s_objects[pc_push.obj_index].model;
+    mat3 normal_mat = mat3(s_objects[pc_push.obj_index].normals);
+
+    // Нораль в мировом пространстве
+    vec4 world_pos = model * vec4(in_position, 1.0);
 
     // Выход
     vs_out.uv = in_uv;
     vs_out.color = in_color.rgb;
+    vs_out.normal = normal_mat * in_normal;
     vs_out.position = world_pos.xyz;
-    vs_out.normal = world_normal.xyz;
     gl_Position = u_camera.proj * u_camera.view * world_pos;
 }
