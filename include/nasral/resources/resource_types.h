@@ -14,8 +14,6 @@ namespace nasral::logging
 
 namespace nasral::resources
 {
-
-
     enum class Status : unsigned
     {
         eUnloaded = 0,
@@ -78,6 +76,7 @@ namespace nasral::resources
         eCheckerboardTexture,
         eQuadMesh,
         eCubeMesh,
+        eSphereMesh,
         TOTAL
     };
 
@@ -87,7 +86,8 @@ namespace nasral::resources
         "builtin:tex/normal-pixel",
         "builtin:tex/chessboard-64-16",
         "builtin:mesh/quad",
-        "builtin:mesh/cube"
+        "builtin:mesh/cube",
+        "builtin:mesh/sphere"
     };
 
     inline std::string builtin_res_path(const BuiltinResources res){

@@ -1,0 +1,7 @@
+<Material type="PBR">
+    <Shaders>
+        <Shader stage="vertex" path="materials/pbr/shader.vert.spv"/>
+        <Shader stage="fragment" path="materials/pbr/shader.frag.spv"/>
+        <Shader stage="geometry" path="materials/pbr/shader.geom.spv"/>
+    </Shaders>
+</Material>

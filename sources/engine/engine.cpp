@@ -126,11 +126,11 @@ namespace nasral
         // Камера (пока статична)
         const auto aspect = renderer_->get_rendering_aspect();
         camera_uniforms_.position = glm::vec4(0.0f, 0.0f, 2.5f, 1.0f);
-        camera_uniforms_.view = glm::translate(glm::mat4(1.0f), -make_vec3(camera_uniforms_.position));
+        camera_uniforms_.view = glm::translate(glm::mat4(1.0f), -glm::vec3(0.0f, 0.0f, 2.5f));
         camera_uniforms_.projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
         // Узлы сцены
-        test_scene_nodes_.reserve(2);
+        test_scene_nodes_.reserve(1);
         test_scene_nodes_.emplace_back(this);
         test_scene_nodes_.emplace_back(this);
 
@@ -139,10 +139,19 @@ namespace nasral
         test_scene_nodes_[0].set_scale({4.0f, 4.0f, 4.0f});
 
         test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
-        test_scene_nodes_[1].set_scale({2.0f, 2.0f, 2.0f});
+        test_scene_nodes_[1].set_scale({4.0f, 4.0f, 4.0f});
 
         // Ресурсы узла
         test_scene_nodes_[0].set_material(rendering::MaterialInstance(
+            resource_manager_.get(),
+            rendering::MaterialType::ePbr,
+            "materials/pbr/material.xml", {
+                "textures/football/fb_diff_1k.png",
+                "textures/football/fb_nor_gl_1k.png",
+                "textures/football/fb_rough_1k.png"
+            }));
+
+        test_scene_nodes_[1].set_material(rendering::MaterialInstance(
             resource_manager_.get(),
             rendering::MaterialType::ePhong,
             "materials/phong/material.xml", {
@@ -151,34 +160,24 @@ namespace nasral
                 "textures/football/fb_spec_1k.png"
             }));
 
-        test_scene_nodes_[1].set_material(rendering::MaterialInstance(
-            resource_manager_.get(),
-            rendering::MaterialType::ePhong,
-            "materials/phong/material.xml", {
-                "textures/box/b_diff_1k.png",
-                "textures/box/b_nor_gl_1k.png",
-                "textures/box/b_spec_1k.png"
-            }));
-
         test_scene_nodes_[0].set_mesh(rendering::MeshInstance(
             resource_manager_.get(),
             "meshes/football/fb.obj"));
 
         test_scene_nodes_[1].set_mesh(rendering::MeshInstance(
             resource_manager_.get(),
-            "meshes/box/box.obj"));
+            "meshes/football/fb.obj"));
 
-        test_scene_nodes_[0].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
+        test_scene_nodes_[0].material_instance().set_settings(rendering::ObjectPbrMatUniforms{
             glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-            glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-            32.0f,
-            1.0f
+            0.5f,
+            0.0f
         });
 
         test_scene_nodes_[1].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
-            glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+            glm::vec4(0.7f, 0.7f, 0.7f, 1.0f),
             glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-            16.0f,
+            32.0f,
             0.5f
         });
 
@@ -188,15 +187,15 @@ namespace nasral
         // Освещение
         test_light_sources_.reserve(2);
         test_light_sources_.emplace_back(this);
-        test_light_sources_.emplace_back(this);
+        // test_light_sources_.emplace_back(this);
 
-        test_light_sources_[0].set_position({-0.6f, 0.1f, 1.2f});
+        test_light_sources_[0].set_position({3.0, 2.0f, 3.0f});
         test_light_sources_[0].set_color({1.0f, 1.0f, 1.0f});
-        test_light_sources_[0].set_intensity(1.0f);
+        test_light_sources_[0].set_intensity(3.0f);
 
-        test_light_sources_[1].set_position({0.6f, 0.1f, 1.2f});
-        test_light_sources_[1].set_color({1.0f, 1.0f, 1.0f});
-        test_light_sources_[1].set_intensity(1.0f);
+        // test_light_sources_[1].set_position({0.6f, 0.0f, 3.0f});
+        // test_light_sources_[1].set_color({1.0f, 1.0f, 1.0f});
+        // test_light_sources_[1].set_intensity(1.0f);
     }
 
     Engine::TestNode::TestNode(const Engine* engine)

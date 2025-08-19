@@ -59,6 +59,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
                 { nasral::resources::Type::eShader, "materials/phong/shader.geom.spv"},
                 { nasral::resources::Type::eMaterial, "materials/phong/material.xml"},
 
+                { nasral::resources::Type::eShader, "materials/pbr/shader.vert.spv"},
+                { nasral::resources::Type::eShader, "materials/pbr/shader.frag.spv"},
+                { nasral::resources::Type::eShader, "materials/pbr/shader.geom.spv"},
+                { nasral::resources::Type::eMaterial, "materials/pbr/material.xml"},
+
                 { nasral::resources::Type::eMesh, "meshes/football/fb.obj"},
                 { nasral::resources::Type::eMesh, "meshes/football/fb_deflated.obj"},
                 { nasral::resources::Type::eMesh, "meshes/box/box.obj"},
@@ -70,16 +75,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
                 { nasral::resources::Type::eTexture, "textures/football/fb_diff_1k.png"},
                 { nasral::resources::Type::eTexture, "textures/football/fb_nor_gl_1k.png"},
                 { nasral::resources::Type::eTexture, "textures/football/fb_spec_1k.png"},
+                { nasral::resources::Type::eTexture, "textures/football/fb_rough_1k.png"},
                 { nasral::resources::Type::eTexture, "textures/box/b_diff_1k.png"},
                 { nasral::resources::Type::eTexture, "textures/box/b_nor_gl_1k.png"},
                 { nasral::resources::Type::eTexture, "textures/box/b_spec_1k.png"},
+                { nasral::resources::Type::eTexture, "textures/box/b_rough_1k.png"},
             };
 
             // Рендеринг
             config.rendering.app_name = "engine-demo";
             config.rendering.engine_name = "nasral-engine";
             config.rendering.surface_provider = std::make_shared<utils::GlfwSurfaceProvider>(window);
-            config.rendering.clear_color = {0.0f, 0.0f, 0.25f, 1.0f};
+            config.rendering.clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
             config.rendering.pfn_vk_get_proc_addr = glfwGetInstanceProcAddress;
             config.rendering.rendering_resolution = {}; // На текущий момент не используется
             config.rendering.color_format = vk::Format::eB8G8R8A8Unorm;

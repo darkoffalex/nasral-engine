@@ -1207,7 +1207,7 @@ namespace nasral::rendering
                     .setDescriptorCount(1)
                     .setBufferInfo(obj_transforms_buffer_info));
 
-            // Параметры материалов объектов (set = 1, binding = 1)
+            // Параметры phong материалов объектов (set = 1, binding = 1)
             vk::DescriptorBufferInfo obj_ph_mtls_buffer_info;
             obj_ph_mtls_buffer_info.setBuffer(vk_ubo_objects_phong_mat_->vk_buffer())
                            .setOffset(0)
@@ -1221,7 +1221,7 @@ namespace nasral::rendering
                     .setDescriptorCount(1)
                     .setBufferInfo(obj_ph_mtls_buffer_info));
 
-            // Параметры материалов объектов (set = 1, binding = 2)
+            // Параметры PBR материалов объектов (set = 1, binding = 2)
             vk::DescriptorBufferInfo obj_pbr_mtls_buffer_info;
             obj_pbr_mtls_buffer_info.setBuffer(vk_ubo_objects_pbr_mat_->vk_buffer())
                            .setOffset(0)

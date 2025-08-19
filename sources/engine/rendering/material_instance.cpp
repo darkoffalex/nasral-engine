@@ -174,11 +174,11 @@ namespace nasral::rendering
         {
         case TextureType::eAlbedoColor:
         case TextureType::eRoughnessOrSpecular:
+        case TextureType::eMetallicOrReflection:
             return resources::BuiltinResources::eWhitePixel;
         case TextureType::eNormal:
             return resources::BuiltinResources::eNormalPixel;
         case TextureType::eHeight:
-        case TextureType::eMetallicOrReflection:
             return resources::BuiltinResources::eBlackPixel;
         default:
             return resources::BuiltinResources::eCheckerboardTexture;

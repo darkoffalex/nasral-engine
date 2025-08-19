@@ -178,10 +178,10 @@ namespace nasral::rendering
     struct ObjectPbrMatUniforms
     {
         glm::vec4 color = glm::vec4(1.0f);
-        glm::float32 roughness = 0.5f;
+        glm::float32 roughness = 1.0f;
         glm::float32 metallic = 0.0f;
-        glm::float32 occlusion = 1.0f;
-        glm::float32 emissive = 0.0f;
+        glm::float32 ao = 1.0f;
+        glm::float32 emission = 0.0f;
     };
 
     struct LightUniforms
@@ -190,7 +190,7 @@ namespace nasral::rendering
         glm::vec4 direction = glm::vec4(0.0f);
         glm::vec4 color = glm::vec4(1.0f);
         glm::mat4 space = glm::identity<glm::mat4>();
-        glm::float32 quadratic = 2.75f;
+        glm::float32 quadratic = 0.1f;
         glm::float32 radius = 0.0f;
         glm::float32 intensity = 1.0f;
     };
