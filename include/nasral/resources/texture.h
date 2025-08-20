@@ -22,8 +22,7 @@ namespace nasral::resources
 
         explicit Texture(const ResourceManager* manager,
             const std::string_view& path,
-            std::unique_ptr<Loader<Data>> loader,
-            const TextureLoadParams& params = {});
+            std::unique_ptr<Loader<Data>> loader);
         ~Texture() override;
 
         Texture(const Texture&) = delete;
@@ -42,7 +41,6 @@ namespace nasral::resources
     protected:
         std::string_view path_;
         std::unique_ptr<Loader<Data>> loader_;
-        TextureLoadParams params_;
         vk::utils::Image::Ptr image_;
     };
 }

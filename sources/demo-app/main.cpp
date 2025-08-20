@@ -75,7 +75,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
                 { res::Type::eTexture, "textures/football/fb_rough_1k.png", std::nullopt},
                 // Текстуры (стул)
                 { res::Type::eTexture, "textures/chair/chair_ao_1k.png", std::nullopt},
-                { res::Type::eTexture, "textures/chair/chair_diff_1k.png:v0", res::TextureLoadParams().set_srgb(false)},
+                { res::Type::eTexture, "textures/chair/chair_diff_1k.png:v0", std::nullopt},
                 { res::Type::eTexture, "textures/chair/chair_diff_1k.png:v1", res::TextureLoadParams().set_srgb(true)},
                 { res::Type::eTexture, "textures/chair/chair_metal_1k.png", std::nullopt},
                 { res::Type::eTexture, "textures/chair/chair_nor_gl_1k.png", std::nullopt},

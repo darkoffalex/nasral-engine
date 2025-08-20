@@ -143,6 +143,42 @@ namespace nasral::resources
         SafeHandle<const logging::Logger> logger_;
     };
 
+    struct FixedPath
+    {
+        using Buff = std::array<char, MAX_RESOURCE_PATH_LENGTH>;
+        Buff buff{};
+
+        FixedPath(){
+            buff[0] = '\0';
+        }
+
+        explicit FixedPath(const std::string& path){
+            assign(path);
+        }
+
+        void assign(const std::string& path){
+            if (path.size() > MAX_RESOURCE_PATH_LENGTH){
+                throw std::invalid_argument("Path string is too long");
+            }
+
+            const auto len = std::min(path.size(), buff.size() - 1);
+            std::copy_n(path.begin(), len, buff.begin());
+            buff[len] = '\0';
+        }
+
+        [[nodiscard]] std::string_view view() const {
+            return {buff.data()};
+        }
+
+        [[nodiscard]] const char* data() const {
+            return buff.data();
+        }
+
+        bool operator==(const FixedPath& other) const {
+            return view() == other.view();
+        }
+    };
+
     struct TextureLoadParams
     {
         bool srgb = false;
@@ -183,42 +219,6 @@ namespace nasral::resources
 
     using LoadParams = std::variant<TextureLoadParams, MeshLoadParams>;
 
-    struct FixedPath
-    {
-        using Buff = std::array<char, MAX_RESOURCE_PATH_LENGTH>;
-        Buff buff{};
-
-        FixedPath(){
-            buff[0] = '\0';
-        }
-
-        explicit FixedPath(const std::string& path){
-            assign(path);
-        }
-
-        void assign(const std::string& path){
-            if (path.size() > MAX_RESOURCE_PATH_LENGTH){
-                throw std::invalid_argument("Path string is too long");
-            }
-
-            const auto len = std::min(path.size(), buff.size() - 1);
-            std::copy_n(path.begin(), len, buff.begin());
-            buff[len] = '\0';
-        }
-
-        [[nodiscard]] std::string_view view() const {
-            return {buff.data()};
-        }
-
-        [[nodiscard]] const char* data() const {
-            return buff.data();
-        }
-
-        bool operator==(const FixedPath& other) const {
-            return view() == other.view();
-        }
-    };
-
     template<typename DataType>
     class Loader
     {
@@ -226,13 +226,23 @@ namespace nasral::resources
         static_assert(std::is_move_assignable_v<DataType>, "DataType must be move assignable");
 
     public:
-        virtual std::optional<DataType> load(const std::string_view& path) = 0;
+        explicit Loader(const std::optional<LoadParams>& params = std::nullopt): load_params_(params){}
         virtual ~Loader() = default;
 
-        [[nodiscard]] ErrorCode err_code() const { return err_code_; }
+        virtual std::optional<DataType> load(const std::string_view& path) = 0;
+
+        [[nodiscard]] ErrorCode err_code() const{
+            return err_code_;
+        }
+
+        template<typename LP>
+        [[nodiscard]] const LP* load_params() const{
+            return load_params_.has_value() ? std::get_if<LP>(&load_params_.value()) : nullptr;
+        }
 
     protected:
         ErrorCode err_code_ = ErrorCode::eNoError;
+        std::optional<LoadParams> load_params_;
     };
 
     struct ResourceConfig

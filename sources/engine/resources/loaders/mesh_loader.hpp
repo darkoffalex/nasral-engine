@@ -9,6 +9,14 @@ namespace nasral::resources
     class MeshLoader final : public Loader<Mesh::Data>
     {
     public:
+        explicit MeshLoader(const std::optional<LoadParams>& params = std::nullopt) : Loader(params){
+            if (load_params_.has_value()){
+                assert(std::get_if<MeshLoadParams>(&load_params_.value()) != nullptr);
+            }else{
+                load_params_ = MeshLoadParams();
+            }
+        }
+
         std::optional<Mesh::Data> load([[maybe_unused]] const std::string_view& path) override{
             Assimp::Importer importer;
 
@@ -50,7 +58,7 @@ namespace nasral::resources
                 // Добавить вершины
                 for (unsigned int vtx_idx = 0; vtx_idx < mesh->mNumVertices; vtx_idx++)
                 {
-                    rendering::Vertex vertex;
+                    rendering::Vertex vertex = {};
 
                     vertex.pos = glm::vec3(
                         mesh->mVertices[vtx_idx].x,

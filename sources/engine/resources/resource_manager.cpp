@@ -292,12 +292,9 @@ namespace nasral::resources
                             slot.info.path.view(),
                             std::make_unique<MeshBuiltinLoader>());
                     }else{
-                        //auto& params = slot.loading.params;
-                        //auto* mp = params.has_value() ? std::get_if<MeshLoadParams>(&params.value()) : nullptr;
-
                         res = std::make_unique<Mesh>(this,
                             slot.info.path.view(),
-                            std::make_unique<MeshLoader>());
+                            std::make_unique<MeshLoader>(slot.loading.params));
                     }
                     break;
                 }
@@ -310,13 +307,9 @@ namespace nasral::resources
                             std::make_unique<TextureBuiltinLoader>());
                     }
                     else{
-                        auto& params = slot.loading.params;
-                        auto* tp = params.has_value() ? std::get_if<TextureLoadParams>(&params.value()) : nullptr;
-
                         res = std::make_unique<Texture>(this,
                              slot.info.path.view(),
-                             std::make_unique<TextureLoader>(),
-                             tp ? *tp : TextureLoadParams());
+                             std::make_unique<TextureLoader>(slot.loading.params));
                     }
                     break;
                 }
