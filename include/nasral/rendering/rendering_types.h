@@ -184,6 +184,8 @@ namespace nasral::rendering
         glm::float32 emission = 0.0f;
     };
 
+    using ObjectMatUniforms = std::variant<ObjectPhongMatUniforms, ObjectPbrMatUniforms>;
+
     struct LightUniforms
     {
         glm::vec4 position = glm::vec4(0.0f);
@@ -200,8 +202,6 @@ namespace nasral::rendering
         uint32_t count = 0;
         uint32_t indices[MAX_LIGHTS]{};
     };
-
-    using ObjectMatUniforms = std::variant<ObjectPhongMatUniforms, ObjectPbrMatUniforms>;
 
     class Instance
     {

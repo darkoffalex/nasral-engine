@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <array>
+#include <variant>
 #include <nasral/core_types.h>
 
 #define MAX_RESOURCE_COUNT 100
@@ -142,6 +143,46 @@ namespace nasral::resources
         SafeHandle<const logging::Logger> logger_;
     };
 
+    struct TextureLoadParams
+    {
+        bool srgb = false;
+        bool gen_mipmaps = true;
+
+        TextureLoadParams& set_srgb(const bool i_srgb){
+            this->srgb = i_srgb;
+            return *this;
+        }
+
+        TextureLoadParams& set_gen_mipmaps(const bool i_gen_mipmaps){
+            this->gen_mipmaps = i_gen_mipmaps;
+            return *this;
+        }
+    };
+
+    struct MeshLoadParams
+    {
+        bool gen_normals = true;
+        bool gen_tangents = false;
+        bool winding_ccw = false;
+
+        MeshLoadParams& set_gen_normals(const bool i_gen_normals){
+            this->gen_normals = i_gen_normals;
+            return *this;
+        }
+
+        MeshLoadParams& set_gen_tangents(const bool i_gen_tangents){
+            this->gen_tangents = i_gen_tangents;
+            return *this;
+        }
+
+        MeshLoadParams& set_winding_ccw(const bool i_winding_ccw){
+            this->winding_ccw = i_winding_ccw;
+            return *this;
+        }
+    };
+
+    using LoadParams = std::variant<TextureLoadParams, MeshLoadParams>;
+
     struct FixedPath
     {
         using Buff = std::array<char, MAX_RESOURCE_PATH_LENGTH>;
@@ -197,7 +238,7 @@ namespace nasral::resources
     struct ResourceConfig
     {
         std::string content_dir;
-        std::vector<std::pair<Type, std::string>> initial_resources;
+        std::vector<std::tuple<Type, std::string, std::optional<LoadParams>>> initial_resources;
     };
 
     class ResourceError final : public EngineError

@@ -45,41 +45,42 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             // Ресурсы
             config.resources.content_dir = "../../content/";
             config.resources.initial_resources = {
-                // Для теста
-                { nasral::resources::Type::eShader, "materials/textured/shader.vert.spv"},
-                { nasral::resources::Type::eShader, "materials/textured/shader.frag.spv"},
-                { nasral::resources::Type::eMaterial, "materials/textured/material.xml"},
-
-                { nasral::resources::Type::eShader, "materials/vertex-colored/shader.vert.spv"},
-                { nasral::resources::Type::eShader, "materials/vertex-colored/shader.frag.spv"},
-                { nasral::resources::Type::eMaterial, "materials/vertex-colored/material.xml"},
-
-                { nasral::resources::Type::eShader, "materials/phong/shader.vert.spv"},
-                { nasral::resources::Type::eShader, "materials/phong/shader.frag.spv"},
-                { nasral::resources::Type::eShader, "materials/phong/shader.geom.spv"},
-                { nasral::resources::Type::eMaterial, "materials/phong/material.xml"},
-
-                { nasral::resources::Type::eShader, "materials/pbr/shader.vert.spv"},
-                { nasral::resources::Type::eShader, "materials/pbr/shader.frag.spv"},
-                { nasral::resources::Type::eShader, "materials/pbr/shader.geom.spv"},
-                { nasral::resources::Type::eMaterial, "materials/pbr/material.xml"},
-
-                { nasral::resources::Type::eMesh, "meshes/football/fb.obj"},
-                { nasral::resources::Type::eMesh, "meshes/football/fb_deflated.obj"},
-                { nasral::resources::Type::eMesh, "meshes/box/box.obj"},
-
-                { nasral::resources::Type::eTexture, "textures/tiles_diff.png"},
-                { nasral::resources::Type::eTexture, "textures/tiles_nor_gl.png"},
-                { nasral::resources::Type::eTexture, "textures/tiles_spec.png"},
-
-                { nasral::resources::Type::eTexture, "textures/football/fb_diff_1k.png"},
-                { nasral::resources::Type::eTexture, "textures/football/fb_nor_gl_1k.png"},
-                { nasral::resources::Type::eTexture, "textures/football/fb_spec_1k.png"},
-                { nasral::resources::Type::eTexture, "textures/football/fb_rough_1k.png"},
-                { nasral::resources::Type::eTexture, "textures/box/b_diff_1k.png"},
-                { nasral::resources::Type::eTexture, "textures/box/b_nor_gl_1k.png"},
-                { nasral::resources::Type::eTexture, "textures/box/b_spec_1k.png"},
-                { nasral::resources::Type::eTexture, "textures/box/b_rough_1k.png"},
+                // Материал без текстуры (цветные вершины)
+                { res::Type::eShader, "materials/vertex-colored/shader.vert.spv", std::nullopt},
+                { res::Type::eShader, "materials/vertex-colored/shader.frag.spv", std::nullopt},
+                { res::Type::eMaterial, "materials/vertex-colored/material.xml", std::nullopt},
+                // Текстурированный (unlit) материал
+                { res::Type::eShader, "materials/textured/shader.vert.spv", std::nullopt},
+                { res::Type::eShader, "materials/textured/shader.frag.spv", std::nullopt},
+                { res::Type::eMaterial, "materials/textured/material.xml", std::nullopt},
+                // Phong материал
+                { res::Type::eShader, "materials/phong/shader.vert.spv", std::nullopt},
+                { res::Type::eShader, "materials/phong/shader.frag.spv", std::nullopt},
+                { res::Type::eShader, "materials/phong/shader.geom.spv", std::nullopt},
+                { res::Type::eMaterial, "materials/phong/material.xml", std::nullopt},
+                // PBR материал
+                { res::Type::eShader, "materials/pbr/shader.vert.spv", std::nullopt},
+                { res::Type::eShader, "materials/pbr/shader.frag.spv", std::nullopt},
+                { res::Type::eShader, "materials/pbr/shader.geom.spv", std::nullopt},
+                { res::Type::eMaterial, "materials/pbr/material.xml", std::nullopt},
+                // Mesh для теста (мяч)
+                { res::Type::eMesh, "meshes/football/fb.obj", std::nullopt},
+                { res::Type::eMesh, "meshes/football/fb_deflated.obj", std::nullopt},
+                // Mesh для теста (стул)
+                { res::Type::eMesh, "meshes/chair/chair.obj", std::nullopt},
+                // Текстуры (мяч)
+                { res::Type::eTexture, "textures/football/fb_diff_1k.png", std::nullopt},
+                { res::Type::eTexture, "textures/football/fb_nor_gl_1k.png", std::nullopt},
+                { res::Type::eTexture, "textures/football/fb_spec_1k.png", std::nullopt},
+                { res::Type::eTexture, "textures/football/fb_rough_1k.png", std::nullopt},
+                // Текстуры (стул)
+                { res::Type::eTexture, "textures/chair/chair_ao_1k.png", std::nullopt},
+                { res::Type::eTexture, "textures/chair/chair_diff_1k.png:v0", res::TextureLoadParams().set_srgb(false)},
+                { res::Type::eTexture, "textures/chair/chair_diff_1k.png:v1", res::TextureLoadParams().set_srgb(true)},
+                { res::Type::eTexture, "textures/chair/chair_metal_1k.png", std::nullopt},
+                { res::Type::eTexture, "textures/chair/chair_nor_gl_1k.png", std::nullopt},
+                { res::Type::eTexture, "textures/chair/chair_rough_1k.png", std::nullopt},
+                { res::Type::eTexture, "textures/chair/chair_spec_1k.png", std::nullopt},
             };
 
             // Рендеринг

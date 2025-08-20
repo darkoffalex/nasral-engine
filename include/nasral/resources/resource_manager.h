@@ -33,6 +33,7 @@ namespace nasral::resources
             struct Loading {
                 std::atomic<bool> in_progress{false};     // В процессе ли загрузка
                 std::future<void> task;                   // Задача (поток) загрузки
+                std::optional<LoadParams> params;         // Параметры загрузки
             } loading;
         };
 
@@ -42,7 +43,7 @@ namespace nasral::resources
         ResourceManager(const ResourceManager&) = delete;
         ResourceManager& operator=(const ResourceManager&) = delete;
 
-        void add_unsafe(Type type, const std::string& path);
+        void add_unsafe(Type type, const std::string& path, const std::optional<LoadParams>& params = std::nullopt);
         void remove_unsafe(const std::string& path);
         void remove_all_unsafe();
         void await_all_tasks() const;

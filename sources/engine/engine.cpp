@@ -60,7 +60,7 @@ namespace nasral
             angle += delta * 10.0f;
 
             for (auto& node : test_scene_nodes_){
-                node.set_rotation({0.0f, angle, 0.0f});
+                node.set_rotation({10.0f, angle, 0.0f});
                 node.update();
             }
 
@@ -135,43 +135,45 @@ namespace nasral
         test_scene_nodes_.emplace_back(this);
 
         // Параметры узла
-        test_scene_nodes_[0].set_position({-0.6f, 0.0f, 0.0f});
-        test_scene_nodes_[0].set_scale({4.0f, 4.0f, 4.0f});
+        test_scene_nodes_[0].set_position({-0.6f, -0.2f, 0.0f});
+        test_scene_nodes_[0].set_scale({1.5f, 1.5f, 1.5f});
 
-        test_scene_nodes_[1].set_position({0.6f, 0.0f, 0.0f});
-        test_scene_nodes_[1].set_scale({4.0f, 4.0f, 4.0f});
+        test_scene_nodes_[1].set_position({0.6f, -0.2f, 0.0f});
+        test_scene_nodes_[1].set_scale({1.5f, 1.5f, 1.5f});
 
         // Ресурсы узла
         test_scene_nodes_[0].set_material(rendering::MaterialInstance(
             resource_manager_.get(),
             rendering::MaterialType::ePbr,
             "materials/pbr/material.xml", {
-                "textures/football/fb_diff_1k.png",
-                "textures/football/fb_nor_gl_1k.png",
-                "textures/football/fb_rough_1k.png"
+                "textures/chair/chair_diff_1k.png:v1",
+                "textures/chair/chair_nor_gl_1k.png",
+                "textures/chair/chair_rough_1k.png",
+                "",
+                "textures/chair/chair_metal_1k.png"
             }));
 
         test_scene_nodes_[1].set_material(rendering::MaterialInstance(
             resource_manager_.get(),
             rendering::MaterialType::ePhong,
             "materials/phong/material.xml", {
-                "textures/football/fb_diff_1k.png",
-                "textures/football/fb_nor_gl_1k.png",
-                "textures/football/fb_spec_1k.png"
+                "textures/chair/chair_diff_1k.png:v0",
+                "textures/chair/chair_nor_gl_1k.png",
+                "textures/chair/chair_spec_1k.png"
             }));
 
         test_scene_nodes_[0].set_mesh(rendering::MeshInstance(
             resource_manager_.get(),
-            "meshes/football/fb.obj"));
+            "meshes/chair/chair.obj"));
 
         test_scene_nodes_[1].set_mesh(rendering::MeshInstance(
             resource_manager_.get(),
-            "meshes/football/fb.obj"));
+            "meshes/chair/chair.obj"));
 
         test_scene_nodes_[0].material_instance().set_settings(rendering::ObjectPbrMatUniforms{
             glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-            0.5f,
-            0.0f
+            1.0f,
+            1.0f
         });
 
         test_scene_nodes_[1].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
@@ -185,17 +187,22 @@ namespace nasral
         test_scene_nodes_[1].request_resources();
 
         // Освещение
-        test_light_sources_.reserve(2);
+        test_light_sources_.reserve(3);
         test_light_sources_.emplace_back(this);
-        // test_light_sources_.emplace_back(this);
+        test_light_sources_.emplace_back(this);
+        test_light_sources_.emplace_back(this);
 
         test_light_sources_[0].set_position({3.0, 2.0f, 3.0f});
         test_light_sources_[0].set_color({1.0f, 1.0f, 1.0f});
-        test_light_sources_[0].set_intensity(3.0f);
+        test_light_sources_[0].set_intensity(4.0f);
 
-        // test_light_sources_[1].set_position({0.6f, 0.0f, 3.0f});
-        // test_light_sources_[1].set_color({1.0f, 1.0f, 1.0f});
-        // test_light_sources_[1].set_intensity(1.0f);
+        test_light_sources_[1].set_position({0.0f, 3.0f, 3.0f});
+        test_light_sources_[1].set_color({1.0f, 1.0f, 1.0f});
+        test_light_sources_[1].set_intensity(3.0f);
+
+        test_light_sources_[2].set_position({0.0f, -3.0f, 2.0f});
+        test_light_sources_[2].set_color({1.0f, 1.0f, 1.0f});
+        test_light_sources_[2].set_intensity(2.0f);
     }
 
     Engine::TestNode::TestNode(const Engine* engine)

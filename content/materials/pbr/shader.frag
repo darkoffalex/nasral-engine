@@ -141,7 +141,7 @@ void main()
     // Параметры материала объекта
     MaterialSettings material = s_materials[pc_push.obj_index];
     float alpha = material.color.a * tex_albedo.a;
-    vec3  albedo = material.color.rgb * pow(tex_albedo.rgb, vec3(2.2)); // Компенсация sRGB (временное решение)
+    vec3  albedo = material.color.rgb * tex_albedo.rgb;
     float roughness = clamp(material.roughness * tex_roughness, 0.0f, 1.0f);
     float metallic = clamp(material.metallic * tex_metallic, 0.0f, 1.0f);
 

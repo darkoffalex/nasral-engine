@@ -42,8 +42,8 @@ namespace nasral::resources
         }
 
         // Добавить изначальные ресурсы в список
-        for (const auto& [type, path] : config.initial_resources){
-            add_unsafe(type, path);
+        for (const auto& [type, path, params] : config.initial_resources){
+            add_unsafe(type, path, params);
         }
 
         // Добавить встроенные ресурсы (ресурсы по умолчанию) в список
@@ -63,7 +63,7 @@ namespace nasral::resources
         remove_all_unsafe();
     }
 
-    void ResourceManager::add_unsafe(const Type type, const std::string& path){
+    void ResourceManager::add_unsafe(const Type type, const std::string& path, const std::optional<LoadParams>& params){
         if (indices_.count(std::string_view(path)) > 0){
             logger()->warning("Trying to add resource with duplicate path (" + path + ")");
             return;
@@ -96,6 +96,7 @@ namespace nasral::resources
         refs.has_unhandled.store(false, std::memory_order_release);
         refs.unhandled = {};
         refs.unhandled.reserve(DEFAULT_REFS_COUNT);
+        loading.params = params;
         loading.in_progress.store(false, std::memory_order_release);
         loading.task = {};
 
@@ -291,6 +292,9 @@ namespace nasral::resources
                             slot.info.path.view(),
                             std::make_unique<MeshBuiltinLoader>());
                     }else{
+                        //auto& params = slot.loading.params;
+                        //auto* mp = params.has_value() ? std::get_if<MeshLoadParams>(&params.value()) : nullptr;
+
                         res = std::make_unique<Mesh>(this,
                             slot.info.path.view(),
                             std::make_unique<MeshLoader>());
@@ -306,9 +310,13 @@ namespace nasral::resources
                             std::make_unique<TextureBuiltinLoader>());
                     }
                     else{
+                        auto& params = slot.loading.params;
+                        auto* tp = params.has_value() ? std::get_if<TextureLoadParams>(&params.value()) : nullptr;
+
                         res = std::make_unique<Texture>(this,
                              slot.info.path.view(),
-                             std::make_unique<TextureLoader>());
+                             std::make_unique<TextureLoader>(),
+                             tp ? *tp : TextureLoadParams());
                     }
                     break;
                 }
@@ -362,7 +370,11 @@ namespace nasral::resources
             return path;
         }
         try {
-            const fs::path full = fs::path(content_dir_) / path;
+            std::string p = path;
+            if (p.find(":v") != std::string::npos){
+                p = p.substr(0, p.find(":v"));
+            }
+            const fs::path full = fs::path(content_dir_) / p;
             if (!fs::exists(full)) {
                 logger()->error("File not found (" + full.string() + ")");
                 throw std::filesystem::filesystem_error("File not found", full.string(), std::error_code());

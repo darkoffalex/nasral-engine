@@ -4,10 +4,15 @@
 
 namespace nasral::resources
 {
-    Texture::Texture(const ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader)
-        : IResource(Type::eShader, manager, manager->engine()->logger())
-        , path_(path)
-        , loader_(std::move(loader))
+    Texture::Texture(
+        const ResourceManager* manager,
+        const std::string_view& path,
+        std::unique_ptr<Loader<Data>> loader,
+        const TextureLoadParams& params)
+    : IResource(Type::eShader, manager, manager->engine()->logger())
+    , path_(path)
+    , loader_(std::move(loader))
+    , params_(params)
     {}
 
     Texture::~Texture(){
@@ -45,7 +50,7 @@ namespace nasral::resources
             auto& cmd_group = vd->queue_group(to<std::size_t>(rendering::Renderer::CommandGroup::eGraphicsAndPresent));
 
             // Получить формат в зависимости от кол-ва байт на пиксель
-            const vk::Format desired_format = get_vk_format(data->channels, data->channel_depth);
+            const vk::Format desired_format = get_vk_format(data->channels, data->channel_depth, params_.srgb);
             assert(desired_format != vk::Format::eUndefined);
 
             // Проверить доступность формата
@@ -124,7 +129,7 @@ namespace nasral::resources
                 , true);
 
             // Генерация мип-уровней
-            if (image_->mip_levels() > 1){
+            if (image_->mip_levels() > 1 && params_.gen_mipmaps){
                 image_->generate_mipmaps(cmd_group
                     , vk::Extent3D{data->width, data->height, 1}
                     , vk::ImageAspectFlagBits::eColor
