@@ -21,11 +21,22 @@ namespace nasral::resources
             Assimp::Importer importer;
 
             // Флаги пост-обработки (триангулировать, генерация нормалей, соединять идентичные вершины)
-            constexpr unsigned int flags
+            unsigned int flags
                 = aiProcess_Triangulate
-                | aiProcess_GenSmoothNormals
-                | aiProcess_JoinIdenticalVertices
-                | aiProcess_FlipWindingOrder;
+                | aiProcess_JoinIdenticalVertices;
+
+            // Порядок обхода вершин
+            if (auto* lp = load_params<MeshLoadParams>()) {
+                if (!lp->winding_ccw) {
+                    flags |= aiProcess_FlipWindingOrder;
+                }
+                if (lp->gen_normals) {
+                    flags |= aiProcess_GenSmoothNormals;
+                }
+                if (lp->gen_tangents) {
+                    flags |= aiProcess_CalcTangentSpace;
+                }
+            }
 
             // Загрузка сцены из файла
             const aiScene* scene = importer.ReadFile(path.data(), flags);

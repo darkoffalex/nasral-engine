@@ -43,7 +43,7 @@ namespace nasral::resources
                     {{half_size, half_size, half_size}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
                     {{half_size, -half_size, half_size}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
                 });
-                uint32_t base = vertices.size() - 4;
+                uint32_t base = static_cast<uint32_t>(vertices.size()) - 4;
                 indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
                 // Грань -Z (задняя)
@@ -53,7 +53,7 @@ namespace nasral::resources
                     {{-half_size, half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
                     {{-half_size, -half_size, -half_size}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
                 });
-                base = vertices.size() - 4;
+                base = static_cast<uint32_t>(vertices.size()) - 4;
                 indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
                 // Грань +X (правая)
@@ -63,7 +63,7 @@ namespace nasral::resources
                     {{half_size, half_size, -half_size}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
                     {{half_size, -half_size, -half_size}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
                 });
-                base = vertices.size() - 4;
+                base = static_cast<uint32_t>(vertices.size()) - 4;
                 indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
                 // Грань -X (левая)
@@ -73,7 +73,7 @@ namespace nasral::resources
                     {{-half_size, half_size, half_size}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
                     {{-half_size, -half_size, half_size}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
                 });
-                base = vertices.size() - 4;
+                base = static_cast<uint32_t>(vertices.size()) - 4;
                 indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
                 // Грань +Y (верхняя)
@@ -83,7 +83,7 @@ namespace nasral::resources
                     {{half_size, half_size, -half_size}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
                     {{half_size, half_size, half_size}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
                 });
-                base = vertices.size() - 4;
+                base = static_cast<uint32_t>(vertices.size()) - 4;
                 indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
                 // Грань -Y (нижняя)
@@ -93,7 +93,7 @@ namespace nasral::resources
                     {{half_size, -half_size, half_size}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
                     {{half_size, -half_size, -half_size}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 1.0f}}
                 });
-                base = vertices.size() - 4;
+                base = static_cast<uint32_t>(vertices.size()) - 4;
                 indices.insert(indices.end(), {base, base + 1, base + 2, base + 2, base + 3, base});
 
                 err_code_ = ErrorCode::eNoError;
@@ -109,7 +109,9 @@ namespace nasral::resources
                 constexpr float radius = size / 2.0f;
                 constexpr int segments = 32; // Деление по долготе
                 constexpr int rings = 16;    // Деление по широте
-                constexpr bool clockwise = true; // Опция для порядка обхода вершин
+
+                auto* lp = load_params<MeshLoadParams>();
+                const bool clockwise = !lp || !lp->winding_ccw;
 
                 std::vector<rendering::Vertex> vertices;
                 std::vector<uint32_t> indices;

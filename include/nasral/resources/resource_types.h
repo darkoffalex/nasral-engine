@@ -197,7 +197,7 @@ namespace nasral::resources
 
     struct MeshLoadParams
     {
-        bool gen_normals = true;
+        bool gen_normals = false;
         bool gen_tangents = false;
         bool winding_ccw = false;
 
