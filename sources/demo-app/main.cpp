@@ -64,15 +64,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
                 { res::Type::eShader, "materials/pbr/shader.geom.spv", std::nullopt},
                 { res::Type::eMaterial, "materials/pbr/material.xml", std::nullopt},
                 // Mesh для теста (мяч)
-                { res::Type::eMesh, "meshes/football/fb.obj", std::nullopt},
-                { res::Type::eMesh, "meshes/football/fb_deflated.obj", std::nullopt},
+                // { res::Type::eMesh, "meshes/football/fb.obj", std::nullopt},
+                // { res::Type::eMesh, "meshes/football/fb_deflated.obj", std::nullopt},
                 // Mesh для теста (стул)
                 { res::Type::eMesh, "meshes/chair/chair.obj", std::nullopt},
                 // Текстуры (мяч)
-                { res::Type::eTexture, "textures/football/fb_diff_1k.png", std::nullopt},
-                { res::Type::eTexture, "textures/football/fb_nor_gl_1k.png", std::nullopt},
-                { res::Type::eTexture, "textures/football/fb_spec_1k.png", std::nullopt},
-                { res::Type::eTexture, "textures/football/fb_rough_1k.png", std::nullopt},
+                // { res::Type::eTexture, "textures/football/fb_diff_1k.png", std::nullopt},
+                // { res::Type::eTexture, "textures/football/fb_nor_gl_1k.png", std::nullopt},
+                // { res::Type::eTexture, "textures/football/fb_spec_1k.png", std::nullopt},
+                // { res::Type::eTexture, "textures/football/fb_rough_1k.png", std::nullopt},
                 // Текстуры (стул)
                 { res::Type::eTexture, "textures/chair/chair_ao_1k.png", std::nullopt},
                 { res::Type::eTexture, "textures/chair/chair_diff_1k.png:v0", std::nullopt},

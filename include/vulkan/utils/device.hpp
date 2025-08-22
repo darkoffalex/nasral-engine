@@ -428,7 +428,7 @@ namespace vk::utils
                 // Пропустить устройство без поддержки необходимых расширений
                 if (!std::all_of(req_extensions.begin(),
                     req_extensions.end(),
-                    [this, &device](const char* required_ext) {
+                    [&device](const char* required_ext) {
                         const auto extensions = device.enumerateDeviceExtensionProperties();
                         return std::any_of(extensions.begin(), extensions.end(),
                             [required_ext](const auto& ext) {
@@ -441,7 +441,11 @@ namespace vk::utils
 
                 // Пропустить устройство без поддержки необходимых особенностей
                 auto features = device.getFeatures();
-                if (!features.samplerAnisotropy || !features.geometryShader || !features.multiViewport) {
+                if (!features.samplerAnisotropy
+                    || !features.geometryShader
+                    || !features.multiViewport
+                    || !features.fillModeNonSolid)
+                {
                     continue;
                 }
 
@@ -518,7 +522,8 @@ namespace vk::utils
             constexpr auto features = vk::PhysicalDeviceFeatures()
                     .setSamplerAnisotropy(true)
                     .setGeometryShader(true)
-                    .setMultiViewport(true);
+                    .setMultiViewport(true)
+                    .setFillModeNonSolid(true);
 
             // Включить поддержку bindless дескрипторов
             auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT()

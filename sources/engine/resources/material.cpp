@@ -8,6 +8,8 @@ namespace nasral::resources
     Material::Material(ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader)
         : IResource(Type::eMaterial, manager, manager->engine()->logger())
         , material_type_(rendering::MaterialType::eDummy)
+        , vk_polygon_mode_(vk::PolygonMode::eFill)
+        , vk_line_width_(1.0f)
         , path_(path)
         , loader_(std::move(loader))
         , vert_shader_res_(manager, Type::eShader, "")
@@ -25,9 +27,10 @@ namespace nasral::resources
         assert(loader_ != nullptr);
         if (status_ == Status::eLoaded) return;
         const auto path = manager()->full_path(path_.data());
+        std::optional<Data> data = std::nullopt;
 
         try{
-            const auto& data = loader_->load(path);
+            data = loader_->load(path);
             if (!data.has_value()){
                 status_ = Status::eError;
                 err_code_ = loader_->err_code();
@@ -48,6 +51,24 @@ namespace nasral::resources
                 logger()->warning("Wrong material type: " + data->type_name);
                 material_type_ = rendering::MaterialType::eDummy;
             }
+
+            // Тип заливки полигонов
+            if (!data->polygon_mode.empty()){
+                static std::unordered_map<std::string, vk::PolygonMode> vk_poly_mode_map = {
+                    {"Fill", vk::PolygonMode::eFill},
+                    {"Line", vk::PolygonMode::eLine},
+                    {"Point", vk::PolygonMode::ePoint}
+                };
+
+                if (vk_poly_mode_map.count(data->polygon_mode) > 0){
+                    vk_polygon_mode_ = vk_poly_mode_map.at(data->polygon_mode);
+                }else{
+                    logger()->warning("Wrong polygon mode: " + data->polygon_mode);
+                }
+            }
+
+            // Ширина линии
+            vk_line_width_ = std::max(data->line_width, 1.0f);
 
             // Запрос под-ресурса вершинного shader'а
             // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_objects()
@@ -246,10 +267,10 @@ namespace nasral::resources
         // Основное
         vk::PipelineRasterizationStateCreateInfo rasterizer_state{};
         rasterizer_state.setRasterizerDiscardEnable(false);                  // Не пропускать этап rasterization
-        rasterizer_state.setPolygonMode(::vk::PolygonMode::eFill);           // Заполнять полигоны цветом
+        rasterizer_state.setPolygonMode(vk_polygon_mode_);                   // Заполнять полигоны цветом
         rasterizer_state.setCullMode(::vk::CullModeFlagBits::eBack);         // Отбрасывание задних (обратных) граней
         rasterizer_state.setFrontFace(::vk::FrontFace::eClockwise);          // Передние грани задаются по часовой стрелке
-        rasterizer_state.setLineWidth(1.0f);                                 // Ширина линий (при рисовании линиями)
+        rasterizer_state.setLineWidth(vk_line_width_);                       // Ширина линий (при рисовании линиями)
         rasterizer_state.setDepthClampEnable(false);                         // Ограничивать значения глубины выходящими за диапазон
         rasterizer_state.setDepthBiasEnable(false);                          // Смещение для глубины (полезно в shadow mapping)
         rasterizer_state.setDepthBiasConstantFactor(0.0f);                   // Постоянное смещение (полезно в shadow mapping)

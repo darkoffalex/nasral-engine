@@ -14,6 +14,8 @@ namespace nasral::resources
             }
 
             const auto shaders_conf = doc.child("Material").child("Shaders");
+            const auto settings_conf = doc.child("Material").child("Settings");
+
             if (shaders_conf.empty()){
                 err_code_ = ErrorCode::eBadFormat;
                 return std::nullopt;
@@ -32,6 +34,21 @@ namespace nasral::resources
                     data.frag_shader_path = shader_path;
                 }else if (shader_stage == "geometry"){
                     data.geom_shader_path = shader_path;
+                }
+            }
+
+            for (auto setting : settings_conf.children("Setting")){
+                std::string name = setting.attribute("name").as_string();
+                if (name == "PolygonMode"){
+                    data.polygon_mode = setting.text().as_string();
+                }
+                if (name == "LineWidth"){
+                    try{
+                        data.line_width = std::stof(setting.text().as_string());
+                    }catch (...){
+                        err_code_ = ErrorCode::eBadFormat;
+                        return std::nullopt;
+                    }
                 }
             }
 

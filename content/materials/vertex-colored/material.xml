@@ -1,4 +1,8 @@
 <Material type="VertexColored">
+    <Settings>
+        <Setting name="PolygonMode">Line</Setting>
+        <Setting name="LineWidth">1</Setting>
+    </Settings>
     <Shaders>
         <Shader stage="vertex" path="materials/vertex-colored/shader.vert.spv"/>
         <Shader stage="fragment" path="materials/vertex-colored/shader.frag.spv"/>

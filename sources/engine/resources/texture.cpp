@@ -21,7 +21,7 @@ namespace nasral::resources
         assert(loader_ != nullptr);
         if (status_ == Status::eLoaded) return;
         const auto path = manager()->full_path(path_.data());
-        std::optional<Data> data = {};
+        std::optional<Data> data = std::nullopt;
 
         try{
             data = loader_->load(path);

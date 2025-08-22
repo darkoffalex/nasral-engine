@@ -18,6 +18,8 @@ namespace nasral::resources
             std::string frag_shader_path;
             std::string geom_shader_path;
             std::string type_name;
+            std::string polygon_mode;
+            float line_width;
         };
 
         Material(ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader);
@@ -37,6 +39,8 @@ namespace nasral::resources
 
     protected:
         rendering::MaterialType material_type_;
+        vk::PolygonMode vk_polygon_mode_;
+        float vk_line_width_;
         std::string_view path_;
         std::unique_ptr<Loader<Data>> loader_;
         Ref vert_shader_res_;

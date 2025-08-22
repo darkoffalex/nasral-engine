@@ -130,7 +130,7 @@ namespace nasral
         camera_uniforms_.projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
         // Узлы сцены
-        test_scene_nodes_.reserve(1);
+        test_scene_nodes_.reserve(2);
         test_scene_nodes_.emplace_back(this);
         test_scene_nodes_.emplace_back(this);
 
@@ -144,6 +144,15 @@ namespace nasral
         // Ресурсы узла
         test_scene_nodes_[0].set_material(rendering::MaterialInstance(
             resource_manager_.get(),
+            rendering::MaterialType::ePhong,
+            "materials/phong/material.xml", {
+                "textures/chair/chair_diff_1k.png:v0",
+                "textures/chair/chair_nor_gl_1k.png",
+                "textures/chair/chair_spec_1k.png"
+            }));
+
+        test_scene_nodes_[1].set_material(rendering::MaterialInstance(
+            resource_manager_.get(),
             rendering::MaterialType::ePbr,
             "materials/pbr/material.xml", {
                 "textures/chair/chair_diff_1k.png:v1",
@@ -153,56 +162,37 @@ namespace nasral
                 "textures/chair/chair_metal_1k.png"
             }));
 
-        test_scene_nodes_[1].set_material(rendering::MaterialInstance(
-            resource_manager_.get(),
-            rendering::MaterialType::ePhong,
-            "materials/phong/material.xml", {
-                "textures/chair/chair_diff_1k.png:v0",
-                "textures/chair/chair_nor_gl_1k.png",
-                "textures/chair/chair_spec_1k.png"
-            }));
+        test_scene_nodes_[0].set_mesh(rendering::MeshInstance(resource_manager_.get(), "meshes/chair/chair.obj"));
+        test_scene_nodes_[1].set_mesh(rendering::MeshInstance(resource_manager_.get(), "meshes/chair/chair.obj"));
 
-        test_scene_nodes_[0].set_mesh(rendering::MeshInstance(
-            resource_manager_.get(),
-            "meshes/chair/chair.obj"));
-
-        test_scene_nodes_[1].set_mesh(rendering::MeshInstance(
-            resource_manager_.get(),
-            "meshes/chair/chair.obj"));
-
-        test_scene_nodes_[0].material_instance().set_settings(rendering::ObjectPbrMatUniforms{
-            glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-            1.0f,
-            1.0f
-        });
-
-        test_scene_nodes_[1].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
+        test_scene_nodes_[0].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
             glm::vec4(0.7f, 0.7f, 0.7f, 1.0f),
             glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
             32.0f,
             0.5f
         });
 
+        test_scene_nodes_[1].material_instance().set_settings(rendering::ObjectPbrMatUniforms{
+            glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+            1.0f,
+            1.0f
+        });
+
         test_scene_nodes_[0].request_resources();
         test_scene_nodes_[1].request_resources();
 
         // Освещение
-        test_light_sources_.reserve(3);
-        test_light_sources_.emplace_back(this);
+        test_light_sources_.reserve(2);
         test_light_sources_.emplace_back(this);
         test_light_sources_.emplace_back(this);
 
-        test_light_sources_[0].set_position({3.0, 2.0f, 3.0f});
+        test_light_sources_[0].set_position({0.0, 2.0f, 3.0f});
         test_light_sources_[0].set_color({1.0f, 1.0f, 1.0f});
         test_light_sources_[0].set_intensity(4.0f);
 
-        test_light_sources_[1].set_position({0.0f, 3.0f, 3.0f});
+        test_light_sources_[1].set_position({0.0f, -2.0f, 3.0f});
         test_light_sources_[1].set_color({1.0f, 1.0f, 1.0f});
         test_light_sources_[1].set_intensity(3.0f);
-
-        test_light_sources_[2].set_position({0.0f, -3.0f, 2.0f});
-        test_light_sources_[2].set_color({1.0f, 1.0f, 1.0f});
-        test_light_sources_[2].set_intensity(2.0f);
     }
 
     Engine::TestNode::TestNode(const Engine* engine)
