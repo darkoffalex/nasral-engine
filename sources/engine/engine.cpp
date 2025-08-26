@@ -50,35 +50,31 @@ namespace nasral
         assert(renderer_ != nullptr);
 
         try{
-            // Источники света
+            // Обновление данных материалов (ubo, дескрипторы текстур)
+            renderer_->materials_update_unsafe();
+
+            // Обновление данных источников света (ubo)
             for (auto& light : test_light_sources_){
                 light.update();
             }
 
-            // Обновление узлов сцены
+            // Обновление данных узлов сцены (ubo)
             static float angle = 0.0f;
             angle += delta * 10.0f;
-
             for (auto& node : test_scene_nodes_){
                 node.set_rotation({10.0f, angle, 0.0f});
                 node.update();
             }
 
-            // Обновить данные камеры
+            // Обновление данных камеры (ubo)
             renderer_->update_cam_ubo(0, camera_uniforms_);
 
-            // Начало кадра
+            // Рендеринг
             renderer_->cmd_begin_frame();
-
-            // Привязка всех необходимых дескрипторов
             renderer_->cmd_bind_frame_descriptors();
-
-            // Рендеринг объектов сцены
             for (auto& node : test_scene_nodes_){
                 node.render();
             }
-
-            // Конец кадра
             renderer_->cmd_end_frame();
 
             // Обновление состояния ресурсов
@@ -129,6 +125,41 @@ namespace nasral
         camera_uniforms_.view = glm::translate(glm::mat4(1.0f), -glm::vec3(0.0f, 0.0f, 2.5f));
         camera_uniforms_.projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
+        // Материалы
+        const auto chair_phong_idx = renderer_->material_acquire(
+            rendering::MaterialType::ePhong,
+            "materials/phong/material.xml", {
+                "textures/chair/chair_diff_1k.png:v0",
+                "textures/chair/chair_nor_gl_1k.png",
+                "textures/chair/chair_spec_1k.png"
+            });
+
+        auto& chair_phong_mat = renderer_->material_instance_unsafe(chair_phong_idx);
+        chair_phong_mat.set_settings(rendering::MaterialPhongUniforms{
+            glm::vec4(0.7f, 0.7f, 0.7f, 1.0f),
+            glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+            32.0f,
+            0.5f
+        });
+
+        const auto chair_pbr_idx = renderer_->material_acquire(
+            rendering::MaterialType::ePbr,
+            "materials/pbr/material.xml", {
+                "textures/chair/chair_diff_1k.png:v1",
+                "textures/chair/chair_nor_gl_1k.png",
+                "textures/chair/chair_rough_1k.png",
+                "",
+                "textures/chair/chair_metal_1k.png",
+            }
+        );
+
+        auto& chair_pbr_mat = renderer_->material_instance_unsafe(chair_pbr_idx);
+        chair_pbr_mat.set_settings(rendering::MaterialPbrUniforms{
+            glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+            1.0f,
+            1.0f
+        });
+
         // Узлы сцены
         test_scene_nodes_.reserve(2);
         test_scene_nodes_.emplace_back(this);
@@ -137,48 +168,14 @@ namespace nasral
         // Параметры узла
         test_scene_nodes_[0].set_position({-0.6f, -0.2f, 0.0f});
         test_scene_nodes_[0].set_scale({1.5f, 1.5f, 1.5f});
+        test_scene_nodes_[0].set_material(chair_phong_idx);
+        test_scene_nodes_[0].set_mesh(rendering::MeshInstance(resource_manager_.get(), "meshes/chair/chair.obj"));
+        test_scene_nodes_[0].request_resources();
 
         test_scene_nodes_[1].set_position({0.6f, -0.2f, 0.0f});
         test_scene_nodes_[1].set_scale({1.5f, 1.5f, 1.5f});
-
-        // Ресурсы узла
-        test_scene_nodes_[0].set_material(rendering::MaterialInstance(
-            resource_manager_.get(),
-            rendering::MaterialType::ePhong,
-            "materials/phong/material.xml", {
-                "textures/chair/chair_diff_1k.png:v0",
-                "textures/chair/chair_nor_gl_1k.png",
-                "textures/chair/chair_spec_1k.png"
-            }));
-
-        test_scene_nodes_[1].set_material(rendering::MaterialInstance(
-            resource_manager_.get(),
-            rendering::MaterialType::ePbr,
-            "materials/pbr/material.xml", {
-                "textures/chair/chair_diff_1k.png:v1",
-                "textures/chair/chair_nor_gl_1k.png",
-                "textures/chair/chair_rough_1k.png",
-                "",
-                "textures/chair/chair_metal_1k.png"
-            }));
-
-        test_scene_nodes_[0].set_mesh(rendering::MeshInstance(resource_manager_.get(), "meshes/chair/chair.obj"));
+        test_scene_nodes_[1].set_material(chair_pbr_idx);
         test_scene_nodes_[1].set_mesh(rendering::MeshInstance(resource_manager_.get(), "meshes/chair/chair.obj"));
-
-        test_scene_nodes_[0].material_instance().set_settings(rendering::ObjectPhongMatUniforms{
-            glm::vec4(0.7f, 0.7f, 0.7f, 1.0f),
-            glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-            32.0f,
-            0.5f
-        });
-
-        test_scene_nodes_[1].material_instance().set_settings(rendering::ObjectPbrMatUniforms{
-            glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-            1.0f,
-            1.0f
-        });
-
-        test_scene_nodes_[0].request_resources();
         test_scene_nodes_[1].request_resources();
 
         // Освещение
@@ -206,45 +203,19 @@ namespace nasral
     }
 
     void Engine::TestNode::request_resources(){
-        material_.request_resources();
+        auto& material = engine_->renderer_->material_instance_unsafe(material_index_);
+        material.request_resources();
         mesh_.request_resources();
     }
 
     void Engine::TestNode::release_resources(){
-        material_.release_resources();
+        auto& material = engine_->renderer_->material_instance_unsafe(material_index_);
+        material.release_resources();
         mesh_.release_resources();
     }
 
     void Engine::TestNode::update(){
         auto& renderer = engine_->renderer_;
-
-        // Если текстуры материала были обновлены
-        if (material_.check_changes(rendering::MaterialInstance::eTextureChanged, false, true)){
-            for (uint32_t i = 0; i < static_cast<uint32_t>(rendering::TextureType::TOTAL); ++i){
-                if (auto& th = material_.tex_render_handles(static_cast<rendering::TextureType>(i))){
-                    renderer->update_obj_tex(obj_index_
-                        , th
-                        , static_cast<rendering::TextureType>(i)
-                        , rendering::TextureSamplerType::eAnisotropic);
-                }
-            }
-        }
-
-        // Если параметры материала были обновлены
-        if (material_.check_changes(rendering::MaterialInstance::eSettingsChanged, false, true)){
-            if (material_.settings().has_value()){
-                auto& settings = material_.settings().value();
-                std::visit([&](const auto& s){
-                    using T = std::decay_t<decltype(s)>;
-                    if constexpr (
-                        std::is_same_v<T, rendering::ObjectPhongMatUniforms> ||
-                        std::is_same_v<T, rendering::ObjectPbrMatUniforms>)
-                    {
-                        renderer->update_obj_ubo(obj_index_, s);
-                    }
-                }, settings);
-            }
-        }
 
         // Если параметры узла были обновлены
         if (spatial_settings_.updated){
@@ -264,14 +235,15 @@ namespace nasral
 
     void Engine::TestNode::render() const{
         auto& renderer = engine_->renderer_;
+        const auto& material = engine_->renderer_->material_instance_unsafe(material_index_);
 
         if (!mesh_.mesh_render_handles()
-            || !material_.mat_render_handles())
+            || !material.mat_render_handles())
         {
             return;
         }
 
-        renderer->cmd_bind_material(material_.mat_render_handles());
+        renderer->cmd_bind_material(material.mat_render_handles(), material_index_);
         renderer->cmd_draw_mesh(mesh_.mesh_render_handles(), obj_index_);
     }
 
@@ -290,8 +262,8 @@ namespace nasral
         spatial_settings_.updated = true;
     }
 
-    void Engine::TestNode::set_material(rendering::MaterialInstance instance){
-        material_ = std::move(instance);
+    void Engine::TestNode::set_material(const uint32_t index){
+        material_index_ = index;
     }
 
     void Engine::TestNode::set_mesh(rendering::MeshInstance instance){

@@ -1,6 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <nasral/rendering/rendering_types.h>
+#include <nasral/rendering/material_instance.h>
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/buffer.hpp>
 #include <vulkan/utils/uniform_layout.hpp>
@@ -27,17 +28,18 @@ namespace nasral::rendering
 
         void cmd_begin_frame();
         void cmd_end_frame();
-        void cmd_bind_material(const Handles::Material& handles);
+        void cmd_bind_material(const Handles::Material& handles, uint32_t mat_index);
         void cmd_bind_frame_descriptors();
         void cmd_draw_mesh(const Handles::Mesh& handles, uint32_t obj_index);
         void cmd_wait_for_frame() const;
 
         void request_surface_refresh();
+
         void update_cam_ubo(uint32_t index, const CameraUniforms& uniforms) const;
         void update_obj_ubo(uint32_t index, const ObjectTransformUniforms& uniforms) const;
-        void update_obj_ubo(uint32_t index, const ObjectPhongMatUniforms& uniforms) const;
-        void update_obj_ubo(uint32_t index, const ObjectPbrMatUniforms& uniforms) const;
-        void update_obj_tex(uint32_t index, const Handles::Texture& handles, const TextureType& t_type, const TextureSamplerType& s_type);
+        void update_material_ubo(uint32_t index, const MaterialPhongUniforms& uniforms) const;
+        void update_material_ubo(uint32_t index, const MaterialPbrUniforms& uniforms) const;
+        void update_material_tex(uint32_t index, const TextureBindingInfo& info) const;
         void update_light_ubo(uint32_t index, const LightUniforms& uniforms) const;
 
         [[nodiscard]] uint32_t obj_id_acquire_unsafe();
@@ -46,6 +48,16 @@ namespace nasral::rendering
         void obj_id_release(uint32_t id);
         void obj_ids_reset_unsafe();
         void obj_ids_reset();
+
+        [[nodiscard]] uint32_t material_acquire_unsafe(MaterialType type, const std::string& path, const std::vector<std::string>& tex_paths);
+        [[nodiscard]] uint32_t material_acquire(MaterialType type, const std::string& path, const std::vector<std::string>& tex_paths);
+        [[nodiscard]] MaterialInstance& material_instance_unsafe(uint32_t id);
+        [[nodiscard]] MaterialInstance& material_instance(uint32_t id);
+        void material_release_unsafe(uint32_t id);
+        void material_release(uint32_t id);
+        void materials_reset_unsafe();
+        void materials_reset();
+        void materials_update_unsafe();
 
         [[nodiscard]] uint32_t light_id_acquire_unsafe();
         [[nodiscard]] uint32_t light_id_acquire();
@@ -58,20 +70,47 @@ namespace nasral::rendering
         void light_ids_deactivate_unsafe(const std::vector<uint32_t>& ids);
         void light_ids_deactivate(const std::vector<uint32_t>& ids);
 
-        [[nodiscard]] bool is_rendering() const { return is_rendering_; }
-        [[nodiscard]] size_t current_frame() const { return current_frame_; }
-        [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }
-        [[nodiscard]] const RenderingConfig& config() const { return config_; }
-        [[nodiscard]] const vk::Instance& vk_instance() const { return *vk_instance_; }
-        [[nodiscard]] const vk::utils::Device::Ptr& vk_device() const { return vk_device_; }
-        [[nodiscard]] const vk::RenderPass& vk_render_pass() const { return *vk_render_pass_; }
-        [[nodiscard]] const vk::SurfaceKHR& vk_surface() const { return *vk_surface_; }
-        [[nodiscard]] const vk::utils::Framebuffer& vk_framebuffer(const size_t index) const { return *vk_framebuffers_[index];}
-        [[nodiscard]] const vk::Sampler& vk_texture_sampler(const TextureSamplerType& type) const { return *vk_texture_samplers_[to<size_t>(type)];}
-        [[nodiscard]] const vk::utils::UniformLayout& vk_uniform_layout(const UniformLayoutType& type) const { return *vk_uniform_layouts_[to<size_t>(type)];}
-
-        [[nodiscard]] vk::Extent2D get_rendering_resolution() const;
-        [[nodiscard]] float get_rendering_aspect() const;
+        [[nodiscard]] bool is_rendering() const{
+            return is_rendering_;
+        }
+        [[nodiscard]] size_t current_frame() const{
+            return current_frame_;
+        }
+        [[nodiscard]] const SafeHandle<const Engine>& engine() const{
+            return engine_;
+        }
+        [[nodiscard]] const RenderingConfig& config() const{
+            return config_;
+        }
+        [[nodiscard]] const vk::Instance& vk_instance() const{
+            return *vk_instance_;
+        }
+        [[nodiscard]] const vk::utils::Device::Ptr& vk_device() const{
+            return vk_device_;
+        }
+        [[nodiscard]] const vk::RenderPass& vk_render_pass() const{
+            return *vk_render_pass_;
+        }
+        [[nodiscard]] const vk::SurfaceKHR& vk_surface() const{
+            return *vk_surface_;
+        }
+        [[nodiscard]] const vk::utils::Framebuffer& vk_framebuffer(const size_t index) const{
+            return *vk_framebuffers_[index];
+        }
+        [[nodiscard]] const vk::Sampler& vk_texture_sampler(const TextureSamplerType& type) const{
+            return *vk_texture_samplers_[to<size_t>(type)];
+        }
+        [[nodiscard]] const vk::utils::UniformLayout& vk_uniform_layout(const UniformLayoutType& type) const{
+            return *vk_uniform_layouts_[to<size_t>(type)];
+        }
+        [[nodiscard]] vk::Extent2D get_rendering_resolution() const{
+            assert(!vk_framebuffers_.empty());
+            return vk_framebuffers_[0]->extent();
+        }
+        [[nodiscard]] float get_rendering_aspect() const{
+            const auto& extent = get_rendering_resolution();
+            return to<float>(extent.width) / to<float>(extent.height);
+        }
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
             vk::Flags<vk::DebugReportFlagBitsEXT> flags,
@@ -155,13 +194,14 @@ namespace nasral::rendering
         // Дескрипторные наборы (камера, трансформации и материалы объектов, текстуры объектов)
         vk::UniqueDescriptorSet vk_dset_view_;
         vk::UniqueDescriptorSet vk_dset_objects_uniforms_;
-        vk::UniqueDescriptorSet vk_dset_objects_textures_;
+        vk::UniqueDescriptorSet vk_dset_material_uniforms_;
+        vk::UniqueDescriptorSet vk_dset_material_textures_;
         vk::UniqueDescriptorSet vk_dset_light_sources_;
         // Uniform буферы объектов (камера, трансформации, материалы, источники света)
         vk::utils::Buffer::Ptr vk_ubo_view_;
         vk::utils::Buffer::Ptr vk_ubo_objects_transforms_;
-        vk::utils::Buffer::Ptr vk_ubo_objects_phong_mat_;
-        vk::utils::Buffer::Ptr vk_ubo_objects_pbr_mat_;
+        vk::utils::Buffer::Ptr vk_ubo_materials_phong_;
+        vk::utils::Buffer::Ptr vk_ubo_materials_pbr_;
         vk::utils::Buffer::Ptr vk_ubo_light_sources_;
         vk::utils::Buffer::Ptr vk_ubo_light_indices_;
 
@@ -181,5 +221,10 @@ namespace nasral::rendering
         std::vector<uint32_t> light_ids_;
         std::vector<uint32_t> active_light_ids_;
         std::mutex light_ids_mutex_;
+
+        // Материалы
+        std::vector<std::optional<MaterialInstance>> materials_;
+        std::vector<uint32_t> material_ids_;
+        std::mutex materials_mutex_;
     };
 }

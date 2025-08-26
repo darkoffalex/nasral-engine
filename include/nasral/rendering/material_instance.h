@@ -21,8 +21,8 @@ namespace nasral::rendering
         MaterialInstance() = default;
 
         MaterialInstance(
-            resources::ResourceManager* manager,
-            MaterialType type,
+            const resources::ResourceManager* manager,
+            const MaterialType& type,
             const std::string& mat_path,
             const std::vector<std::string>& tex_paths = {});
 
@@ -34,13 +34,15 @@ namespace nasral::rendering
 
         void set_material(MaterialType type, const std::string& path, bool request = false);
         void set_texture(TextureType type, const std::string& path, bool request = false);
-        void set_settings(const ObjectMatUniforms& settings);
+        void set_texture_sampler(TextureType type, TextureSamplerType sampler);
+        void set_settings(const MaterialUniforms& settings);
         void request_resources();
         void release_resources();
 
         [[nodiscard]] const Handles::Material& mat_render_handles() const;
         [[nodiscard]] const Handles::Texture& tex_render_handles(TextureType type) const;
-        [[nodiscard]] const std::optional<ObjectMatUniforms>& settings() const;
+        [[nodiscard]] TextureSamplerType tex_sampler(TextureType type) const;
+        [[nodiscard]] const std::optional<MaterialUniforms>& settings() const;
         [[nodiscard]] static resources::BuiltinResources builtin_tex_for_type(TextureType type);
 
     private:
@@ -53,7 +55,8 @@ namespace nasral::rendering
         Handles::Material material_handles_ = {};
         std::array<resources::Ref, static_cast<uint32_t>(TextureType::TOTAL)> texture_refs_;
         std::array<Handles::Texture, static_cast<uint32_t>(TextureType::TOTAL)> texture_handles_;
-        std::optional<ObjectMatUniforms> settings_;
+        std::array<TextureSamplerType, static_cast<uint32_t>(TextureType::TOTAL)> texture_samplers_;
+        std::optional<MaterialUniforms> settings_;
     };
 
     static_assert(std::is_move_constructible_v<MaterialInstance>, "MaterialInstance must be movable-constructible");

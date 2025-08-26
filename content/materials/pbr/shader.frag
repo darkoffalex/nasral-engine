@@ -5,6 +5,7 @@
 // Константы
 #define PI 3.14159
 #define MAX_OBJECTS 1000
+#define MAX_MATERIALS 100
 #define MAX_LIGHTS 100
 
 // Входные данные фрагмента
@@ -23,6 +24,7 @@ layout(location = 0) out vec4 color;
 
 // Push constants
 layout(push_constant) uniform PushConstants {
+    uint mat_index;
     uint obj_index;
 } pc_push;
 
@@ -59,27 +61,28 @@ layout(set = 0, binding = 0, std140) uniform UCamera {
     vec4 position;
 } u_camera;
 
-// Storage buffer для PBR материалов объектов
-layout(set = 1, binding = 2, std430) readonly buffer SMaterials {
-    MaterialSettings s_materials[MAX_OBJECTS];
+// Storage buffer для PBR материалов
+layout(set = 2, binding = 1, std430) readonly buffer SMaterials {
+    MaterialSettings s_materials[MAX_MATERIALS];
 };
 
 // Storage buffer для источников света
-layout(set = 3, binding = 0, std430) readonly buffer SLightSources {
+layout(set = 4, binding = 0, std430) readonly buffer SLightSources {
     LightSource s_lights[MAX_LIGHTS];
 };
 
 // Storage buffer для индексов активных источников
-layout(set = 3, binding = 1, std430) readonly buffer SLightIndices {
+layout(set = 4, binding = 1, std430) readonly buffer SLightIndices {
     LightIndices s_light_indices;
 };
 
 // Текстуры объекта
-layout(set = 2, binding = 0) uniform sampler2D t_aldeo[MAX_OBJECTS];
-layout(set = 2, binding = 1) uniform sampler2D t_normal[MAX_OBJECTS];
-layout(set = 2, binding = 2) uniform sampler2D t_roughness[MAX_OBJECTS];
-layout(set = 2, binding = 3) uniform sampler2D t_height[MAX_OBJECTS];
-layout(set = 2, binding = 4) uniform sampler2D t_metallic[MAX_OBJECTS];
+layout(set = 3, binding = 0) uniform sampler2D t_aldeo[MAX_MATERIALS];
+layout(set = 3, binding = 1) uniform sampler2D t_normal[MAX_MATERIALS];
+layout(set = 3, binding = 2) uniform sampler2D t_roughness[MAX_MATERIALS];
+layout(set = 3, binding = 3) uniform sampler2D t_height[MAX_MATERIALS];
+layout(set = 3, binding = 4) uniform sampler2D t_metallic[MAX_MATERIALS];
+layout(set = 3, binding = 5) uniform sampler2D t_ao[MAX_MATERIALS];
 
 /**
  * @brief Normal Distribution Function
@@ -133,13 +136,14 @@ vec3 F_Schlick(float VoH, vec3 F0) {
 void main()
 {
     // Данные из текстур объекта
-    vec4  tex_albedo = texture(t_aldeo[pc_push.obj_index], fs_in.uv);
-    vec3  tex_normal = texture(t_normal[pc_push.obj_index], fs_in.uv).rgb;
-    float tex_roughness = texture(t_roughness[pc_push.obj_index], fs_in.uv).r;
-    float tex_metallic = texture(t_metallic[pc_push.obj_index], fs_in.uv).r;
+    vec4  tex_albedo = texture(t_aldeo[pc_push.mat_index], fs_in.uv);
+    vec3  tex_normal = texture(t_normal[pc_push.mat_index], fs_in.uv).rgb;
+    float tex_roughness = texture(t_roughness[pc_push.mat_index], fs_in.uv).r;
+    float tex_metallic = texture(t_metallic[pc_push.mat_index], fs_in.uv).r;
+    float tex_ao = texture(t_ao[pc_push.mat_index], fs_in.uv).r;
 
     // Параметры материала объекта
-    MaterialSettings material = s_materials[pc_push.obj_index];
+    MaterialSettings material = s_materials[pc_push.mat_index];
     float alpha = material.color.a * tex_albedo.a;
     vec3  albedo = material.color.rgb * tex_albedo.rgb;
     float roughness = clamp(material.roughness * tex_roughness, 0.0f, 1.0f);
@@ -192,7 +196,7 @@ void main()
         vec3 diffuse = albedo * (1.0 - metallic) * (1.0 - F) / PI;
 
         // Суммируем вклад света
-        Lo += (diffuse + specular) * NoL * radiance;
+        Lo += (diffuse + specular) * NoL * radiance * tex_ao;
     }
 
     // Компрессия (на текущий момент нет HDR)

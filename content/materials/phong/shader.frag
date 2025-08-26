@@ -4,6 +4,7 @@
 
 // Константы
 #define MAX_OBJECTS 1000
+#define MAX_MATERIALS 100
 #define MAX_LIGHTS 100
 
 // Входные данные фрагмента
@@ -22,6 +23,7 @@ layout(location = 0) out vec4 color;
 
 // Push constants
 layout(push_constant) uniform PushConstants {
+    uint mat_index;
     uint obj_index;
 } pc_push;
 
@@ -57,35 +59,35 @@ layout(set = 0, binding = 0, std140) uniform UCamera {
     vec4 position;
 } u_camera;
 
-// Storage buffer для материалов объектов
-layout(set = 1, binding = 1, std430) readonly buffer SMaterials {
-    MaterialSettings s_materials[MAX_OBJECTS];
+// Storage buffer для материалов
+layout(set = 2, binding = 0, std430) readonly buffer SMaterials {
+    MaterialSettings s_materials[MAX_MATERIALS];
 };
 
 // Storage buffer для источников света
-layout(set = 3, binding = 0, std430) readonly buffer SLightSources {
+layout(set = 4, binding = 0, std430) readonly buffer SLightSources {
     LightSource s_lights[MAX_LIGHTS];
 };
 
 // Storage buffer для индексов активных источников
-layout(set = 3, binding = 1, std430) readonly buffer SLightIndices {
+layout(set = 4, binding = 1, std430) readonly buffer SLightIndices {
     LightIndices s_light_indices;
 };
 
 // Текстуры объекта
-layout(set = 2, binding = 0) uniform sampler2D t_color[MAX_OBJECTS];
-layout(set = 2, binding = 1) uniform sampler2D t_normal[MAX_OBJECTS];
-layout(set = 2, binding = 2) uniform sampler2D t_spec[MAX_OBJECTS];
+layout(set = 3, binding = 0) uniform sampler2D t_color[MAX_MATERIALS];
+layout(set = 3, binding = 1) uniform sampler2D t_normal[MAX_MATERIALS];
+layout(set = 3, binding = 2) uniform sampler2D t_spec[MAX_MATERIALS];
 
 void main()
 {
     // Получаем данные из текстур
-    vec4 tex_color = texture(t_color[pc_push.obj_index], fs_in.uv);
-    vec3 tex_normal = texture(t_normal[pc_push.obj_index], fs_in.uv).rgb;
-    float tex_specular = texture(t_spec[pc_push.obj_index], fs_in.uv).r;
+    vec4 tex_color = texture(t_color[pc_push.mat_index], fs_in.uv);
+    vec3 tex_normal = texture(t_normal[pc_push.mat_index], fs_in.uv).rgb;
+    float tex_specular = texture(t_spec[pc_push.mat_index], fs_in.uv).r;
 
     // Получаем настройки материала
-    MaterialSettings material = s_materials[pc_push.obj_index];
+    MaterialSettings material = s_materials[pc_push.mat_index];
 
     // Преобразуем нормаль из пространства касательных в мировое пространство
     vec3 normal = normalize(tex_normal * 2.0 - 1.0); // Из [0,1] в [-1,1]

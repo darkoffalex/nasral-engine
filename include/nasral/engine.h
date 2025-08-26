@@ -2,7 +2,6 @@
 #include <nasral/logging/logger.h>
 #include <nasral/resources/resource_manager.h>
 #include <nasral/rendering/renderer.h>
-#include <nasral/rendering/material_instance.h>
 #include <nasral/rendering/mesh_instance.h>
 
 namespace nasral
@@ -41,17 +40,16 @@ namespace nasral
             void set_position(const glm::vec3& position);
             void set_rotation(const glm::vec3& rotation);
             void set_scale(const glm::vec3& scale);
-            void set_material(rendering::MaterialInstance instance);
+            void set_material(uint32_t index);
             void set_mesh(rendering::MeshInstance instance);
 
             [[nodiscard]] const SpatialSettings& spatial_settings() const {return spatial_settings_;}
             [[nodiscard]] rendering::MeshInstance& mesh_instance() {return mesh_;}
-            [[nodiscard]] rendering::MaterialInstance& material_instance() {return material_;}
 
         private:
             SafeHandle<const Engine> engine_;
             uint32_t obj_index_ = 0;
-            rendering::MaterialInstance material_ = {};
+            uint32_t material_index_ = 0;
             rendering::MeshInstance mesh_ = {};
             SpatialSettings spatial_settings_ = {};
         };

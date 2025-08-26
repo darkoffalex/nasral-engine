@@ -7,6 +7,7 @@
 
 #define MAX_CAMERAS 1
 #define MAX_OBJECTS 1000
+#define MAX_MATERIALS 100
 #define MAX_LIGHTS 100
 
 namespace nasral::rendering
@@ -72,11 +73,9 @@ namespace nasral::rendering
 
         struct Texture
         {
-            vk::Image image = VK_NULL_HANDLE;
             vk::ImageView image_view = VK_NULL_HANDLE;
-
             [[nodiscard]] explicit operator bool() const noexcept{
-                return image && image_view;
+                return image_view;
             }
         };
     };
@@ -116,6 +115,8 @@ namespace nasral::rendering
         eRoughnessOrSpecular,
         eHeight,
         eMetallicOrReflection,
+        eAmbientOcclusion,
+        eEmission,
         TOTAL
     };
 
@@ -153,6 +154,13 @@ namespace nasral::rendering
         "PBR"
     };
 
+    struct TextureBindingInfo
+    {
+        TextureType type = TextureType::eAlbedoColor;
+        TextureSamplerType sampler_type = TextureSamplerType::eNearest;
+        Handles::Texture texture = {};
+    };
+
     struct CameraUniforms
     {
         glm::mat4 view = glm::identity<glm::mat4>();
@@ -167,7 +175,7 @@ namespace nasral::rendering
         glm::mat4 normals = glm::identity<glm::mat4>();
     };
 
-    struct ObjectPhongMatUniforms
+    struct MaterialPhongUniforms
     {
         glm::vec4 color = glm::vec4(1.0f);
         glm::vec4 ambient = glm::vec4(0.05f);
@@ -175,7 +183,7 @@ namespace nasral::rendering
         glm::float32 specular = 1.0f;
     };
 
-    struct ObjectPbrMatUniforms
+    struct MaterialPbrUniforms
     {
         glm::vec4 color = glm::vec4(1.0f);
         glm::float32 roughness = 1.0f;
@@ -184,7 +192,7 @@ namespace nasral::rendering
         glm::float32 emission = 0.0f;
     };
 
-    using ObjectMatUniforms = std::variant<ObjectPhongMatUniforms, ObjectPbrMatUniforms>;
+    using MaterialUniforms = std::variant<MaterialPhongUniforms, MaterialPbrUniforms>;
 
     struct LightUniforms
     {

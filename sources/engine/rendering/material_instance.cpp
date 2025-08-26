@@ -7,13 +7,15 @@
 namespace nasral::rendering
 {
     MaterialInstance::MaterialInstance(
-        resources::ResourceManager* manager,
-        const MaterialType type,
+        const resources::ResourceManager* manager,
+        const MaterialType& type,
         const std::string& mat_path,
         const std::vector<std::string>& tex_paths)
     : material_type_(type)
-    , material_ref_(manager, resources::Type::eMaterial, mat_path)
+    , texture_samplers_{}
     {
+        material_ref_ = manager->make_ref(resources::Type::eMaterial, mat_path);
+
         for (size_t i = 0; i < static_cast<size_t>(TextureType::TOTAL); ++i)
         {
             const auto builtin_tex = builtin_tex_for_type(static_cast<TextureType>(i));
@@ -23,18 +25,17 @@ namespace nasral::rendering
                 path = tex_paths[i];
             }
 
-            texture_refs_[i] = manager->make_ref(
-                resources::Type::eTexture,
-                path);
+            texture_refs_[i] = manager->make_ref(resources::Type::eTexture, path);
+            texture_samplers_[i] = TextureSamplerType::eLinear;
         }
 
         switch (material_type_)
         {
         case MaterialType::ePhong:
-            set_settings(ObjectPhongMatUniforms{});
+            set_settings(MaterialPhongUniforms{});
             break;
         case MaterialType::ePbr:
-            set_settings(ObjectPbrMatUniforms{});
+            set_settings(MaterialPbrUniforms{});
             break;
         default:
             settings_ = std::nullopt;
@@ -50,9 +51,11 @@ namespace nasral::rendering
         other.material_ref_.type(),
         std::string(other.material_ref_.path().data()))
     , material_handles_({})
+    , texture_samplers_({})
     {
         for (size_t i = 0; i < static_cast<size_t>(TextureType::TOTAL); ++i) {
             texture_refs_[i] = other.texture_refs_[i];
+            texture_samplers_[i] = other.texture_samplers_[i];
             texture_handles_[i] = {};
         }
 
@@ -124,7 +127,12 @@ namespace nasral::rendering
         }
     }
 
-    void MaterialInstance::set_settings(const ObjectMatUniforms& settings){
+    void MaterialInstance::set_texture_sampler(TextureType type, const TextureSamplerType sampler){
+        texture_samplers_[static_cast<uint32_t>(type)] = sampler;
+        mark_changed(eTextureChanged);
+    }
+
+    void MaterialInstance::set_settings(const MaterialUniforms& settings){
         if (material_type_ == MaterialType::eDummy
             || material_type_ == MaterialType::eTextured
             || material_type_ == MaterialType::eVertexColored)
@@ -165,7 +173,11 @@ namespace nasral::rendering
         return texture_handles_[static_cast<uint32_t>(type)];
     }
 
-    const std::optional<ObjectMatUniforms>& MaterialInstance::settings() const{
+    TextureSamplerType MaterialInstance::tex_sampler(const TextureType type) const{
+        return texture_samplers_[static_cast<uint32_t>(type)];
+    }
+
+    const std::optional<MaterialUniforms>& MaterialInstance::settings() const{
         return settings_;
     }
 
@@ -179,7 +191,10 @@ namespace nasral::rendering
         case TextureType::eNormal:
             return resources::BuiltinResources::eNormalPixel;
         case TextureType::eHeight:
+        case TextureType::eEmission:
             return resources::BuiltinResources::eBlackPixel;
+        case TextureType::eAmbientOcclusion:
+            return resources::BuiltinResources::eWhitePixel;
         default:
             return resources::BuiltinResources::eCheckerboardTexture;
         }

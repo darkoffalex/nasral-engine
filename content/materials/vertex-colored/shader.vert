@@ -19,6 +19,7 @@ layout (location = 0) out VS_OUT {
 
 // Push constants
 layout(push_constant) uniform PushConstants {
+    uint mat_index;
     uint obj_index;
 } pc_push;
 
