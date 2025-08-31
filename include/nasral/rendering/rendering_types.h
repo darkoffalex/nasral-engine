@@ -194,7 +194,7 @@ namespace nasral::rendering
 
     using MaterialUniforms = std::variant<MaterialPhongUniforms, MaterialPbrUniforms>;
 
-    struct LightUniforms
+    struct LightSettingsUniforms
     {
         glm::vec4 position = glm::vec4(0.0f);
         glm::vec4 direction = glm::vec4(0.0f);
@@ -203,48 +203,13 @@ namespace nasral::rendering
         glm::float32 quadratic = 0.1f;
         glm::float32 radius = 0.0f;
         glm::float32 intensity = 1.0f;
+        glm::uint32 type = 0;
     };
 
-    struct LightIndices
+    struct LightIndexUniforms
     {
         uint32_t count = 0;
         uint32_t indices[MAX_LIGHTS]{};
-    };
-
-    class Instance
-    {
-    public:
-        Instance() = default;
-        ~Instance() = default;
-
-        template<typename MaskType>
-        void mark_changed(const MaskType& mask){
-            change_mask_ |= static_cast<uint32_t>(mask);
-        }
-
-        template<typename MaskType>
-        void unmark_changed(const MaskType& mask){
-            change_mask_ &= ~static_cast<uint32_t>(mask);
-        }
-
-        template<typename MaskType>
-        [[nodiscard]] bool check_changes(
-            const MaskType& mask,
-            const bool require_all = false,
-            const bool unmark = false)
-        {
-            bool result = false;
-            if(require_all){
-                result = (change_mask_ & static_cast<uint32_t>(mask)) == static_cast<uint32_t>(mask);
-            } else{
-                result = (change_mask_ & static_cast<uint32_t>(mask)) != 0;
-            }
-            if(unmark) unmark_changed(mask);
-            return result;
-        }
-
-    protected:
-        uint32_t change_mask_ = 0;
     };
 
     class RenderingError final : public EngineError

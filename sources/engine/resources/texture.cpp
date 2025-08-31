@@ -43,7 +43,7 @@ namespace nasral::resources
         }
 
         try{
-            const auto* renderer = resource_manager_->engine()->renderer();
+            const auto* renderer = manager_->engine()->renderer();
             const auto& vd = renderer->vk_device();
             auto& cmd_group = vd->queue_group(to<std::size_t>(rendering::Renderer::CommandGroup::eGraphicsAndPresent));
             const auto* lp = loader_->load_params<TextureLoadParams>();

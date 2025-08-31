@@ -169,44 +169,42 @@ namespace nasral::resources
         active_slots_.clear();
     }
 
-    std::optional<size_t> ResourceManager::res_index(const std::string_view& path) const noexcept{
-        if (indices_.count(path) > 0) return indices_.at(path);
-        return std::nullopt;
-    }
-
-    void ResourceManager::request(Ref* ref, const bool unsafe){
-        // Получить корректный индекс
-        const auto index = ref->index().has_value() ? ref->index() : res_index(ref->path().view());
+    RequestId ResourceManager::request(const std::string_view& path, RequestCallback on_ready, const bool unsafe){
+        // Получить индекс ресурса
+        const auto index = res_index(path);
         if (!index.has_value()) {
-            const auto message = "Requested resource not found (" + std::string(ref->path().view()) + ")";
+            const auto message = "Requested resource not found (" + std::string(path) + ")";
             logger()->error(message);
             throw ResourceError(message);
         }
 
-        // Обновить индекс у ссылки
-        assert(index.value() < slots_.size());
-        ref->resource_index_ = index;
-
-        // Увеличить счетчик, отметить, что есть необработанные ссылки
+        // Увеличить счетчик ссылок на ресурс
         auto& slot = slots_[index.value()];
         slot.refs.count.fetch_add(1, std::memory_order_release);
 
-        // Добавить в список необработанных ссылок
+        // Создать запрос ресурса
+        RequestHandler request(std::move(on_ready));
+        const RequestId request_id = request.id;
+
+        // Добавить в список необработанных запросов
         if (!unsafe){
             std::lock_guard lock_guard(slot.refs.mutex);
-            slot.refs.unhandled.push_back(ref);
+            slot.refs.unhandled.emplace_back(std::move(request));
             slot.refs.has_unhandled.store(true, std::memory_order_release);
         }else{
-            slot.refs.unhandled.push_back(ref);
+            slot.refs.unhandled.emplace_back(std::move(request));
             slot.refs.has_unhandled.store(true, std::memory_order_release);
         }
+
+        // Вернуть ID запроса
+        return request_id;
     }
 
-    void ResourceManager::release(const Ref* ref, const bool unsafe){
-        // Получить корректный индекс
-        const auto index = ref->index().has_value() ? ref->index() : res_index(ref->path().view());
-        if (!index.has_value()) {
-            const auto message = "Releasing resource not found (" + std::string(ref->path().view()) + ")";
+    void ResourceManager::release(const std::string_view& path, const RequestIdOpt& req_id, const bool unsafe){
+        // Получить индекс ресурса
+        const auto index = res_index(path);
+        if (!index.has_value()){
+            const auto message = "Releasing resource not found (" + std::string(path) + ")";
             logger()->warning(message);
             return;
         }
@@ -214,19 +212,21 @@ namespace nasral::resources
         // Активен ли слот
         assert(index.value() < slots_.size());
         auto& slot = slots_[index.value()];
-        if (!slot.is_used) {
-            logger()->warning("Trying to release resource from unused slot (" + std::string(ref->path().view()) + ")");
-            return;
+        if (!slot.is_used){
+            logger()->warning("Trying to release resource from unused slot (" + std::string(path) + ")");
         }
 
         // Уменьшить ко-во ссылок на ресурс
         slot.refs.count.fetch_sub(1, std::memory_order_release);
 
-        // Функция удаления существующей необработанной ссылки
+        // Если ID запроса не был передан - выход
+        if (!req_id.has_value()) return;
+
+        // Функция удаления существующего необработанного запроса
         auto remove = [&]{
             auto& unhandled = slot.refs.unhandled;
             for (size_t i = 0; i < unhandled.size(); ++i) {
-                if (unhandled[i] == ref) {
+                if (unhandled[i].id == req_id.value()) {
                     std::swap(unhandled[i], unhandled.back());
                     unhandled.pop_back();
                     break;
@@ -234,7 +234,7 @@ namespace nasral::resources
             }
         };
 
-        // Удалить ссылку из списка необработанных ссылок
+        // Удалить запрос из списка необработанных запросов
         if (!unsafe){
             std::lock_guard lock_guard(slot.refs.mutex);
             remove();
@@ -243,20 +243,103 @@ namespace nasral::resources
         }
     }
 
+    bool ResourceManager::is_unhandled(const std::string_view& path, const RequestId& req_id) const{
+        const auto index = res_index(path);
+        if (!index.has_value()){
+            return false;
+        }
+
+        assert(index.value() < slots_.size());
+        auto& slot = slots_[index.value()];
+        if (!slot.is_used){
+            logger()->warning("Trying to access resource from unused slot (" + std::string(path) + ")");
+        }
+
+        auto& unhandled = slot.refs.unhandled;
+        return std::any_of(unhandled.begin(), unhandled.end(),
+            [&req_id](const RequestHandler& i){
+                return i.id == req_id;
+            });
+    }
+
+    bool ResourceManager::is_unhandled(const RequestId& req_id) const{
+        for (const auto& slot : slots_){
+            if (slot.refs.has_unhandled.load(std::memory_order_acquire)){
+                auto& unhandled = slot.refs.unhandled;
+                for (const auto & i : unhandled) {
+                    if (i.id == req_id) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    Request ResourceManager::make_request(const std::string& path, RequestCallback on_ready) const{
+        return {
+            const_cast<ResourceManager*>(this),
+            path,
+            std::move(on_ready)
+        };
+    }
+
+    std::optional<std::string_view> ResourceManager::res_path(const std::string& path) const noexcept{
+        for (auto& slot : slots_){
+            if (slot.info.path.view() == path) return slot.info.path.view();
+        }
+        return std::nullopt;
+    }
+
+    std::optional<size_t> ResourceManager::res_index(const std::string_view& path) const noexcept{
+        if (indices_.count(path) > 0) return indices_.at(path);
+        return std::nullopt;
+    }
+
+    size_t ResourceManager::ref_count(const std::string_view &path) const {
+        if(const auto index = res_index(path); index.has_value()){
+            auto& slot = slots_[index.value()];
+            return slot.refs.count.load(std::memory_order_acquire);
+        }
+        return 0;
+    }
+
+    std::string ResourceManager::full_path(const std::string& path) const{
+        // Если путь к "встроенному ресурсу" - возвращаем без изменений
+        if (path.find("builtin:") != std::string::npos){
+            return path;
+        }
+        // Попытка получить полный путь к файлу
+        try
+        {
+            // Если есть окончание ":v" - убрать из пути (v используется для разных версий ресурса)
+            std::string p = path;
+            if (p.find(":v") != std::string::npos){
+                p = p.substr(0, p.find(":v"));
+            }
+            // Полный путь с учетом файловой системы
+            const fs::path full = fs::path(content_dir_) / p;
+            if (!fs::exists(full)) {
+                logger()->error("File not found (" + full.string() + ")");
+                throw std::filesystem::filesystem_error("File not found", full.string(), std::error_code());
+            }
+            return fs::canonical(full).string();
+        }
+        catch (const std::exception& e) {
+            throw ResourceError(e.what());
+        }
+    }
+
     void ResourceManager::request_builtin(){
         for (size_t i = 0; i < to<size_t>(BuiltinResources::TOTAL); ++i){
             const auto path = builtin_res_path(to<BuiltinResources>(i));
-            const auto type = builtin_res_type(path);
-            if (type != Type::TOTAL){
-                builtin_resources_[i] = make_ref(type, path);
-                builtin_resources_[i].request();
-            }
+            builtin_resources_[i] = make_request(path);
         }
     }
 
     void ResourceManager::release_builtin(){
-        for (size_t i = 0; i < to<size_t>(BuiltinResources::TOTAL); ++i){
-            builtin_resources_[i].release();
+        for (auto& r : builtin_resources_){
+            r = {};
         }
     }
 
@@ -358,39 +441,6 @@ namespace nasral::resources
         }
     }
 
-    std::string ResourceManager::full_path(const std::string& path) const{
-        if (path.find("builtin:") != std::string::npos){
-            return path;
-        }
-        try {
-            std::string p = path;
-            if (p.find(":v") != std::string::npos){
-                p = p.substr(0, p.find(":v"));
-            }
-            const fs::path full = fs::path(content_dir_) / p;
-            if (!fs::exists(full)) {
-                logger()->error("File not found (" + full.string() + ")");
-                throw std::filesystem::filesystem_error("File not found", full.string(), std::error_code());
-            }
-            return fs::canonical(full).string();
-        }
-        catch (const std::exception& e) {
-            throw ResourceError(e.what());
-        }
-    }
-
-    size_t ResourceManager::ref_count(const std::string &path) const {
-        if(const auto index = res_index(std::string_view(path)); index.has_value()){
-            auto& slot = slots_[index.value()];
-            return slot.refs.count.load(std::memory_order_acquire);
-        }
-        return 0;
-    }
-
-    Ref ResourceManager::make_ref(const Type type, const std::string& path) const{
-        return {const_cast<ResourceManager*>(this), type, path};
-    }
-
     const logging::Logger *ResourceManager::logger() const{
         return engine()->logger();
     }
@@ -406,10 +456,9 @@ namespace nasral::resources
             {
                 std::lock_guard lock(slot.refs.mutex);
                 if (!slot.refs.unhandled.empty()){
-                    for (auto* ref : slot.refs.unhandled) {
-                        ref->is_handled_ = true;
-                        if (ref->on_ready_) {
-                            ref->on_ready_(slot.resource.get());
+                    for (auto& req : slot.refs.unhandled) {
+                        if (req.callback){
+                            req.callback(slot.resource.get());
                         }
                     }
                     slot.refs.unhandled.clear();

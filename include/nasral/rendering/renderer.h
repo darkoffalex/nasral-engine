@@ -1,7 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <nasral/rendering/rendering_types.h>
-#include <nasral/rendering/material_instance.h>
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/buffer.hpp>
 #include <vulkan/utils/uniform_layout.hpp>
@@ -40,7 +39,7 @@ namespace nasral::rendering
         void update_material_ubo(uint32_t index, const MaterialPhongUniforms& uniforms) const;
         void update_material_ubo(uint32_t index, const MaterialPbrUniforms& uniforms) const;
         void update_material_tex(uint32_t index, const TextureBindingInfo& info) const;
-        void update_light_ubo(uint32_t index, const LightUniforms& uniforms) const;
+        void update_light_ubo(uint32_t index, const LightSettingsUniforms& uniforms) const;
 
         [[nodiscard]] uint32_t obj_id_acquire_unsafe();
         [[nodiscard]] uint32_t obj_id_acquire();
@@ -49,6 +48,7 @@ namespace nasral::rendering
         void obj_ids_reset_unsafe();
         void obj_ids_reset();
 
+        /*
         [[nodiscard]] uint32_t material_acquire_unsafe(MaterialType type, const std::string& path, const std::vector<std::string>& tex_paths);
         [[nodiscard]] uint32_t material_acquire(MaterialType type, const std::string& path, const std::vector<std::string>& tex_paths);
         [[nodiscard]] MaterialInstance& material_instance_unsafe(uint32_t id);
@@ -58,6 +58,7 @@ namespace nasral::rendering
         void materials_reset_unsafe();
         void materials_reset();
         void materials_update_unsafe();
+        */
 
         [[nodiscard]] uint32_t light_id_acquire_unsafe();
         [[nodiscard]] uint32_t light_id_acquire();
@@ -187,16 +188,19 @@ namespace nasral::rendering
         vk::UniqueSwapchainKHR vk_swap_chain_;
         std::vector<vk::utils::Framebuffer::Ptr> vk_framebuffers_;
 
-        // Макеты конвейеров
-        std::vector<vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
+        // Макеты конвейеров (для растеризации, пост-процессинга и прочего)
+        std::array<vk::utils::UniformLayout::Ptr, static_cast<size_t>(UniformLayoutType::TOTAL)> vk_uniform_layouts_;
+
         // Семплеры текстур
         std::array<vk::UniqueSampler, static_cast<size_t>(TextureSamplerType::TOTAL)> vk_texture_samplers_;
+
         // Дескрипторные наборы (камера, трансформации и материалы объектов, текстуры объектов)
         vk::UniqueDescriptorSet vk_dset_view_;
         vk::UniqueDescriptorSet vk_dset_objects_uniforms_;
         vk::UniqueDescriptorSet vk_dset_material_uniforms_;
         vk::UniqueDescriptorSet vk_dset_material_textures_;
         vk::UniqueDescriptorSet vk_dset_light_sources_;
+
         // Uniform буферы объектов (камера, трансформации, материалы, источники света)
         vk::utils::Buffer::Ptr vk_ubo_view_;
         vk::utils::Buffer::Ptr vk_ubo_objects_transforms_;
@@ -223,8 +227,8 @@ namespace nasral::rendering
         std::mutex light_ids_mutex_;
 
         // Материалы
-        std::vector<std::optional<MaterialInstance>> materials_;
-        std::vector<uint32_t> material_ids_;
-        std::mutex materials_mutex_;
+        // std::vector<std::optional<MaterialInstance>> materials_;
+        // std::vector<uint32_t> material_ids_;
+        // std::mutex materials_mutex_;
     };
 }

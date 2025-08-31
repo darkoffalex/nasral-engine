@@ -398,11 +398,11 @@ namespace nasral::rendering
         vk_device_->logical_device().updateDescriptorSets({write}, {});
     }
 
-    void Renderer::update_light_ubo(const uint32_t index, const LightUniforms &uniforms) const {
+    void Renderer::update_light_ubo(const uint32_t index, const LightSettingsUniforms &uniforms) const {
         assert(vk_ubo_light_sources_->is_mapped());
         vk_ubo_light_sources_->update_mapped(
-            sbo_offset<LightUniforms>(index),
-            aligned_sbo_size<LightUniforms>(),
+            sbo_offset<LightSettingsUniforms>(index),
+            aligned_sbo_size<LightSettingsUniforms>(),
             &uniforms);
     }
 
@@ -443,6 +443,7 @@ namespace nasral::rendering
         obj_ids_reset_unsafe();
     }
 
+    /*
     uint32_t Renderer::material_acquire_unsafe(
         const MaterialType type,
         const std::string& path,
@@ -470,6 +471,7 @@ namespace nasral::rendering
 
         return id;
     }
+
 
     uint32_t Renderer::material_acquire(
         const MaterialType type,
@@ -559,6 +561,7 @@ namespace nasral::rendering
             }
         }
     }
+    */
 
     uint32_t Renderer::light_id_acquire_unsafe() {
         if (light_ids_.empty()) {
@@ -609,7 +612,7 @@ namespace nasral::rendering
             }
         }
 
-        auto* pids = static_cast<LightIndices*>(vk_ubo_light_indices_->mapped_ptr());
+        auto* pids = static_cast<LightIndexUniforms*>(vk_ubo_light_indices_->mapped_ptr());
         pids->count = static_cast<uint32_t>(active.size());
         std::fill_n(pids->indices, MAX_LIGHTS, 0);
         std::memcpy(pids->indices, active.data(), active.size() * sizeof(uint32_t));
@@ -632,7 +635,7 @@ namespace nasral::rendering
             }
         }
 
-        auto* pids = static_cast<LightIndices*>(vk_ubo_light_indices_->mapped_ptr());
+        auto* pids = static_cast<LightIndexUniforms*>(vk_ubo_light_indices_->mapped_ptr());
         pids->count = static_cast<uint32_t>(active.size());
         std::fill_n(pids->indices, MAX_LIGHTS, 0);
         std::memcpy(pids->indices, active.data(), active.size() * sizeof(uint32_t));
@@ -988,7 +991,6 @@ namespace nasral::rendering
         assert(vk_device_);
 
         auto& layouts = vk_uniform_layouts_;
-        layouts.resize(to<size_t>(UniformLayoutType::TOTAL));
 
         // Для шейдеров, которые не используют uniform блоки
         layouts[to<size_t>(UniformLayoutType::eDummy)] = std::make_unique<vk::utils::UniformLayout>(vk_device_);
@@ -1302,14 +1304,14 @@ namespace nasral::rendering
             // Выделить uniform буфер для источников света
             vk_ubo_light_sources_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
-                size_align(sizeof(LightUniforms), sbo_alignment) * MAX_OBJECTS,
+                size_align(sizeof(LightSettingsUniforms), sbo_alignment) * MAX_OBJECTS,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для индексов источников
             vk_ubo_light_indices_ = std::make_unique<vk::utils::Buffer>(
                 vk_device_,
-                size_align(sizeof(LightIndices), sbo_alignment),
+                size_align(sizeof(LightIndexUniforms), sbo_alignment),
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
@@ -1389,7 +1391,7 @@ namespace nasral::rendering
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
                 .setBuffer(vk_ubo_light_sources_->vk_buffer())
                 .setOffset(0)
-                .setRange(sizeof(LightUniforms) * MAX_LIGHTS));
+                .setRange(sizeof(LightIndexUniforms) * MAX_LIGHTS));
 
             writes.emplace_back(vk::WriteDescriptorSet()
                 .setDstSet(vk_dset_light_sources_.get())
@@ -1405,7 +1407,7 @@ namespace nasral::rendering
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
                 .setBuffer(vk_ubo_light_indices_->vk_buffer())
                 .setOffset(0)
-                .setRange(sizeof(LightIndices)));
+                .setRange(sizeof(LightIndexUniforms)));
 
             writes.emplace_back(vk::WriteDescriptorSet()
                 .setDstSet(vk_dset_light_sources_.get())
@@ -1462,8 +1464,9 @@ namespace nasral::rendering
         object_ids_.reserve(MAX_OBJECTS);
         light_ids_.reserve(MAX_LIGHTS);
         active_light_ids_.reserve(MAX_LIGHTS);
-        material_ids_.reserve(MAX_MATERIALS);
-        materials_.reserve(MAX_MATERIALS);
+
+        // material_ids_.reserve(MAX_MATERIALS);
+        // materials_.reserve(MAX_MATERIALS);
 
         for (uint32_t i = MAX_OBJECTS; i > 0; --i){
             object_ids_.emplace_back(i - 1);
@@ -1473,9 +1476,11 @@ namespace nasral::rendering
             light_ids_.emplace_back(i - 1);
         }
 
+        /*
         for (uint32_t i = MAX_MATERIALS; i > 0; --i){
             material_ids_.emplace_back(i - 1);
         }
+        */
     }
 
     void Renderer::refresh_vk_surface(){

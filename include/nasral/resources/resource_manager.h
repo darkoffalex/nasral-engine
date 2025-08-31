@@ -2,7 +2,7 @@
 #include <future>
 #include <nasral/core_types.h>
 #include <nasral/resources/resource_types.h>
-#include <nasral/resources/ref.h>
+#include <nasral/resources/request.h>
 
 namespace nasral{class Engine;}
 namespace nasral::logging{class Logger;}
@@ -11,29 +11,29 @@ namespace nasral::resources
     class ResourceManager
     {
     public:
-        friend class Ref;
+        friend class Request;
         typedef std::unique_ptr<ResourceManager> Ptr;
         struct Slot
         {
-            bool is_used = false;                         // Задействован ли слот
-            IResource::Ptr resource = nullptr;            // Указатель на ресурс
+            bool is_used = false;                               // Задействован ли слот
+            IResource::Ptr resource = nullptr;                  // Указатель на ресурс
 
             struct Info {
-                Type type = Type::eFile;                  // Тип ресурса
-                FixedPath path = {};                      // Путь к файлу ресурса
+                Type type = Type::eFile;                        // Тип ресурса
+                FixedPath path = {};                            // Путь к файлу ресурса
             } info;
 
             struct Refs {
-                std::atomic<size_t> count = 0;            // Общее кол-вл ссылок на ресурс
-                std::atomic<bool> has_unhandled{false};   // Есть необработанные запросы
-                std::vector<Ref*> unhandled = {};         // Список необработанных запросов
-                std::mutex mutex;                         // Мьютекс для безопасности списка
+                std::atomic<size_t> count = 0;                  // Общее кол-вл ссылок на ресурс
+                std::atomic<bool> has_unhandled{false};         // Есть необработанные запросы
+                std::vector<RequestHandler> unhandled = {};     // Список необработанных запросов
+                std::mutex mutex;                               // Мьютекс для безопасности списка
             } refs;
 
             struct Loading {
-                std::atomic<bool> in_progress{false};     // В процессе ли загрузка
-                std::future<void> task;                   // Задача (поток) загрузки
-                std::optional<LoadParams> params;         // Параметры загрузки
+                std::atomic<bool> in_progress{false};           // В процессе ли загрузка
+                std::future<void> task;                         // Задача (поток) загрузки
+                std::optional<LoadParams> params;               // Параметры загрузки
             } loading;
         };
 
@@ -50,18 +50,22 @@ namespace nasral::resources
         void update(float delta);
         void finalize();
 
-        [[nodiscard]] size_t ref_count(const std::string& path) const;
-        [[nodiscard]] Ref make_ref(Type type, const std::string& path) const;
+        [[nodiscard]] Request make_request(const std::string& path, RequestCallback on_ready = nullptr) const;
+        [[nodiscard]] std::optional<std::string_view> res_path(const std::string& path) const noexcept;
+        [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path) const noexcept;
+        [[nodiscard]] size_t ref_count(const std::string_view& path) const;
         [[nodiscard]] std::string full_path(const std::string& path) const;
+
         [[nodiscard]] const SafeHandle<const Engine>& engine() const { return engine_; }
 
     private:
-        void request(Ref* ref, bool unsafe = false);
-        void release(const Ref* ref, bool unsafe = false);
+        RequestId request(const std::string_view& path, RequestCallback on_ready, bool unsafe = false);
+        void release(const std::string_view& path, const RequestIdOpt& req_id = std::nullopt, bool unsafe = false);
+        bool is_unhandled(const std::string_view& path, const RequestId& req_id) const;
+        bool is_unhandled(const RequestId& req_id) const;
         void request_builtin();
         void release_builtin();
 
-        [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path) const noexcept;
         [[nodiscard]] IResource::Ptr make_resource(const Slot& slot);
         [[nodiscard]] const IResource* get_resource(size_t index) const;
         [[nodiscard]] bool has_pending_unloads() const;
@@ -80,7 +84,7 @@ namespace nasral::resources
         std::vector<size_t> active_slots_;
         /// Карта "путь" -> "индекс", для доступа по пути
         std::unordered_map<std::string_view, size_t> indices_;
-        /// Ссылки на встроенные ресурсы (запрашиваются по умолчанию)
-        std::array<Ref, static_cast<size_t>(BuiltinResources::TOTAL)> builtin_resources_;
+        /// Встроенные ресурсы (запрашиваются по умолчанию)
+        std::array<Request, static_cast<size_t>(BuiltinResources::TOTAL)> builtin_resources_;
     };
 }

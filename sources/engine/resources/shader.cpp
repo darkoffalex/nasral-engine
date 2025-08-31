@@ -34,7 +34,7 @@ namespace nasral::resources
             }
 
             const auto shader_code = data.value().code;
-            const auto& vd = resource_manager_->engine()->renderer()->vk_device();
+            const auto& vd = manager_->engine()->renderer()->vk_device();
             vk_shader_module_ = vd->logical_device().createShaderModuleUnique(
                 vk::ShaderModuleCreateInfo()
                 .setPCode(shader_code.data())

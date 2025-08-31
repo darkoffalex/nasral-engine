@@ -5,18 +5,16 @@
 
 namespace nasral::resources
 {
-    Material::Material(ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader)
+    Material::Material(const ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader)
         : IResource(Type::eMaterial, manager, manager->engine()->logger())
+        , loader_(std::move(loader))
         , material_type_(rendering::MaterialType::eDummy)
         , vk_polygon_mode_(vk::PolygonMode::eFill)
         , vk_line_width_(1.0f)
         , path_(path)
-        , loader_(std::move(loader))
-        , vert_shader_res_(manager, Type::eShader, "")
-        , frag_shader_res_(manager, Type::eShader, "")
-        , geom_shader_res_(manager, Type::eShader, "")
         , vk_vert_shader_(std::nullopt)
         , vk_frag_shader_(std::nullopt)
+        , vk_geom_shader_(std::nullopt)
     {}
 
     Material::~Material(){
@@ -70,44 +68,40 @@ namespace nasral::resources
             // Ширина линии
             vk_line_width_ = std::max(data->line_width, 1.0f);
 
+            // Пути к вершинному и фрагментному шейдеру обязательны (это база)
+            assert(!data->vert_shader_path.empty());
+            assert(!data->frag_shader_path.empty());
+
             // Запрос под-ресурса вершинного shader'а
             // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_objects()
-            vert_shader_res_.set_path(data->vert_shader_path);
-            vert_shader_res_.set_callback([this](IResource* resource){
+            vert_shader_req_ = manager_->make_request(data->vert_shader_path, [this](IResource* resource){
                 const auto* v_shader = dynamic_cast<Shader*>(resource);
                 if (v_shader && v_shader->status() == Status::eLoaded){
                     vk_vert_shader_ = v_shader->vk_shader_module();
                     try_init_vk_objects();
                 }
             });
-            vert_shader_res_.request();
-
 
             // Запрос под-ресурса фрагментного shader'а
             // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_objects()
-            frag_shader_res_.set_path(data->frag_shader_path);
-            frag_shader_res_.set_callback([this](IResource* resource){
+            frag_shader_req_ = manager_->make_request(data->frag_shader_path, [this](IResource* resource){
                 const auto* f_shader = dynamic_cast<Shader*>(resource);
                 if (f_shader && f_shader->status() == Status::eLoaded){
                     vk_frag_shader_ = f_shader->vk_shader_module();
                     try_init_vk_objects();
                 }
             });
-            frag_shader_res_.request();
-
 
             // Опционально - запрос под-ресурсы геометрического shader'а
             // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_objects()
             if (!data->geom_shader_path.empty()){
-                geom_shader_res_.set_path(data->geom_shader_path);
-                geom_shader_res_.set_callback([this](IResource* resource){
+                geom_shader_req_ = manager_->make_request(data->geom_shader_path, [this](IResource* resource){
                     const auto* g_shader = dynamic_cast<Shader*>(resource);
                     if (g_shader && g_shader->status() == Status::eLoaded){
                         vk_geom_shader_ = g_shader->vk_shader_module();
                         try_init_vk_objects();
                     }
                 });
-                geom_shader_res_.request();
             }
         }
         catch([[maybe_unused]] std::exception& e){
@@ -122,11 +116,15 @@ namespace nasral::resources
     }
 
     void Material::try_init_vk_objects(){
-        // Если не все обработчики были вызваны - выход
-        // Геометрический шейдер опционален (проверяем, если был запрос)
-        if (!vert_shader_res_.is_handled()
-            || !frag_shader_res_.is_handled()
-            || (geom_shader_res_.is_requested() && !geom_shader_res_.is_handled()))
+        // Если не все обязательные шейдеры запрошены - выход (ожидаем другого вызова)
+        if (!vert_shader_req_.is_requested() || !frag_shader_req_.is_requested()){
+            return;
+        }
+
+        // Если не все запросы обязательных шейдеров обработаны - выход
+        if (vert_shader_req_.is_unhandled() ||
+            frag_shader_req_.is_unhandled() ||
+            (geom_shader_req_.is_requested() && !geom_shader_req_.is_unhandled()))
         {
             return;
         }
@@ -140,7 +138,7 @@ namespace nasral::resources
         }
 
         // Получить renderer и устройство
-        const auto* renderer = resource_manager_->engine()->renderer();
+        const auto* renderer = manager_->engine()->renderer();
         const auto& ul = renderer->vk_uniform_layout(rendering::UniformLayoutType::eBasicRasterization);
         const auto& vd = renderer->vk_device();
 

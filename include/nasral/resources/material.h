@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <vulkan/vulkan.hpp>
-#include <nasral/resources/ref.h>
+#include <nasral/resources/request.h>
 #include <nasral/resources/resource_types.h>
 #include <nasral/rendering/rendering_types.h>
 
@@ -22,7 +22,7 @@ namespace nasral::resources
             float line_width;
         };
 
-        Material(ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader);
+        Material(const ResourceManager* manager, const std::string_view& path, std::unique_ptr<Loader<Data>> loader);
         ~Material() override;
 
         Material(const Material&) = delete;
@@ -38,17 +38,17 @@ namespace nasral::resources
         void try_init_vk_objects();
 
     protected:
+        std::unique_ptr<Loader<Data>> loader_;
         rendering::MaterialType material_type_;
         vk::PolygonMode vk_polygon_mode_;
         float vk_line_width_;
         std::string_view path_;
-        std::unique_ptr<Loader<Data>> loader_;
-        Ref vert_shader_res_;
-        Ref frag_shader_res_;
-        Ref geom_shader_res_;
+        Request vert_shader_req_;
+        Request frag_shader_req_;
+        Request geom_shader_req_;
+        vk::UniquePipeline vk_pipeline_;
         std::optional<vk::ShaderModule> vk_vert_shader_;
         std::optional<vk::ShaderModule> vk_frag_shader_;
         std::optional<vk::ShaderModule> vk_geom_shader_;
-        vk::UniquePipeline vk_pipeline_;
     };
 }

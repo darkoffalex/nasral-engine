@@ -3,12 +3,13 @@ add_library(Engine OBJECT
         # База
         pch.h
         engine.cpp
+        ecs/ecs_manager.cpp
 
         # Логирование
         logging/logger.cpp
 
         # Ресурсы
-        resources/ref.cpp
+        resources/request.cpp
         resources/file.cpp
         resources/shader.cpp
         resources/material.cpp
@@ -24,8 +25,6 @@ add_library(Engine OBJECT
 
         # Рендеринг
         rendering/renderer.cpp
-        rendering/material_instance.cpp
-        rendering/mesh_instance.cpp
 )
 add_default_configurations(Engine demo_app)
 

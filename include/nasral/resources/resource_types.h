@@ -126,21 +126,39 @@ namespace nasral::resources
         [[nodiscard]] Status status() const { return status_; }
         [[nodiscard]] ErrorCode err_code() const { return err_code_; }
         [[nodiscard]] Type type() const { return type_; }
-        [[nodiscard]] const SafeHandle<const ResourceManager>& manager() const { return resource_manager_; }
+        [[nodiscard]] const SafeHandle<const ResourceManager>& manager() const { return manager_; }
         [[nodiscard]] const SafeHandle<const logging::Logger>& logger() const { return logger_; }
 
     protected:
         IResource(const Type type, const ResourceManager* manager, const logging::Logger* logger)
             : type_(type)
-            , resource_manager_(manager)
+            , manager_(manager)
             , logger_(logger)
         {}
 
         Type type_ = Type::eFile;
         Status status_ = Status::eUnloaded;
         ErrorCode err_code_ = ErrorCode::eNoError;
-        SafeHandle<const ResourceManager> resource_manager_;
+        SafeHandle<const ResourceManager> manager_;
         SafeHandle<const logging::Logger> logger_;
+    };
+
+    using RequestId = size_t;
+    using RequestIdOpt = std::optional<RequestId>;
+    using RequestCallback = std::function<void(IResource*)>;
+
+    struct RequestHandler
+    {
+        explicit RequestHandler(RequestCallback callback)
+            : id(0)
+            , callback(std::move(callback))
+        {
+            static std::atomic<RequestId> id_counter{0};
+            id = id_counter.fetch_add(1);
+        }
+
+        RequestId id;
+        RequestCallback callback;
     };
 
     struct FixedPath
