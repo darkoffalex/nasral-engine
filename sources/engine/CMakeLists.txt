@@ -3,7 +3,11 @@ add_library(Engine OBJECT
         # База
         pch.h
         engine.cpp
+
+        # ECS
         ecs/ecs_manager.cpp
+        ecs/views/entity_view.hpp
+        ecs/views/component_view.hpp
 
         # Логирование
         logging/logger.cpp

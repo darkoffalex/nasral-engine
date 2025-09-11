@@ -24,6 +24,7 @@ namespace nasral::resources
     }
 
     Request::~Request(){
+        if (!id_.has_value()) return;
         manager_->release(path_, id_);
     }
 

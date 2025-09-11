@@ -1,69 +1,110 @@
 #pragma once
 #include <nasral/ecs/ecs_types.h>
 
+namespace nasral{class Engine;}
+namespace nasral::logging{class Logger;}
+
 namespace nasral::ecs
 {
-    class ECSManager
+    class Archetype
     {
     public:
-        typedef std::unique_ptr<ECSManager> Ptr;
+        typedef std::unique_ptr<Archetype> Ptr;
 
-        ECSManager();
-        ECSManager(const ECSManager&) = delete;
-        ECSManager& operator=(const ECSManager&) = delete;
-
-        EntityId create_entity_unsafe();
-        EntityId create_entity();
-        void destroy_entity_unsafe(const EntityId& id);
-        void destroy_entity(const EntityId& id);
-
-        template<class Component>
-        uint32_t component_id()
+        struct MoveResult
         {
-            static uint32_t id = component_counter_.fetch_add(1);
-            return id;
+            std::optional<size_t> new_arch_index = std::nullopt;
+            std::optional<size_t> prev_arch_index = std::nullopt;
+            std::optional<EntityId> moved_entity = std::nullopt;
+        };
+
+        Archetype(const ComponentMask& mask, size_t max_entities);
+
+        size_t add_entity(const EntityId& id);
+        MoveResult move_entity_from(Archetype* from, const EntityId& id);
+        MoveResult remove_entity(size_t index);
+
+        [[nodiscard]] const ComponentMask& mask() const { return mask_;}
+        [[nodiscard]] const std::vector<EntityId>& entities() const { return entities_;}
+
+        template<typename T>
+        [[nodiscard]] bool has_component() const{
+            const size_t comp_id = kComponentId<T>;
+            return mask_.test(comp_id);
         }
 
-        template<class Component>
-        Component* assign_component(const EntityId& id){
-            assert(id.index < MAX_ENTITIES);
-            auto cmp_id = component_id<Component>();
-            if (entities_[id.index].deleted.load()) return nullptr;
-            if (entities_[id.index].id.version != id.version) return nullptr;
-            if (entities_[id.index].used_components.get(cmp_id)) return nullptr;
-
-            entities_[id.index].used_components.set(cmp_id, true);
-            if (component_pools_[cmp_id].get() == nullptr){
-                component_pools_[cmp_id] = std::make_unique<ComponentPool<Component>>(MAX_ENTITIES);
-            }
-
-            return component_pools_[cmp_id]->component(id.index);
+        template<typename T>
+        [[nodiscard]] T& get_component(size_t index) {
+            const size_t comp_id = kComponentId<T>;
+            const size_t pool_idx = get_pool_index(comp_id);
+            return std::get<std::vector<T>>(pools_[pool_idx])[index];
         }
 
-        template<class Component>
-        void remove_component(const EntityId& id){
-            assert(id.index < MAX_ENTITIES);
-            auto cmp_id = component_id<Component>();
-            if (entities_[id.index].deleted.load()) return;
-            if (entities_[id.index].id.version != id.version) return;
-            entities_[id.index].used_components.set(cmp_id, false);
-        }
-
-        template<class Component>
-        [[nodiscard]] Component* component_of(const EntityId& id){
-            auto cmp_id = component_id<Component>();
-            if (entities_[id.index].deleted.load()) return nullptr;
-            if (entities_[id.index].id.version != id.version) return nullptr;
-            if (!entities_[id.index].used_components.get(cmp_id)) return nullptr;
-            return static_cast<ComponentPool<Component>*>(component_pools_[cmp_id].get())->component(id.index);
+        template<typename... Ts>
+        [[nodiscard]] std::tuple<Ts&...> get_components(size_t index) {
+            return std::tie(get_component<Ts>(index)...);
         }
 
     private:
-        std::atomic_uint32_t component_counter_{0};
-        std::atomic_size_t entity_counter_{0};
-        std::vector<size_t> freed_entities_;
-        std::mutex freed_entities_mutex_;
-        std::array<EntitySlot, MAX_ENTITIES> entities_;
-        std::array<ComponentPoolBase::Ptr, MAX_UNIQUE_COMPONENTS> component_pools_;
+        [[nodiscard]] size_t get_pool_index(size_t component_id) const;
+        [[nodiscard]] size_t get_entity_index(const EntityId& id) const;
+
+    protected:
+        ComponentMask mask_ = {};
+        size_t max_entities_ = 0;
+        std::vector<EntityId> entities_ = {};
+        std::vector<ComponentPoolVariant> pools_ = {};
+        std::vector<size_t> component_types_ = {};
+    };
+
+    class EcsManager
+    {
+    public:
+        typedef std::unique_ptr<EcsManager> Ptr;
+
+        struct EntitySlot
+        {
+            EntityId id = {};
+            Archetype* archetype = nullptr;
+            ComponentMask mask = {};
+            size_t archetype_index = 0;
+            bool is_alive = false;
+        };
+
+        EcsManager(const Engine* engine, const EcsConfig& config);
+
+        [[nodiscard]] EntityId create_entity();
+        void destroy_entity(const EntityId& id);
+        void assign_components(const EntityId& id, const ComponentMask& mask);
+        void remove_components(const EntityId& id, const ComponentMask& mask);
+
+        template<typename Component>
+        void set_component(const EntityId& id, const Component&& component){
+            assert(id.index < entities_.size());
+            assert(entities_[id.index].archetype != nullptr);
+
+            const auto& slot = entities_[id.index];
+            slot.archetype->get_component<Component>(slot.archetype_index) = std::forward<Component>(component);
+        }
+
+        template<typename Component>
+        void reset_component(const EntityId& id) const{
+            assert(id.index < entities_.size());
+            assert(entities_[id.index].archetype != nullptr);
+
+            const auto& slot = entities_[id.index];
+            slot.archetype->get_component<Component>(slot.archetype_index) = {};
+        }
+
+    private:
+        [[nodiscard]] const logging::Logger* logger() const;
+        [[nodiscard]] Archetype* find_or_create_archetype(const ComponentMask& mask);
+
+    protected:
+        SafeHandle<const Engine> engine_;
+        EcsConfig config_;
+        std::vector<EntitySlot> entities_;
+        std::vector<size_t> freed_slots_;
+        std::vector<Archetype::Ptr> archetypes_;
     };
 }

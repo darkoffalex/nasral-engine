@@ -1,75 +1,100 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include <atomic>
+#include <bitset>
+#include <variant>
 #include <nasral/core_types.h>
 
-#define MAX_UNIQUE_COMPONENTS 32
-#define MAX_ENTITIES 1000
+#include <nasral/resources/resource_components.h>
+#include <nasral/rendering/rendering_components.h>
 
 namespace nasral::ecs
 {
-    struct ComponentBase
-    {
-        bool is_used = false;
+    using ComponentTypes = std::tuple<
+        // Ресурсы (дескрипторы и запросы)
+        resources::components::TextureResource,       // 0
+        resources::components::TextureSetResources,   // 1
+        resources::components::MaterialResource,      // 2
+        resources::components::MeshResource,          // 3
+
+        // Рендеринг (handles)
+        rendering::components::TextureHandle,         // 4
+        rendering::components::TextureSetHandles,     // 5
+        rendering::components::MaterialHandle,        // 6
+        rendering::components::MeshHandle             // 7
+    >;
+
+#pragma region meta_magic_componenet_index
+    template <typename T, typename Tuple>
+    struct tuple_index;
+
+    template <typename T, typename... Rest>
+    struct tuple_index<T, std::tuple<T, Rest...>> {
+        static constexpr size_t value = 0;
     };
 
-    struct ComponentPoolBase
-    {
-        typedef std::unique_ptr<ComponentPoolBase> Ptr;
+    template <typename T, typename U, typename... Rest>
+    struct tuple_index<T, std::tuple<U, Rest...>> {
+        static constexpr size_t value = 1 + tuple_index<T, std::tuple<Rest...>>::value;
     };
 
-    template<typename Component>
-    class ComponentPool : public ComponentPoolBase
-    {
-    public:
-        typedef std::unique_ptr<ComponentPool> Ptr;
-        explicit ComponentPool(const size_t pool_size): data_(pool_size) {}
-        ~ComponentPool() = default;
-        ComponentPool(const ComponentPool&) = delete;
-        ComponentPool& operator=(const ComponentPool&) = delete;
+    template <typename T>
+    struct tuple_index<T, std::tuple<>> {
+        static_assert(sizeof(T) == 0, "Type not found in tuple");
+    };
+#pragma endregion
 
-        [[nodiscard]] Component* data() { return data_.data(); }
-        [[nodiscard]] Component* component(const size_t index){return data_.data() + index;}
-        [[nodiscard]] size_t pool_size() const { return data_.size(); }
-        [[nodiscard]] size_t size() const { return sizeof(Component) * data_.size(); }
+    template <typename T>
+    constexpr size_t kComponentId = tuple_index<T, ComponentTypes>::value;
 
-    protected:
-        std::vector<Component> data_;
+#pragma region meta_magic_pool_variants
+    template <typename Tuple, typename IndexSeq>
+    struct tuple_to_vector_variant_impl;
+
+    template <typename Tuple, std::size_t... Is>
+    struct tuple_to_vector_variant_impl<Tuple, std::index_sequence<Is...>> {
+        using type = std::variant<std::vector<std::tuple_element_t<Is, Tuple>>...>;
     };
 
-    struct AtomicComponentMask
-    {
-        std::atomic_uint32_t mask{0};
-        void set(const uint32_t index, const bool value){
-            if (value) mask.fetch_or(1 << index);
-            else mask.fetch_and(~(1 << index));
-        }
-        void reset(){
-            mask.store(0, std::memory_order_release);
-        }
-        [[nodiscard]] bool get(const uint32_t index) const{
-            return (mask.load(std::memory_order_acquire) & (1 << index)) != 0;
-        }
-    };
+    template <typename Tuple>
+    using tuple_to_vector_variant = typename tuple_to_vector_variant_impl<
+        Tuple,
+        std::make_index_sequence<std::tuple_size_v<Tuple>>
+    >::type;
+#pragma endregion
+
+    using ComponentPoolVariant = tuple_to_vector_variant<ComponentTypes>;
+
+    using ComponentMask = std::bitset<std::tuple_size_v<ComponentTypes>>;
+
+    template<typename... Ts>
+    ComponentMask make_mask(){
+        ComponentMask mask;
+        ((mask.set(kComponentId<Ts>)), ...);
+        return mask;
+    }
+
+    template<typename... Ts>
+    const ComponentMask kMaskOf = make_mask<Ts...>();
 
     struct EntityId
     {
         size_t index = 0;
         size_t version = 0;
+        bool operator==(const EntityId& other) const{
+            return index == other.index && version == other.version;
+        }
     };
 
-    struct EntitySlot
+    struct EcsConfig
     {
-        EntityId id = {};
-        AtomicComponentMask used_components = {};
-        std::atomic<bool> deleted{false};
+        size_t max_entities = 1000;
     };
 
-    class ECSError final : public EngineError
+    class EcsError final : public EngineError
     {
     public:
-        explicit ECSError(const std::string& message)
+        explicit EcsError(const std::string& message)
         : EngineError(message) {}
     };
 }

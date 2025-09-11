@@ -1,18 +1,29 @@
 #pragma once
-#include <nasral/resources/resource_types.h>
 #include <nasral/resources/request.h>
 
 namespace nasral::resources::components
 {
-    struct Resource
+    struct TextureResource
     {
-        Type type;
-        std::string_view path;
+        Request texture;
     };
 
-    struct ResourceHandle
+    struct TextureSetResources
     {
-        Type type;
-        Request request;
+        Request color;
+        Request normal;
+        Request roughness;
+        Request height;
+        Request metallic;
+    };
+
+    struct MaterialResource
+    {
+        Request material;
+    };
+
+    struct MeshResource
+    {
+        Request mesh;
     };
 }

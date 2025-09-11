@@ -2,6 +2,7 @@
 #include <nasral/logging/logger.h>
 #include <nasral/resources/resource_manager.h>
 #include <nasral/rendering/renderer.h>
+#include <nasral/ecs/ecs_types.h>
 
 namespace nasral
 {
@@ -13,6 +14,7 @@ namespace nasral
             logging::LoggingConfig log;
             resources::ResourceConfig resources;
             rendering::RenderingConfig rendering;
+            ecs::ECSConfig ecs;
         };
 
         Engine();
