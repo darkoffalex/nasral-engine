@@ -14,7 +14,7 @@ namespace nasral
             logging::LoggingConfig log;
             resources::ResourceConfig resources;
             rendering::RenderingConfig rendering;
-            ecs::ECSConfig ecs;
+            ecs::EcsConfig ecs;
         };
 
         Engine();

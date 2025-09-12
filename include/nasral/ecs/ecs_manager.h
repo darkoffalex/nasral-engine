@@ -1,69 +1,17 @@
 #pragma once
 #include <nasral/ecs/ecs_types.h>
+#include <nasral/ecs/ecs_archetype.h>
 
 namespace nasral{class Engine;}
 namespace nasral::logging{class Logger;}
 
 namespace nasral::ecs
 {
-    class Archetype
-    {
-    public:
-        typedef std::unique_ptr<Archetype> Ptr;
-
-        struct MoveResult
-        {
-            std::optional<size_t> new_arch_index = std::nullopt;
-            std::optional<size_t> prev_arch_index = std::nullopt;
-            std::optional<EntityId> moved_entity = std::nullopt;
-        };
-
-        Archetype(const ComponentMask& mask, size_t max_entities);
-
-        size_t add_entity(const EntityId& id);
-        MoveResult move_entity_from(Archetype* from, const EntityId& id);
-        MoveResult remove_entity(size_t index);
-
-        [[nodiscard]] const ComponentMask& mask() const { return mask_;}
-        [[nodiscard]] const std::vector<EntityId>& entities() const { return entities_;}
-
-        template<typename T>
-        [[nodiscard]] bool has_component() const{
-            const size_t comp_id = kComponentId<T>;
-            return mask_.test(comp_id);
-        }
-
-        template<typename T>
-        [[nodiscard]] T& get_component(size_t index) {
-            const size_t comp_id = kComponentId<T>;
-            const size_t pool_idx = get_pool_index(comp_id);
-            return std::get<std::vector<T>>(pools_[pool_idx])[index];
-        }
-
-        template<typename... Ts>
-        [[nodiscard]] std::tuple<Ts&...> get_components(size_t index) {
-            return std::tie(get_component<Ts>(index)...);
-        }
-
-    private:
-        [[nodiscard]] size_t get_pool_index(size_t component_id) const;
-        [[nodiscard]] size_t get_entity_index(const EntityId& id) const;
-
-    protected:
-        ComponentMask mask_ = {};
-        size_t max_entities_ = 0;
-        std::vector<EntityId> entities_ = {};
-        std::vector<ComponentPoolVariant> pools_ = {};
-        std::vector<size_t> component_types_ = {};
-    };
-
-    class EcsManager
-    {
+    class EcsManager {
     public:
         typedef std::unique_ptr<EcsManager> Ptr;
 
-        struct EntitySlot
-        {
+        struct EntitySlot {
             EntityId id = {};
             Archetype* archetype = nullptr;
             ComponentMask mask = {};
@@ -71,12 +19,91 @@ namespace nasral::ecs
             bool is_alive = false;
         };
 
+        template<typename... Ts>
+        class View {
+        public:
+            class Iterator {
+            public:
+                using iterator_category = std::forward_iterator_tag;
+                using value_type = EntityId;
+                //using difference_type = std::ptrdiff_t;
+                using pointer = value_type*;
+                using reference = value_type&;
+
+                Iterator() = default;
+                Iterator(EcsManager* manager, const size_t arch_index, const size_t ent_index)
+                    : manager_(manager)
+                    , archetype_index_(arch_index)
+                    , entity_index_(ent_index)
+                {
+                    advance_archetype();
+                }
+
+                reference operator*() const {
+                    auto* archetype = manager_->archetypes_[archetype_index_].get();
+                    return std::tuple_cat(
+                        std::make_tuple(archetype->entities()[entity_index_]),
+                        archetype->get_components<Ts...>(entity_index_)
+                    );
+                }
+
+                Iterator& operator++() {
+                    ++entity_index_;
+                    advance_archetype();
+                    return *this;
+                }
+
+                Iterator operator++(int) {
+                    Iterator tmp = *this;
+                    ++(*this);
+                    return tmp;
+                }
+
+                bool operator==(const Iterator& other) const {
+                    return manager_ == other.manager_ &&
+                        archetype_index_ == other.archetype_index_ &&
+                        entity_index_ == other.entity_index_;
+                }
+
+                bool operator!=(const Iterator& other) const {
+                    return !(*this == other);
+                }
+
+            private:
+                void advance_archetype() {
+                    const auto required_mask = kMaskOf<Ts...>;
+                    while (archetype_index_ < manager_->archetypes_.size()) {
+                        const auto& arc = manager_->archetypes_[archetype_index_];
+                        if ((arc->mask() & required_mask) == required_mask) {
+                            if (entity_index_ < arc->entities().size()) {
+                                return;
+                            }
+                        }
+                        entity_index_ = 0;
+                        ++archetype_index_;
+                    }
+                }
+
+            protected:
+                EcsManager* manager_ = nullptr;
+                size_t archetype_index_ = 0;
+                size_t entity_index_ = 0;
+            };
+
+            explicit View(EcsManager* manager) : manager_(manager) {}
+            Iterator begin() const { return Iterator(manager_, 0, 0); }
+            Iterator end() const { return Iterator(); }
+
+        protected:
+            EcsManager* manager_ = nullptr;
+        };
+
         EcsManager(const Engine* engine, const EcsConfig& config);
 
         [[nodiscard]] EntityId create_entity();
         void destroy_entity(const EntityId& id);
-        void assign_components(const EntityId& id, const ComponentMask& mask);
-        void remove_components(const EntityId& id, const ComponentMask& mask);
+        void enable_components(const EntityId& id, const ComponentMask& mask);
+        void disable_components(const EntityId& id, const ComponentMask& mask);
 
         template<typename Component>
         void set_component(const EntityId& id, const Component&& component){
@@ -93,12 +120,18 @@ namespace nasral::ecs
             assert(entities_[id.index].archetype != nullptr);
 
             const auto& slot = entities_[id.index];
-            slot.archetype->get_component<Component>(slot.archetype_index) = {};
+            slot.archetype->get_component<Component>(slot.archetype_index) = std::move(Component{});
+        }
+
+        template<typename... Ts>
+        View<Ts...> view() {
+            return View<Ts...>(this);
         }
 
     private:
         [[nodiscard]] const logging::Logger* logger() const;
         [[nodiscard]] Archetype* find_or_create_archetype(const ComponentMask& mask);
+        void assign_archetype(EntitySlot& slot, Archetype* dst_archetype);
 
     protected:
         SafeHandle<const Engine> engine_;

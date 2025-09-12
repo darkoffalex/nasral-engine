@@ -6,8 +6,7 @@ add_library(Engine OBJECT
 
         # ECS
         ecs/ecs_manager.cpp
-        ecs/views/entity_view.hpp
-        ecs/views/component_view.hpp
+        ecs/ecs_archetype.cpp
 
         # Логирование
         logging/logger.cpp
