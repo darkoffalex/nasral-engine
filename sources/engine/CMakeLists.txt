@@ -25,9 +25,11 @@ add_library(Engine OBJECT
         resources/loaders/texture_loader.hpp
         resources/loaders/texture_builtin_loader.hpp
         resources/resource_manager.cpp
+        resources/resource_system.cpp
 
         # Рендеринг
         rendering/renderer.cpp
+        rendering/rendering_system.cpp
 )
 add_default_configurations(Engine demo_app)
 

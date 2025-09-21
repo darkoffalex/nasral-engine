@@ -25,7 +25,7 @@ namespace nasral::ecs
             class Iterator {
             public:
                 using iterator_category = std::forward_iterator_tag;
-                using value_type = EntityId;
+                using value_type = std::tuple<EntityId, Ts&...>;
                 //using difference_type = std::ptrdiff_t;
                 using pointer = value_type*;
                 using reference = value_type&;
@@ -36,10 +36,15 @@ namespace nasral::ecs
                     , archetype_index_(arch_index)
                     , entity_index_(ent_index)
                 {
+                    if (manager_ == nullptr || manager_->archetypes_.empty()){
+                        *this = Iterator();
+                        return;
+                    }
+
                     advance_archetype();
                 }
 
-                reference operator*() const {
+                value_type operator*() const {
                     auto* archetype = manager_->archetypes_[archetype_index_].get();
                     return std::tuple_cat(
                         std::make_tuple(archetype->entities()[entity_index_]),
@@ -71,6 +76,11 @@ namespace nasral::ecs
 
             private:
                 void advance_archetype() {
+                    // Для end итератора
+                    if (!manager_ || archetype_index_ >= manager_->archetypes_.size()){
+                        return;
+                    }
+                    // Менять на подходящий архетип в том случае, если индекс entity подошел к концу
                     const auto required_mask = kMaskOf<Ts...>;
                     while (archetype_index_ < manager_->archetypes_.size()) {
                         const auto& arc = manager_->archetypes_[archetype_index_];
@@ -82,6 +92,8 @@ namespace nasral::ecs
                         entity_index_ = 0;
                         ++archetype_index_;
                     }
+                    // После прохода по всем архетипам (становление end итератором)
+                    *this = Iterator();
                 }
 
             protected:
@@ -121,6 +133,37 @@ namespace nasral::ecs
 
             const auto& slot = entities_[id.index];
             slot.archetype->get_component<Component>(slot.archetype_index) = std::move(Component{});
+        }
+
+        template<typename Component>
+        Component& get_component(const EntityId& id){
+            assert(id.index < entities_.size());
+            assert(entities_[id.index].archetype != nullptr);
+
+            const auto& slot = entities_[id.index];
+            return slot.archetype->get_component<Component>(slot.archetype_index);
+        }
+
+        template<typename... Ts>
+        std::tuple<Ts&...> get_components(const EntityId& id){
+            assert(id.index < entities_.size());
+            assert(entities_[id.index].archetype != nullptr);
+
+            const auto& slot = entities_[id.index];
+            return slot.archetype->get_components<Ts...>(slot.archetype_index);
+        }
+
+        [[nodiscard]] bool entity_alive(const EntityId& id) const{
+            assert(id.index < entities_.size());
+            return entities_[id.index].is_alive;
+        }
+
+        [[nodiscard]] bool entity_valid(const EntityId& id) const{
+            assert(id.index < entities_.size());
+
+            return entities_[id.index].archetype != nullptr
+                && entities_[id.index].is_alive
+                && entities_[id.index].id == id;
         }
 
         template<typename... Ts>

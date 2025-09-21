@@ -1,29 +1,19 @@
 #pragma once
+#include <nasral/rendering/rendering_types.h>
 #include <nasral/resources/request.h>
 
 namespace nasral::resources::components
 {
-    struct TextureResource
+    struct MaterialRequest
     {
-        Request texture;
+        bool needed = false;
+        Request pipeline_request = {};
+        std::array<Request, static_cast<size_t>(rendering::TextureType::TOTAL)> texture_requests = {};
     };
 
-    struct TextureSetResources
+    struct MaterialDescriptors
     {
-        Request color;
-        Request normal;
-        Request roughness;
-        Request height;
-        Request metallic;
-    };
-
-    struct MaterialResource
-    {
-        Request material;
-    };
-
-    struct MeshResource
-    {
-        Request mesh;
+        std::string_view material_path = {};
+        std::array<std::string_view, static_cast<size_t>(rendering::TextureType::TOTAL)> texture_paths = {};
     };
 }

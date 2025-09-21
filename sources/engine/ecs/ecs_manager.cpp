@@ -4,11 +4,6 @@
 
 namespace nasral::ecs
 {
-
-}
-
-namespace nasral::ecs
-{
     EcsManager::EcsManager(const Engine* engine, const EcsConfig& config)
         : engine_(engine)
         , config_(config)

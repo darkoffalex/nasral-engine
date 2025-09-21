@@ -93,7 +93,7 @@ namespace nasral::ecs
             std::swap(entities_[index], entities_[last_idx]);
             for (auto& pool : pools_) {
                 std::visit([index, last_idx](auto& components) {
-                    components[index] = std::move(components[last_idx]);
+                    std::swap(components[index], components[last_idx]);
                 }, pool);
             }
 
@@ -104,7 +104,9 @@ namespace nasral::ecs
         // Очистить entity и компоненты (автоматически вызовет деструкторы)
         entities_.pop_back();
         for (auto& pool : pools_) {
-            std::visit([](auto& vec) { vec.pop_back(); }, pool);
+            std::visit([](auto& components){
+                components.pop_back();
+            }, pool);
         }
 
         return result;

@@ -20,12 +20,38 @@ namespace nasral::resources
         }
 
         path_ = p.value();
-        id_ = manager_->request(path, std::move(on_ready));
+        id_ = manager_->request(path_, std::move(on_ready));
+    }
+
+    Request::Request(ResourceManager* manager, const std::string_view& path, RequestCallback on_ready)
+    : path_(path)
+    , manager_(manager)
+    {
+        // Корректный путь (string_view) должен быть передан при использовании конструктора
+        if (path_.empty()){
+            throw ResourceError("Empty resource path");
+        }
+
+        id_ = manager_->request(path_, std::move(on_ready));
     }
 
     Request::~Request(){
         if (!id_.has_value()) return;
         manager_->release(path_, id_);
+    }
+
+    Request::Request(Request&& other) noexcept
+        : id_(std::exchange(other.id_, std::nullopt))
+        , path_(std::exchange(other.path_, ""))
+        , manager_(std::exchange(other.manager_,  {}))
+    {}
+
+    Request& Request::operator=(Request&& other) noexcept{
+        if (this == &other) return *this;
+        id_ = std::exchange(other.id_, std::nullopt);
+        path_ = std::exchange(other.path_, "");
+        manager_ = std::exchange(other.manager_,  {});
+        return *this;
     }
 
     bool Request::is_requested() const noexcept{

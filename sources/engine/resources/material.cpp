@@ -2,6 +2,8 @@
 #include <nasral/engine.h>
 #include <nasral/resources/material.h>
 #include <nasral/resources/shader.h>
+#include <nasral/resources/resource_manager.h>
+#include <nasral/rendering/renderer.h>
 
 namespace nasral::resources
 {
@@ -124,7 +126,7 @@ namespace nasral::resources
         // Если не все запросы обязательных шейдеров обработаны - выход
         if (vert_shader_req_.is_unhandled() ||
             frag_shader_req_.is_unhandled() ||
-            (geom_shader_req_.is_requested() && !geom_shader_req_.is_unhandled()))
+            (geom_shader_req_.is_requested() && geom_shader_req_.is_unhandled()))
         {
             return;
         }

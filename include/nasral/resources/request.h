@@ -12,12 +12,13 @@ namespace nasral::resources
         friend class ResourceManager;
         Request() = default;
         Request(ResourceManager* manager, const std::string& path, RequestCallback on_ready);
+        Request(ResourceManager* manager, const std::string_view& path, RequestCallback on_ready);
         ~Request();
 
-        Request(Request&& other) noexcept = default;
+        Request(Request&& other) noexcept;
         Request(const Request&) = delete;
         Request& operator=(const Request&) = delete;
-        Request& operator=(Request&& other) noexcept = default;
+        Request& operator=(Request&& other) noexcept;
 
         [[nodiscard]] bool is_requested() const noexcept;
         [[nodiscard]] bool is_unhandled() const noexcept;

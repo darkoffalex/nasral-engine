@@ -1,8 +1,10 @@
 #pragma once
 #include <nasral/logging/logger.h>
-#include <nasral/resources/resource_manager.h>
+#include <nasral/ecs/ecs_manager.h>
 #include <nasral/rendering/renderer.h>
-#include <nasral/ecs/ecs_types.h>
+#include <nasral/rendering/rendering_system.h>
+#include <nasral/resources/resource_manager.h>
+#include <nasral/resources/resource_system.h>
 
 namespace nasral
 {
@@ -27,22 +29,29 @@ namespace nasral
         void update(float delta) noexcept;
         void shutdown() noexcept;
 
-        [[nodiscard]] const logging::Logger* logger() const {
+        [[nodiscard]] logging::Logger* logger() const {
             return logger_.get();
         }
 
-        [[nodiscard]] const resources::ResourceManager* resource_manager() const {
-            return resource_manager_.get();
+        [[nodiscard]] ecs::EcsManager* ecs() const{
+            return ecs_.get();
         }
 
-        [[nodiscard]] const rendering::Renderer* renderer() const {
+        [[nodiscard]] rendering::Renderer* renderer() const {
             return renderer_.get();
+        }
+
+        [[nodiscard]] resources::ResourceManager* resource_manager() const {
+            return resource_manager_.get();
         }
 
     private:
         bool initialized_ = false;
         logging::Logger::Ptr logger_;
-        resources::ResourceManager::Ptr resource_manager_;
+        ecs::EcsManager::Ptr ecs_;
         rendering::Renderer::Ptr renderer_;
+        rendering::RenderingSystem::Ptr rendering_system_;
+        resources::ResourceManager::Ptr resource_manager_;
+        resources::ResourceSystem::Ptr resource_system_;
     };
 }

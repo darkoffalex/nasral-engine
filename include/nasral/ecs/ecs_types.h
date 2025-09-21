@@ -11,16 +11,12 @@ namespace nasral::ecs
 {
     using ComponentTypes = std::tuple<
         // Ресурсы (дескрипторы и запросы)
-        resources::components::TextureResource,       // 0
-        resources::components::TextureSetResources,   // 1
-        resources::components::MaterialResource,      // 2
-        resources::components::MeshResource,          // 3
+        resources::components::MaterialRequest,       // 0
+        resources::components::MaterialDescriptors,   // 1
 
         // Рендеринг (handles)
-        rendering::components::TextureHandle,         // 4
-        rendering::components::TextureSetHandles,     // 5
-        rendering::components::MaterialHandle,        // 6
-        rendering::components::MeshHandle             // 7
+        rendering::components::MaterialHandles,       // 3
+        rendering::components::MaterialSettings       // 4
     >;
 
 #pragma region meta_magic_componenet_index

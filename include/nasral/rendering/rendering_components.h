@@ -3,27 +3,18 @@
 
 namespace nasral::rendering::components
 {
-    struct TextureHandle
+    struct MaterialHandles
     {
-        Handles::Texture texture;
+        Handles::Material material_handles = {};
+        std::array<Handles::Texture, static_cast<size_t>(TextureType::TOTAL)> texture_handles = {};
+        std::array<TextureSamplerType, static_cast<size_t>(TextureType::TOTAL)> texture_samplers = {};
+        std::array<bool, static_cast<size_t>(TextureType::TOTAL)> texture_dirty = {};
     };
 
-    struct TextureSetHandles
+    struct MaterialSettings
     {
-        Handles::Texture color;
-        Handles::Texture normal;
-        Handles::Texture roughness;
-        Handles::Texture height;
-        Handles::Texture metallic;
-    };
-
-    struct MaterialHandle
-    {
-        Handles::Material material;
-    };
-
-    struct MeshHandle
-    {
-        Handles::Mesh mesh;
+        size_t index = 0;
+        bool dirty = false;
+        MaterialUniforms uniforms = {};
     };
 }

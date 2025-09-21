@@ -56,7 +56,7 @@ namespace nasral::resources
         }
 
         // Запросить встроенные ресурсы
-        request_builtin();
+        //request_builtin();
     }
 
     ResourceManager::~ResourceManager(){
@@ -284,6 +284,14 @@ namespace nasral::resources
         };
     }
 
+    Request ResourceManager::make_request(const std::string_view& path, RequestCallback on_ready) const{
+        return {
+            const_cast<ResourceManager*>(this),
+            path,
+            std::move(on_ready)
+        };
+    }
+
     std::optional<std::string_view> ResourceManager::res_path(const std::string& path) const noexcept{
         for (auto& slot : slots_){
             if (slot.info.path.view() == path) return slot.info.path.view();
@@ -428,7 +436,7 @@ namespace nasral::resources
             [this](const size_t index){
                 const auto& slot = slots_[index];
                 return slot.refs.count.load(std::memory_order_acquire) == 0
-                    && static_cast<bool>(slot.resource);
+                    && slot.resource != nullptr;
             });
     }
 
@@ -458,7 +466,13 @@ namespace nasral::resources
                 if (!slot.refs.unhandled.empty()){
                     for (auto& req : slot.refs.unhandled) {
                         if (req.callback){
-                            req.callback(slot.resource.get());
+                            // Получить обработчик готовности
+                            auto callback = std::move(req.callback);
+                            // Удалить из необработанных ссылок
+                            std::swap(req, slot.refs.unhandled.back());
+                            slot.refs.unhandled.pop_back();
+                            // Вызвать обработчик
+                            callback(slot.resource.get());
                         }
                     }
                     slot.refs.unhandled.clear();

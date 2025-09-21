@@ -15,13 +15,20 @@ namespace nasral
             logger_ = std::make_unique<logging::Logger>(config.log);
             logger()->info("Logger initialized.");
 
+            ecs_ = std::make_unique<ecs::EcsManager>(this, config.ecs);
+            logger()->info("ECS initialized.");
+
             renderer_ = std::make_unique<rendering::Renderer>(this, config.rendering);
             logger()->info("Renderer initialized.");
 
             resource_manager_ = std::make_unique<resources::ResourceManager>(this, config.resources);
             logger()->info("Resource manager initialized.");
 
-            // TODO: Инициализировать тестовую сцену
+            resource_system_ = std::make_unique<resources::ResourceSystem>(this);
+            logger()->info("Resource system initialized.");
+
+            rendering_system_ = std::make_unique<rendering::RenderingSystem>(this);
+            logger()->info("Rendering system initialized.");
 
             initialized_ = true;
             return true;
@@ -45,25 +52,24 @@ namespace nasral
         }
     }
 
-    void Engine::update(const float delta) noexcept
+    void Engine::update([[maybe_unused]] const float delta) noexcept
     {
         if (!initialized_) return;
 
         assert(logger_ != nullptr);
+        assert(ecs_ != nullptr);
         assert(resource_manager_ != nullptr);
         assert(renderer_ != nullptr);
 
         try{
+            // Обновление ресурсов
+            resource_system_->update(delta);
+
+            // Обновление материалов
+            rendering_system_->update(delta);
+
             // Рендеринг
-            renderer_->cmd_begin_frame();
-            renderer_->cmd_bind_frame_descriptors();
-
-            // TODO: Рендеринг объектов
-
-            renderer_->cmd_end_frame();
-
-            // Обновление состояния ресурсов
-            resource_manager_->update(delta);
+            rendering_system_->render();
         }
         catch(const std::exception& e){
             logger()->error(e.what());
@@ -73,6 +79,16 @@ namespace nasral
     void Engine::shutdown() noexcept{
         initialized_ = false;
         try{
+            if (rendering_system_){
+                rendering_system_.reset();
+                logger()->info("Rendering system destroyed.");
+            }
+
+            if (resource_system_){
+                resource_system_.reset();
+                logger()->info("Resource system destroyed.");
+            }
+
             if (resource_manager_){
                 resource_manager_.reset();
                 logger()->info("Resource manager destroyed.");
@@ -81,6 +97,11 @@ namespace nasral
             if (renderer_){
                 renderer_.reset();
                 logger()->info("Renderer destroyed.");
+            }
+
+            if (ecs_){
+                ecs_.reset();
+                logger()->info("ECS destroyed.");
             }
 
             if (logger_){

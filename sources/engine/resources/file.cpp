@@ -1,6 +1,7 @@
 #include "pch.h"
 #include <nasral/engine.h>
 #include <nasral/resources/file.h>
+#include <nasral/resources/resource_manager.h>
 
 namespace nasral::resources
 {

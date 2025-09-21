@@ -1,6 +1,8 @@
 #include "pch.h"
 #include <nasral/engine.h>
 #include <nasral/resources/shader.h>
+#include <nasral/resources/resource_manager.h>
+#include <nasral/rendering/renderer.h>
 
 namespace nasral::resources
 {

@@ -51,6 +51,7 @@ namespace nasral::resources
         void finalize();
 
         [[nodiscard]] Request make_request(const std::string& path, RequestCallback on_ready = nullptr) const;
+        [[nodiscard]] Request make_request(const std::string_view& path, RequestCallback on_ready = nullptr) const;
         [[nodiscard]] std::optional<std::string_view> res_path(const std::string& path) const noexcept;
         [[nodiscard]] std::optional<size_t> res_index(const std::string_view& path) const noexcept;
         [[nodiscard]] size_t ref_count(const std::string_view& path) const;
