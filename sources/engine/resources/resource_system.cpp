@@ -5,6 +5,7 @@
 #include <nasral/rendering/rendering_components.h>
 #include <nasral/resources/material.h>
 #include <nasral/resources/texture.h>
+#include <nasral/resources/mesh.h>
 
 namespace res_cmp = nasral::resources::components;
 namespace ren_cmp = nasral::rendering::components;
@@ -65,7 +66,7 @@ namespace nasral::resources
                                 if (const auto* t = dynamic_cast<Texture*>(resource)){
                                     auto& h = ecs()->get_component<ren_cmp::MaterialHandles>(entity_id);
                                     h.texture_handles[i] = t->render_handles();
-                                    h.texture_samplers[i] = rendering::TextureSamplerType::eNearest;
+                                    h.texture_samplers[i] = rendering::TextureSamplerType::eLinear;
                                     h.texture_dirty[i] = true;
                                 }
                             });
@@ -82,7 +83,37 @@ namespace nasral::resources
     }
 
     void ResourceSystem::update_mesh_resources() const {
-        // TODO: Обработка сущностей объектов сцены
+        // Запрос entity с компонентами материала
+        static auto mesh_view = ecs()->view<
+            res_cmp::MeshDescriptor,
+            res_cmp::MeshRequest,
+            ren_cmp::MeshHandles>();
+
+        // Итерация по mesh'ам
+        for (auto [id, descriptors, request, handles] : mesh_view){
+            auto entity_id = id;
+
+            // Если ресурс нужен
+            if (request.needed){
+                if (!request.request.is_requested()){
+                    request.request = manager()->make_request(descriptors.mesh_path,
+                    [this, entity_id](IResource* resource){
+                        if (!ecs()->entity_valid(entity_id)){
+                            return;
+                        }
+                        if (const auto* m = dynamic_cast<Mesh*>(resource)){
+                            auto& [mesh_handles] = ecs()->get_component<ren_cmp::MeshHandles>(entity_id);
+                            mesh_handles = m->render_handles();
+                        }
+                    });
+                }
+            }
+            // Если не нужен (но был запрос)
+            else if (request.request.is_requested()){
+                ecs()->reset_component<ren_cmp::MeshHandles>(entity_id);
+                ecs()->reset_component<res_cmp::MeshRequest>(entity_id);
+            }
+        }
     }
 
     ecs::EcsManager* ResourceSystem::ecs() const{

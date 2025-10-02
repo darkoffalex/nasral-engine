@@ -11,6 +11,7 @@ namespace nasral::rendering
         , surface_refresh_required_(false)
         , current_frame_(0)
         , available_image_index_(0)
+        , vk_last_pipeline_(VK_NULL_HANDLE)
     {
         logger()->info("Initializing renderer...");
 
@@ -82,6 +83,9 @@ namespace nasral::rendering
 
         // Если рендеринг отключен
         if (!is_rendering_) return;
+
+        // Сброс последнего использованного конвейера перед началом кадра
+        vk_last_pipeline_ = VK_NULL_HANDLE;
 
         // Текущий индекс кадра
         const auto frame_index = current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
@@ -278,8 +282,15 @@ namespace nasral::rendering
             sizeof(uint32_t),
             &mat_index);
 
-        // Запись команд. Привязать конвейер и динамические состояния
-        cmd_buffer->bindPipeline(vk::PipelineBindPoint::eGraphics, handles.pipeline);
+        //  Запись команд. Если конвейер сменился - привязать
+        if (vk_last_pipeline_ != handles.pipeline){
+            cmd_buffer->bindPipeline(vk::PipelineBindPoint::eGraphics, handles.pipeline);
+        }
+
+        // Обновить последний привязанный конвейер
+        vk_last_pipeline_ = handles.pipeline;
+
+        // Запись команд. Привязать динамические состояния
         cmd_buffer->setViewport(0, {viewport});
         cmd_buffer->setScissor(0, {scissor});
     }
@@ -443,125 +454,42 @@ namespace nasral::rendering
         obj_ids_reset_unsafe();
     }
 
-    /*
-    uint32_t Renderer::material_acquire_unsafe(
-        const MaterialType type,
-        const std::string& path,
-        const std::vector<std::string>& tex_paths)
-    {
+    uint32_t Renderer::material_id_acquire_unsafe(){
         if (material_ids_.empty()){
             throw RenderingError("No more material IDs available");
         }
 
         const uint32_t id = material_ids_.back();
         material_ids_.pop_back();
-
-        assert(id < MAX_MATERIALS);
-        if (to<size_t>(id) >= materials_.size()){
-            materials_.emplace_back(std::nullopt);
-        }
-
-        assert(materials_[id] == std::nullopt);
-        materials_[id] = std::optional<MaterialInstance>({
-            engine()->resource_manager(),
-            type,
-            path,
-            tex_paths
-        });
-
         return id;
     }
 
-
-    uint32_t Renderer::material_acquire(
-        const MaterialType type,
-        const std::string& path,
-        const std::vector<std::string>& tex_paths)
-    {
-        std::lock_guard lock(materials_mutex_);
-        return material_acquire_unsafe(type, path, tex_paths);
+    uint32_t Renderer::material_id_acquire(){
+        std::lock_guard lock(material_ids_mutex_);
+        return material_id_acquire_unsafe();
     }
 
-    MaterialInstance& Renderer::material_instance_unsafe(const uint32_t id){
+    void Renderer::material_id_release_unsafe(const uint32_t id){
         assert(id < MAX_MATERIALS);
-        if (materials_[id] == std::nullopt){
-            throw RenderingError("Material ID is invalid");
-        }
-        return *materials_[id];
-    }
-
-    MaterialInstance& Renderer::material_instance(const uint32_t id){
-        std::lock_guard lock(materials_mutex_);
-        return material_instance_unsafe(id);
-    }
-
-    void Renderer::material_release_unsafe(const uint32_t id){
-        assert(id < MAX_MATERIALS);
-        if (materials_[id] == std::nullopt){
-            throw RenderingError("Material ID is invalid");
-        }
-
-        materials_[id] = std::nullopt;
         material_ids_.push_back(id);
     }
 
-    void Renderer::material_release(const uint32_t id){
-        std::lock_guard lock(materials_mutex_);
-        material_release_unsafe(id);
+    void Renderer::material_id_release(const uint32_t id){
+        std::lock_guard lock(material_ids_mutex_);
+        material_id_release_unsafe(id);
     }
 
-    void Renderer::materials_reset_unsafe(){
-        materials_.clear();
+    void Renderer::material_ids_reset_unsafe(){
         material_ids_.clear();
-
         for (uint32_t i = MAX_MATERIALS; i > 0; --i){
             material_ids_.push_back(i - 1);
         }
     }
 
-    void Renderer::materials_reset(){
-        std::lock_guard lock(materials_mutex_);
-        materials_reset_unsafe();
+    void Renderer::material_ids_reset(){
+        std::lock_guard lock(material_ids_mutex_);
+        material_ids_reset_unsafe();
     }
-
-    void Renderer::materials_update_unsafe(){
-        for (size_t i = 0; i < materials_.size(); ++i){
-            if (materials_[i].has_value()){
-                const auto index = to<uint32_t>(i);
-                auto& m = materials_[i].value();
-
-                // Параметры материалов
-                if (m.check_changes(MaterialInstance::eSettingsChanged, false, true)){
-                    if (m.settings().has_value()){
-                        auto& settings = m.settings().value();
-                        std::visit([&](const auto& s){
-                            using T = std::decay_t<decltype(s)>;
-                            if constexpr (
-                                std::is_same_v<T, MaterialPhongUniforms> ||
-                                std::is_same_v<T, MaterialPbrUniforms>)
-                            {
-                                update_material_ubo(index, s);
-                            }
-                        }, settings);
-                    }
-                }
-
-                // Текстуры материалов
-                if (m.check_changes(MaterialInstance::eTextureChanged, false, true)){
-                    for (uint32_t tt = 0; tt < to<uint32_t>(TextureType::TOTAL); ++tt){
-                        if (const Handles::Texture& th = m.tex_render_handles(to<TextureType>(tt))){
-                            TextureBindingInfo info{};
-                            info.texture = th;
-                            info.type = to<TextureType>(tt);
-                            info.sampler_type = m.tex_sampler(info.type);
-                            update_material_tex(index, info);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    */
 
     uint32_t Renderer::light_id_acquire_unsafe() {
         if (light_ids_.empty()) {
@@ -1462,25 +1390,21 @@ namespace nasral::rendering
 
     void Renderer::init_index_pools(){
         object_ids_.reserve(MAX_OBJECTS);
+        material_ids_.reserve(MAX_MATERIALS);
         light_ids_.reserve(MAX_LIGHTS);
         active_light_ids_.reserve(MAX_LIGHTS);
-
-        // material_ids_.reserve(MAX_MATERIALS);
-        // materials_.reserve(MAX_MATERIALS);
 
         for (uint32_t i = MAX_OBJECTS; i > 0; --i){
             object_ids_.emplace_back(i - 1);
         }
 
-        for (uint32_t i = MAX_LIGHTS; i > 0; --i){
-            light_ids_.emplace_back(i - 1);
-        }
-
-        /*
         for (uint32_t i = MAX_MATERIALS; i > 0; --i){
             material_ids_.emplace_back(i - 1);
         }
-        */
+
+        for (uint32_t i = MAX_LIGHTS; i > 0; --i){
+            light_ids_.emplace_back(i - 1);
+        }
     }
 
     void Renderer::refresh_vk_surface(){

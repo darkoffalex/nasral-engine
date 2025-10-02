@@ -1,5 +1,6 @@
 #pragma once
 #include <nasral/ecs/ecs_types.h>
+#include <nasral/ecs/ecs_entity.h>
 
 namespace nasral::ecs
 {

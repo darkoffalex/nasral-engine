@@ -16,4 +16,15 @@ namespace nasral::resources::components
         std::string_view material_path = {};
         std::array<std::string_view, static_cast<size_t>(rendering::TextureType::TOTAL)> texture_paths = {};
     };
+
+    struct MeshRequest
+    {
+        bool needed = false;
+        Request request = {};
+    };
+
+    struct MeshDescriptor
+    {
+        std::string_view mesh_path = {};
+    };
 }

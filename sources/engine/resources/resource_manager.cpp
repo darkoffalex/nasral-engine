@@ -464,19 +464,22 @@ namespace nasral::resources
             {
                 std::lock_guard lock(slot.refs.mutex);
                 if (!slot.refs.unhandled.empty()){
-                    for (auto& req : slot.refs.unhandled) {
+                    // Итерируемся в обратном порядке для безопасного удаления
+                    for (size_t i = slot.refs.unhandled.size(); i > 0; --i) {
+                        auto& req = slot.refs.unhandled[i - 1];
                         if (req.callback){
-                            // Получить обработчик готовности
+                            // Получить обработчик готовности (захватываем владение)
                             auto callback = std::move(req.callback);
-                            // Удалить из необработанных ссылок
-                            std::swap(req, slot.refs.unhandled.back());
+                            // Удалить текущий элемент
                             slot.refs.unhandled.pop_back();
                             // Вызвать обработчик
                             callback(slot.resource.get());
                         }
                     }
+                    // Очистить оставшиеся элементы (если были запросы без callback)
                     slot.refs.unhandled.clear();
                 }
+
                 slot.refs.has_unhandled.store(false, std::memory_order_release);
             }
 

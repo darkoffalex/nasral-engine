@@ -13,10 +13,16 @@ namespace nasral::ecs
         // Ресурсы (дескрипторы и запросы)
         resources::components::MaterialRequest,       // 0
         resources::components::MaterialDescriptors,   // 1
+        resources::components::MeshRequest,           // 2
+        resources::components::MeshDescriptor,        // 3
 
         // Рендеринг (handles)
-        rendering::components::MaterialHandles,       // 3
-        rendering::components::MaterialSettings       // 4
+        rendering::components::MaterialHandles,       // 4
+        rendering::components::MaterialSettings,      // 5
+        rendering::components::ObjectSettings,        // 6
+        rendering::components::MeshHandles,           // 7
+        rendering::components::CameraSettings,        // 8
+        rendering::components::LightSettings          // 9
     >;
 
 #pragma region meta_magic_componenet_index
@@ -71,15 +77,6 @@ namespace nasral::ecs
 
     template<typename... Ts>
     const ComponentMask kMaskOf = make_mask<Ts...>();
-
-    struct EntityId
-    {
-        size_t index = 0;
-        size_t version = 0;
-        bool operator==(const EntityId& other) const{
-            return index == other.index && version == other.version;
-        }
-    };
 
     struct EcsConfig
     {

@@ -25,11 +25,17 @@ namespace nasral::rendering
         [[nodiscard]] Renderer* renderer() const;
 
         void init_test_materials();
-        [[nodiscard]] static std::string default_tex_path(MaterialType m_type, TextureType t_type);
+        void init_test_meshes();
+        void init_test_cameras() const;
+        void init_test_lights();
+
+        //[[nodiscard]] static std::string default_tex_path(MaterialType m_type, TextureType t_type);
         [[nodiscard]] std::string_view valid_path(const std::string& path) const;
 
     protected:
         SafeHandle<Engine> engine_;
         std::vector<ecs::EntityId> materials_;
+        std::vector<ecs::EntityId> meshes_;
+        std::vector<ecs::EntityId> lights_;
     };
 }

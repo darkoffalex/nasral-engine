@@ -48,17 +48,12 @@ namespace nasral::rendering
         void obj_ids_reset_unsafe();
         void obj_ids_reset();
 
-        /*
-        [[nodiscard]] uint32_t material_acquire_unsafe(MaterialType type, const std::string& path, const std::vector<std::string>& tex_paths);
-        [[nodiscard]] uint32_t material_acquire(MaterialType type, const std::string& path, const std::vector<std::string>& tex_paths);
-        [[nodiscard]] MaterialInstance& material_instance_unsafe(uint32_t id);
-        [[nodiscard]] MaterialInstance& material_instance(uint32_t id);
-        void material_release_unsafe(uint32_t id);
-        void material_release(uint32_t id);
-        void materials_reset_unsafe();
-        void materials_reset();
-        void materials_update_unsafe();
-        */
+        [[nodiscard]] uint32_t material_id_acquire_unsafe();
+        [[nodiscard]] uint32_t material_id_acquire();
+        void material_id_release_unsafe(uint32_t id);
+        void material_id_release(uint32_t id);
+        void material_ids_reset_unsafe();
+        void material_ids_reset();
 
         [[nodiscard]] uint32_t light_id_acquire_unsafe();
         [[nodiscard]] uint32_t light_id_acquire();
@@ -221,14 +216,16 @@ namespace nasral::rendering
         std::vector<uint32_t> object_ids_;
         std::mutex obj_ids_mutex_;
 
+        // Индексы материалов
+        std::vector<uint32_t> material_ids_;
+        std::mutex material_ids_mutex_;
+
         // Индексы источников света
         std::vector<uint32_t> light_ids_;
         std::vector<uint32_t> active_light_ids_;
         std::mutex light_ids_mutex_;
 
-        // Материалы
-        // std::vector<std::optional<MaterialInstance>> materials_;
-        // std::vector<uint32_t> material_ids_;
-        // std::mutex materials_mutex_;
+        // Последний использованный конвейер (pipeline)
+        vk::Pipeline vk_last_pipeline_;
     };
 }
