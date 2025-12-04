@@ -4,32 +4,17 @@ add_library(Engine OBJECT
         pch.h
         engine.cpp
 
-        # ECS
-        ecs/ecs_manager.cpp
-        ecs/ecs_archetype.cpp
-
         # Логирование
-        logging/logger.cpp
+        log/logger.cpp
+
+        # ECS
+        ecs/archetype.cpp
+        ecs/manager.cpp
 
         # Ресурсы
-        resources/request.cpp
-        resources/file.cpp
-        resources/shader.cpp
-        resources/material.cpp
-        resources/mesh.cpp
-        resources/texture.cpp
-        resources/loaders/shader_loader.hpp
-        resources/loaders/material_loader.hpp
-        resources/loaders/mesh_loader.hpp
-        resources/loaders/mesh_builtin_loader.hpp
-        resources/loaders/texture_loader.hpp
-        resources/loaders/texture_builtin_loader.hpp
-        resources/resource_manager.cpp
-        resources/resource_system.cpp
-
-        # Рендеринг
-        rendering/renderer.cpp
-        rendering/rendering_system.cpp
+        res/manager.cpp
+        res/resources/file.cpp
+        res/resources/shader.cpp
 )
 add_default_configurations(Engine demo_app)
 
@@ -49,4 +34,5 @@ target_link_libraries(Engine PRIVATE
         pugixml::pugixml
         assimp::assimp
         Vulkan::Vulkan
+        magic_enum::magic_enum
 )

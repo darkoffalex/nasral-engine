@@ -24,6 +24,10 @@
 #include <set>
 #include <map>
 #include <atomic>
+#include <bitset>
+
+// Enums
+#include <magic_enum/magic_enum.hpp>
 
 // Математика
 #include <glm/glm.hpp>

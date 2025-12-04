@@ -32,6 +32,7 @@ find_package(stb REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(pugixml REQUIRED)
 find_package(assimp REQUIRED)
+find_package(magic_enum REQUIRED)
 
 # Заголовочные файлы проекта
 include_directories(BEFORE include)
