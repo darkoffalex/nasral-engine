@@ -15,6 +15,9 @@ add_library(Engine OBJECT
         res/manager.cpp
         res/resources/file.cpp
         res/resources/shader.cpp
+
+        # Рендеринг
+        gfx/renderer.cpp
 )
 add_default_configurations(Engine demo_app)
 

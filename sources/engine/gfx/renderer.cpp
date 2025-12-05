@@ -1,5 +1,4 @@
-// #include "pch.h"
-
+#include "pch.h"
 #include <nasral/gfx/renderer.h>
 #include <nasral/gfx/utils.h>
 #include <nasral/log/logger.h>
@@ -29,6 +28,7 @@ namespace nasral::gfx
     Renderer::Renderer(Engine* engine, const Config& config)
         : Subsystem(engine, config)
         , is_active_(false)
+        , frame_in_progress_(false)
         , surface_refresh_requested_(false)
         , current_frame_(0)
         , available_image_index_(0)
@@ -81,6 +81,8 @@ namespace nasral::gfx
         init_vk_synchronization();
         log_info("Vulkan: Synchronization initialized.");
 
+        light_active_ids_.reserve(kMaxLights);
+        light_states_.resize(kMaxLights, 0);
         is_active_ = true;
     }
 
@@ -1055,6 +1057,415 @@ namespace nasral::gfx
         // Включить рендеринг
         is_active_ = true;
     }
+#pragma endregion
+
+#pragma region render_commands
+
+    void Renderer::cmd_begin_frame()
+    {
+        // Если поверхность вывода обновилась (размеры и прочее)
+        if (surface_refresh_requested_.exchange(false, std::memory_order_acquire)){
+            refresh_vk_surface();
+        }
+
+        // Если рендеринг деактивирован - выйти
+        if (!is_active_) return;
+
+        // Кадр начат
+        assert(frame_in_progress_ == false);
+        frame_in_progress_ = true;
+
+        // Сброс последнего использованного конвейера перед началом кадра
+        vk_last_pipeline_ = VK_NULL_HANDLE;
+
+        // Текущий индекс кадра (от 0 включительно до config_.max_frames_in_flight)
+        const auto frame_index = get_frame_index();
+
+        // Размеры области рендеринга
+        const auto& extent = vk_framebuffers_[frame_index]->extent();
+        const auto& width = extent.width;
+        const auto& height = extent.height;
+
+        // Описываем очистку вложений кадрового буфера (цвет, глубина/трафарет)
+        std::array<vk::ClearValue, 2> clear_values{};
+
+        clear_values[0].color = vk::ClearColorValue(
+            config_.clear_color.r,
+            config_.clear_color.g,
+            config_.clear_color.b,
+            config_.clear_color.a);
+
+        clear_values[1].depthStencil = vk::ClearDepthStencilValue(
+            1.0f,
+            0);
+
+        // Ожидаем завершения кадра с текущим индексом (на случай если он еще не готов)
+        // Функция блокирует поток при ожидании барьера
+        (void)vk_device_->logical_device().waitForFences(
+            1u,
+            &vk_frame_fence_[frame_index].get(),
+            VK_TRUE,
+            std::numeric_limits<uint64_t>::max());
+
+        // Сброс барьера кадра
+        (void)vk_device_->logical_device().resetFences(
+            1u,
+            &vk_frame_fence_[frame_index].get());
+
+        // Получить доступное изображение swap-chain
+        // Функция блокирует поток до получения доступного изображения.
+        const auto result = vk_device_->logical_device().acquireNextImageKHR(
+            vk_swap_chain_.get(),
+            std::numeric_limits<uint64_t>::max(),
+            vk_render_available_semaphore_[frame_index].get(),
+            VK_NULL_HANDLE,
+            &available_image_index_);
+
+        // Если изображение было получено
+        if (result == vk::Result::eSuccess)
+        {
+            // Получить буфер кадра и команд
+            auto& cmd_buffer = vk_command_buffers_[frame_index];
+            auto& frame_buffer = vk_framebuffers_[available_image_index_]->vk_framebuffer();
+
+            // Начать работу с буфером команд
+            cmd_buffer->reset();
+            cmd_buffer->begin(vk::CommandBufferBeginInfo());
+
+            // Начать проход рендеринга, используя полученный ранее кадровый буфер
+            cmd_buffer->beginRenderPass(
+                vk::RenderPassBeginInfo()
+                .setRenderPass(vk_render_pass_.get())
+                .setFramebuffer(frame_buffer)
+                .setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(width, height)))
+                .setClearValues(clear_values),
+                vk::SubpassContents::eInline);
+        }
+        // Если не удалось, возможно, изменилась поверхность - обновить
+        else if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
+        {
+            request_surface_refresh();
+        }
+    }
+
+    void Renderer::cmd_end_frame()
+    {
+        // Если рендеринг деактивирован - выйти
+        if (!is_active_) return;
+
+        // Если кадр не был начат - выйти
+        assert(frame_in_progress_ == true);
+        if (!frame_in_progress_) return;
+
+        // Текущий индекс кадра (от 0 включительно до config_.max_frames_in_flight)
+        const auto frame_index = get_frame_index();
+
+        // Получить буфер команд
+        auto& cmd_buffer = vk_command_buffers_[frame_index];
+
+        // Завершение прохода (неявное преобразование кадра в VK_IMAGE_LAYOUT_PRESENT_SRC_KHR для представления)
+        cmd_buffer->endRenderPass();
+
+        // Завершения командного буфера
+        cmd_buffer->end();
+
+        // Семафоры, ожидаемые для исполнения команд рендеринга
+        std::array<vk::Semaphore, 1> wait_semaphores{
+            vk_render_available_semaphore_[frame_index].get()
+        };
+
+        // Семафоры, сигнализирующие готовность к показу
+        std::array<vk::Semaphore, 1> signal_semaphores{
+            vk_render_finished_semaphore_[frame_index].get()
+        };
+
+        // Стадии, на которых конвейер будет ждать wait_semaphores
+        std::array<vk::PipelineStageFlags, 1> wait_stages{
+            vk::PipelineStageFlagBits::eColorAttachmentOutput
+        };
+
+        // Отправить командные буферы на исполнение
+        const auto& group = vk_device_->queue_group(static_cast<size_t>(CommandGroup::eGraphicsAndPresent));
+        auto& queue = group.queues[0];
+
+        // Подача команд рендеринга в очередь
+        queue.submit(vk::SubmitInfo()
+            .setCommandBuffers(cmd_buffer.get())
+            .setWaitSemaphores(wait_semaphores)
+            .setWaitDstStageMask(wait_stages)
+            .setSignalSemaphores(signal_semaphores),
+            vk_frame_fence_[frame_index].get());
+
+        // В случае ошибки показа - вероятно требуется пересоздание swap-chain
+        try
+        {
+            // Подача команд показа в очередь
+            const auto result = queue.presentKHR(vk::PresentInfoKHR()
+                .setSwapchains(vk_swap_chain_.get())
+                .setWaitSemaphores(signal_semaphores)
+                .setImageIndices(available_image_index_));
+
+            if (result == vk::Result::eErrorOutOfDateKHR){
+                request_surface_refresh();
+                return;
+            }
+        }
+        catch(const ::vk::OutOfDateKHRError&){
+            request_surface_refresh();
+            return;
+        }
+
+        // Инкремент счетчика кадров
+        current_frame_++;
+
+        // Кадр завершен
+        frame_in_progress_ = false;
+    }
+
+    void Renderer::cmd_bind_material(const handles::Material& handles, const uint32_t index)
+    {
+        // Если рендеринг деактивирован - выйти
+        if (!is_active_) return;
+
+        // Если кадр не был начат - выйти
+        assert(frame_in_progress_ == true);
+        if (!frame_in_progress_) return;
+
+        // Текущий индекс кадра (от 0 включительно до config_.max_frames_in_flight)
+        const auto frame_index = get_frame_index();
+
+        // Получить буфер команд
+        auto& cmd_buffer = vk_command_buffers_[frame_index];
+
+        // Размеры области рендеринга
+        const auto& extent = vk_framebuffers_[frame_index]->extent();
+        const auto& width = extent.width;
+        const auto& height = extent.height;
+
+        // Область вида (динамическое состояние конвейера)
+        auto viewport = vk::Viewport()
+        .setX(0.0f)
+        .setWidth(static_cast<float>(width))
+        .setMinDepth(0.0f)
+        .setMaxDepth(1.0f);
+
+        // Совместимость координат с OpenGL
+        if (config_.opengl_compatible){
+            viewport.setY(static_cast<float>(height));
+            viewport.setHeight(-static_cast<float>(height));
+        }else{
+            viewport.setY(0.0f);
+            viewport.setHeight(static_cast<float>(height));
+        }
+
+        // Ножницы (динамическое состояние конвейера)
+        auto scissor = vk::Rect2D()
+        .setOffset(vk::Offset2D(0, 0))
+        .setExtent(extent);
+
+        // Получить макет конвейера
+        const auto& ul = vk_uniform_layouts_[UniformLayoutType::eBasicRasterization];
+        static const auto& pl = ul->vk_pipeline_layout();
+
+        // Передать индекс материала через push constant
+        cmd_buffer->pushConstants(
+            pl,
+            vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
+            0,
+            sizeof(uint32_t),
+            &index);
+
+        // Запись команд. Если конвейер сменился - привязать
+        if (vk_last_pipeline_ != handles.pipeline){
+            cmd_buffer->bindPipeline(vk::PipelineBindPoint::eGraphics, handles.pipeline);
+        }
+
+        // Обновить последний привязанный конвейер
+        vk_last_pipeline_ = handles.pipeline;
+
+        // Запись команд. Привязать динамические состояния
+        cmd_buffer->setViewport(0, {viewport});
+        cmd_buffer->setScissor(0, {scissor});
+    }
+
+    void Renderer::cmd_bind_frame_descriptors()
+    {
+        // Если рендеринг отключен
+        if (!is_active_) return;
+
+        // Если кадр не был начат - выйти
+        assert(frame_in_progress_ == true);
+        if (!frame_in_progress_) return;
+
+        // Получить буфер команд
+        auto& cmd_buffer = vk_command_buffers_[get_frame_index()];
+
+        // Получить макет конвейера
+        const auto& ul = vk_uniform_layouts_[UniformLayoutType::eBasicRasterization];
+        static const auto& pl = ul->vk_pipeline_layout();
+
+        // Привязать все необходимые дескрипторы
+        cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pl, 0,
+            {
+                vk_dset_view_.get(),
+                vk_dset_objects_uniforms_.get(),
+                vk_dset_material_uniforms_.get(),
+                vk_dset_material_textures_.get(),
+                vk_dset_light_sources_.get()
+            },
+            {});
+    }
+
+    void Renderer::cmd_draw_mesh(const handles::Mesh& handles, const uint32_t index)
+    {
+        // Если рендеринг отключен
+        if (!is_active_) return;
+
+        // Если кадр не был начат - выйти
+        assert(frame_in_progress_ == true);
+        if (!frame_in_progress_) return;
+
+        // Получить буфер команд
+        auto& cmd_buffer = vk_command_buffers_[get_frame_index()];
+
+        // Получить макет конвейера
+        const auto& ul = vk_uniform_layouts_[UniformLayoutType::eBasicRasterization];
+        static const auto& pl = ul->vk_pipeline_layout();
+
+        // Передать индекс объекта через push constant
+        cmd_buffer->pushConstants(
+            pl,
+            vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
+            sizeof(uint32_t),
+            sizeof(uint32_t),
+            &index);
+
+        // Запись команд. Привязать геометрию и нарисовать её
+        cmd_buffer->bindVertexBuffers(0, {handles.vertex_buffer}, {0});
+        cmd_buffer->bindIndexBuffer(handles.index_buffer, 0, vk::IndexType::eUint32);
+        cmd_buffer->drawIndexed(handles.index_count, 1, 0, 0, 0);
+    }
+
+    void Renderer::cmd_wait_for_frame() const
+    {
+        vk_device_->logical_device().waitIdle();
+    }
+
+    void Renderer::request_surface_refresh()
+    {
+        surface_refresh_requested_.store(true, std::memory_order_release);
+    }
+
+#pragma endregion
+
+#pragma region uniforms
+
+    void Renderer::update_cam_uniforms(const uniforms::Camera& uniforms, const uint32_t index) const
+    {
+        assert(vk_ubo_view_->is_mapped());
+        auto& pd = vk_device_->physical_device();
+        vk_ubo_view_->update_mapped(
+            ubo_offset<uniforms::Camera>(pd, index),
+            aligned_ubo<uniforms::Camera>(pd),
+            &uniforms);
+    }
+
+    void Renderer::update_obj_uniforms(const uniforms::Object& uniforms, const uint32_t index) const
+    {
+        assert(vk_ubo_view_->is_mapped());
+        auto& pd = vk_device_->physical_device();
+        vk_ubo_objects_transforms_->update_mapped(
+            sbo_offset<uniforms::Object>(pd, index),
+            aligned_sbo<uniforms::Object>(pd),
+            &uniforms);
+    }
+
+    void Renderer::update_mat_phong_uniforms(const uniforms::MaterialPhong& uniforms, const uint32_t index) const
+    {
+        assert(vk_ubo_materials_phong_->is_mapped());
+        auto& pd = vk_device_->physical_device();
+        vk_ubo_materials_phong_->update_mapped(
+            sbo_offset<uniforms::MaterialPhong>(pd, index),
+            aligned_sbo<uniforms::MaterialPhong>(pd),
+            &uniforms);
+    }
+
+    void Renderer::update_mat_pbr_uniforms(const uniforms::MaterialPbr& uniforms, const uint32_t index) const
+    {
+        assert(vk_ubo_materials_pbr_->is_mapped());
+        auto& pd = vk_device_->physical_device();
+        vk_ubo_materials_pbr_->update_mapped(
+            sbo_offset<uniforms::MaterialPbr>(pd, index),
+            aligned_sbo<uniforms::MaterialPbr>(pd),
+            &uniforms);
+    }
+
+    void Renderer::update_mat_textures(const TextureBindingInfo& info, const uint32_t index)
+    {
+        assert(index < kMaxMaterials);
+        assert(info.texture);
+        assert(vk_dset_material_textures_);
+
+        const auto& sampler = vk_texture_samplers_[info.sampler_type];
+        vk::DescriptorImageInfo image_info{};
+        image_info.setSampler(sampler.get())
+                  .setImageView(info.texture.image_view)
+                  .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+
+        vk::WriteDescriptorSet write{};
+        write.setDstSet(vk_dset_material_textures_.get())
+             .setDstBinding(static_cast<uint32_t>(info.type))
+             .setDstArrayElement(index) // Индекс объекта в массиве дескрипторов
+             .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+             .setDescriptorCount(1)
+             .setImageInfo(image_info);
+
+        vk_device_->logical_device().updateDescriptorSets({write}, {});
+    }
+
+    void Renderer::update_light_uniforms(const uniforms::LightSettings& uniforms, const uint32_t index) const
+    {
+        assert(vk_ubo_light_sources_->is_mapped());
+        auto& pd = vk_device_->physical_device();
+        vk_ubo_light_sources_->update_mapped(
+            sbo_offset<uniforms::LightSettings>(pd, index),
+            aligned_sbo<uniforms::LightSettings>(pd),
+            &uniforms);
+    }
+
+    void Renderer::update_light_states_unsafe(const std::vector<uint32_t>& ids, const bool active)
+    {
+        assert(vk_ubo_light_indices_->is_mapped());
+
+        // Обновить таблице состояний источников
+        const uint8_t state_val = active ? 1 : 0;
+        for (const auto& id : ids){
+            if (id < light_states_.size()){
+                light_states_[id] = state_val;
+            }
+        }
+
+        // Пересобрать список активных индексов
+        light_active_ids_.clear();
+        for (uint32_t i = 0; i < static_cast<uint32_t>(light_states_.size()); ++i){
+            if (light_states_[i]){
+                light_active_ids_.push_back(i);
+            }
+        }
+
+        // Обновить GPU storage buffer
+        auto* pids = static_cast<uniforms::LightIndices*>(vk_ubo_light_indices_->mapped_ptr());
+        pids->count = static_cast<uint32_t>(light_active_ids_.size());
+        std::fill_n(pids->indices, kMaxLights, 0);
+        std::memcpy(pids->indices, light_active_ids_.data(), light_active_ids_.size() * sizeof(uint32_t));
+    }
+
+    void Renderer::update_light_states(const std::vector<uint32_t>& ids, const bool active)
+    {
+        std::lock_guard lock(light_ids_mutex_);
+        update_light_states_unsafe(ids, active);
+    }
+
 #pragma endregion
 
 }

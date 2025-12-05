@@ -11,14 +11,23 @@ namespace nasral
         ecs_ = std::make_unique<ecs::Manager>(this, config.ecs);
         logger()->info("ECS manager initialized.");
 
+        renderer_ = std::make_unique<gfx::Renderer>(this, config.gfx);
+        logger()->info("Renderer initialized.");
+
         res_ = std::make_unique<res::Manager>(this, config.res);
         logger()->info("Resource manager initialized.");
     }
 
-    Engine::~Engine(){
+    Engine::~Engine()
+    {
         if (res_){
             res_.reset();
             logger()->info("Resource manager destroyed.");
+        }
+
+        if (renderer_){
+            renderer_.reset();
+            logger()->info("Renderer destroyed.");
         }
 
         if (ecs_){

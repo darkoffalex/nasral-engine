@@ -3,6 +3,7 @@
 #include <nasral/log/logger.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/res/manager.h>
+#include <nasral/gfx/renderer.h>
 
 namespace nasral
 {
@@ -27,5 +28,6 @@ namespace nasral
         log::Logger::Ptr logger_;
         ecs::Manager::Ptr ecs_;
         res::Manager::Ptr res_;
+        gfx::Renderer::Ptr renderer_;
     };
 }

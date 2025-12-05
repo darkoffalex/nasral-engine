@@ -37,16 +37,17 @@ namespace nasral::gfx
         void cmd_bind_material(const handles::Material& handles, uint32_t index);
         void cmd_bind_frame_descriptors();
         void cmd_draw_mesh(const handles::Mesh& handles, uint32_t index);
-        void cmd_wait_for_frame();
+        void cmd_wait_for_frame() const;
 
         void request_surface_refresh();
 
-        void update_cam_uniforms(const uniforms::Camera& uniforms, uint32_t index);
-        void update_obj_uniforms(const uniforms::Object& uniforms, uint32_t index);
-        void update_mat_phong_uniforms(const uniforms::MaterialPhong& uniforms, uint32_t index);
-        void update_mat_pbr_uniforms(const uniforms::MaterialPbr& uniforms, uint32_t index);
+        void update_cam_uniforms(const uniforms::Camera& uniforms, uint32_t index) const;
+        void update_obj_uniforms(const uniforms::Object& uniforms, uint32_t index) const;
+        void update_mat_phong_uniforms(const uniforms::MaterialPhong& uniforms, uint32_t index) const;
+        void update_mat_pbr_uniforms(const uniforms::MaterialPbr& uniforms, uint32_t index) const;
         void update_mat_textures(const TextureBindingInfo& info, uint32_t index);
-        void update_light_uniforms(const uniforms::LightSettings& uniforms, uint32_t index);
+        void update_light_uniforms(const uniforms::LightSettings& uniforms, uint32_t index) const;
+        void update_light_states_unsafe(const std::vector<uint32_t>& ids, bool active);
         void update_light_states(const std::vector<uint32_t>& ids, bool active);
 
         [[nodiscard]] bool is_active() const noexcept{
@@ -77,21 +78,25 @@ namespace nasral::gfx
             return *vk_framebuffers_[index];
         }
 
-        [[nodiscard]] const vk::Sampler& vk_texture_sampler(const TextureSamplerType& type) const{
+        [[nodiscard]] const vk::Sampler& vk_texture_sampler(const TextureSamplerType& type) const noexcept{
             return *vk_texture_samplers_[type];
         }
 
-        [[nodiscard]] const vk::utils::UniformLayout& vk_uniform_layout(const UniformLayoutType& type) const{
+        [[nodiscard]] const vk::utils::UniformLayout& vk_uniform_layout(const UniformLayoutType& type) const noexcept{
             return *vk_uniform_layouts_[type];
         }
 
-        [[nodiscard]] const vk::Extent2D& get_rendering_resolution() const{
+        [[nodiscard]] const vk::Extent2D& get_rendering_resolution() const noexcept{
             return vk_framebuffers_[0]->extent();
         }
 
-        [[nodiscard]] float get_rendering_aspect() const{
+        [[nodiscard]] float get_rendering_aspect() const noexcept{
             const auto& extent = get_rendering_resolution();
             return static_cast<float>(extent.width) / static_cast<float>(extent.height);
+        }
+
+        [[nodiscard]] size_t get_frame_index() const noexcept{
+            return current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
         }
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
@@ -123,6 +128,7 @@ namespace nasral::gfx
     protected:
         // Состояние
         bool is_active_;
+        bool frame_in_progress_;
         std::atomic<bool> surface_refresh_requested_;
 
         // Основные сущности Vulkan (включая кастомные RAII обертки)
@@ -169,8 +175,10 @@ namespace nasral::gfx
         core::IndexPool<> material_ids_;
         core::IndexPool<> light_ids_;
 
-        std::vector<uint32_t> active_light_ids_;
-        std::mutex active_light_ids_mutex_;
+        // Активные источники света (их индексы)
+        std::vector<uint32_t> light_active_ids_;
+        std::vector<uint8_t> light_states_;
+        std::mutex light_ids_mutex_;
 
         // Последний использованный конвейер (pipeline)
         vk::Pipeline vk_last_pipeline_;
