@@ -57,3 +57,16 @@ namespace nasral::log
         }
     };
 }
+
+#pragma region log_macros
+
+#define RES_LOG_ERROR(error, msg) do { \
+    const std::string err_type(magic_enum::enum_name(error)); \
+    log_error("Resource [" + id_str() + "][" + type_str() + "] error (" + err_type + "). " + msg); \
+} while (0)
+
+#define RES_LOG_DESTRUCTION() log_info("Resource ["+id_str()+"]["+type_str()+"] destroyed.")
+
+#define RES_LOG_LOADED() log_info("Resource ["+id_str()+"]["+type_str()+"] loaded.")
+
+#pragma endregion

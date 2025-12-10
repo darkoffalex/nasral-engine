@@ -13,8 +13,7 @@ namespace nasral::res
         if (file_.is_open()){
             file_.close();
         }
-
-        log_info("Resource ["+id_str()+"]["+type_str()+"] destroyed.");
+        RES_LOG_DESTRUCTION();
     }
 
     void File::load() noexcept{
@@ -27,13 +26,13 @@ namespace nasral::res
         if (!file_.is_open()){
             status_ = Status::eError;
             error_ = Error::eCannotOpenFile;
-            log_error("Resource ["+std::to_string(id_)+"] error. Cannot open file: "+path);
+            RES_LOG_ERROR(error_, "Failed to open file:" + path);
             return;
         }
 
         status_ = Status::eLoaded;
         error_ = Error::eNone;
-        log_info("Resource ["+std::to_string(id_)+"] loaded.");
+        RES_LOG_LOADED();
     }
 
     bool File::read(void* buffer, const size_t size){

@@ -11,7 +11,8 @@ namespace nasral::res
     {}
 
     Shader::~Shader(){
-        log_info("Resource ["+id_str()+"]["+type_str()+"] destroyed.");
+        vk_shader_module_.reset();
+        RES_LOG_DESTRUCTION();
     }
 
     void Shader::load() noexcept{
@@ -25,13 +26,13 @@ namespace nasral::res
             if (!data.has_value()){
                 status_ = Status::eError;
                 error_ = loader_->error();
-                const std::string err_type(magic_enum::enum_name(error_));
-                log_error("Resource ["+id_str()+"]["+type_str()+"] error ("+err_type+"). Failed to load shader: "+path);
+                RES_LOG_ERROR(error_, "Failed to load shader:" + path);
                 return;
             }
 
             const auto shader_code = data.value().code;
-            const vk::Device* vk_device = nullptr; /* TODO: Получить логическое устройство Vulkan*/
+            const auto renderer = manager()->engine()->renderer();
+            const vk::Device* vk_device = &renderer->vk_device().logical_device();
 
             vk_shader_module_ = vk_device->createShaderModuleUnique(
                 vk::ShaderModuleCreateInfo()
@@ -41,15 +42,12 @@ namespace nasral::res
         catch (const std::exception& e){
             status_ = Status::eError;
             error_ = Error::eVulkanError;
-
-            const std::string err_type(magic_enum::enum_name(error_));
-            log_error("Resource ["+id_str()+"]["+type_str()+"] error ("+err_type+"). "+std::string(e.what()));
+            RES_LOG_ERROR(error_, e.what());
             return;
         }
 
         status_ = Status::eLoaded;
         error_ = Error::eNone;
-        log_info("Resource ["+id_str()+"]["+type_str()+"] loaded.");
+        RES_LOG_LOADED();
     }
-
 }

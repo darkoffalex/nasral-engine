@@ -23,6 +23,7 @@ namespace nasral
         [[nodiscard]] log::Logger* logger() const noexcept { return logger_.get(); }
         [[nodiscard]] ecs::Manager* ecs() const noexcept { return ecs_.get(); }
         [[nodiscard]] res::Manager* res() const noexcept { return res_.get(); }
+        [[nodiscard]] gfx::Renderer* renderer() const noexcept { return renderer_.get(); }
 
     protected:
         log::Logger::Ptr logger_;

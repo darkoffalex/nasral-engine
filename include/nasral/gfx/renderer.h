@@ -66,6 +66,10 @@ namespace nasral::gfx
             return *vk_device_;
         }
 
+        [[nodiscard]] const vk::utils::Device::Ptr& vk_device_ptr() noexcept{
+            return vk_device_;
+        }
+
         [[nodiscard]] const vk::RenderPass& vk_render_pass() const noexcept{
             return *vk_render_pass_;
         }

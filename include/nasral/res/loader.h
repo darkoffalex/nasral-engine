@@ -27,9 +27,11 @@ namespace nasral::res
             return error_;
         }
 
-        [[nodiscard]] const LoadParams* load_params() const noexcept{
-            return load_params_.has_value() ? &load_params_.value() : nullptr;
+        template<typename LP>
+        [[nodiscard]] const LP* load_params() const{
+            return load_params_.has_value() ? std::get_if<LP>(&load_params_.value()) : nullptr;
         }
+
 
     protected:
         Error error_ = Error::eNone;
