@@ -1,6 +1,6 @@
-<Material type="VertexColored">
+<Material type="eVertexColored">
     <Settings>
-        <Setting name="PolygonMode">Line</Setting>
+        <Setting name="ePolygonMode">Line</Setting>
         <Setting name="LineWidth">1</Setting>
     </Settings>
     <Shaders>

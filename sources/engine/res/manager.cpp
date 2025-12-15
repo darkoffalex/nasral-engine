@@ -6,6 +6,11 @@
 #include <nasral/engine.h>
 
 #include "loaders/shader/spv.hpp"
+#include "loaders/material/xml.hpp"
+#include "loaders/texture/builtins.hpp"
+#include "loaders/texture/stb.hpp"
+#include "loaders/mesh/assimp.hpp"
+#include "loaders/mesh/builtins.hpp"
 
 namespace nasral::res
 {
@@ -32,11 +37,6 @@ namespace nasral::res
             free_slots_.emplace_back(i - 1);
         }
 
-        // Добавить изначальные ресурсы (из конфига)
-        for (const auto& [type, path, params] : config().initial_resources){
-            add_unsafe(type, path, params);
-        }
-
         // Добавить встроенные ресурсы
         add_unsafe(Type::eTexture, kBuiltinTexWhitePixel.data());
         add_unsafe(Type::eTexture, kBuiltinTexBlackPixel.data());
@@ -45,6 +45,14 @@ namespace nasral::res
         add_unsafe(Type::eMesh, kBuiltinMeshQuad.data());
         add_unsafe(Type::eMesh, kBuiltinMeshCube.data());
         add_unsafe(Type::eMesh, kBuiltinMeshSphere.data());
+
+        // Добавить изначальные ресурсы (из конфига)
+        for (const auto& [type, path, params] : config().initial_resources){
+            add_unsafe(type, path, params);
+        }
+
+        // Запросить встроенные ресурсы (они должны быть всегда доступны)
+        request_builtin();
     }
 
     Manager::~Manager(){
@@ -77,7 +85,7 @@ namespace nasral::res
         loading.in_progress.store(false, std::memory_order_release);
         loading.task = {};
 
-        indices_[path] = static_cast<ResourceId>(slot_index);
+        indices_[info.path.view()] = static_cast<ResourceId>(slot_index);
         active_slots_.emplace_back(slot_index);
     }
 
@@ -239,9 +247,9 @@ namespace nasral::res
         }
     }
 
-    std::optional<ResourceId> Manager::find(const std::string& path) const{
-        if (indices_.count(std::string_view(path)) == 0) return std::nullopt;
-        return indices_.at(std::string_view(path));
+    std::optional<ResourceId> Manager::find(const std::string_view& path) const{
+        if (indices_.count(path) == 0) return std::nullopt;
+        return indices_.at(path);
     }
 
     std::string Manager::path(const ResourceId id, const bool full) const{
@@ -343,32 +351,91 @@ namespace nasral::res
 
     /******************************************************************************************************************/
 
+    /**
+     * @brief Шаблонный фабричный метод создания загрузчика для ресурса
+     * @tparam T Тип ресурса
+     * @param slot Ссылка на слот в списке слотов ресурсов
+     * @return Указатель (unique) на загрузчика
+     */
+    template<typename T>
+    typename Loader<typename T::Data>::Ptr make_res_loader(const Manager::Slot& slot)
+    {
+        using Ret = typename Loader<typename T::Data>::Ptr;
+
+        if constexpr (std::is_same_v<T, Texture>){
+            assert(slot.info.type == Type::eTexture);
+            return slot.info.path.is_builtin()
+                ? Ret{std::make_unique<TextureBuiltinLoader>()}
+                : Ret{std::make_unique<TextureStbLoader>(slot.loading.params)};
+        }
+        else if constexpr (std::is_same_v<T, Mesh>){
+            assert(slot.info.type == Type::eMesh);
+            return slot.info.path.is_builtin()
+                ? Ret{std::make_unique<MeshBuiltinLoader>()}
+                : Ret{std::make_unique<MeshAssimpLoader>(slot.loading.params)};
+        }
+        else if constexpr (std::is_same_v<T, Shader>){
+            assert(slot.info.type == Type::eShader);
+            return Ret{std::make_unique<ShaderSpvLoader>()};
+        }
+        else if constexpr (std::is_same_v<T, Material>){
+            assert(slot.info.type == Type::eMaterial);
+            return Ret{std::make_unique<MaterialXmlLoader>()};
+        }
+
+        assert(false && "Unknown resource type");
+        return Ret{nullptr};
+    }
+
+    /**
+     * @brief Фабричный метод создания нужного ресурса
+     * @param slot Ссылка на слот в списке слотов ресурсов
+     * @return Указатель (unique) на ресурс
+     */
     IResource::Ptr Manager::make_resource(const Slot& slot)
     {
         std::unique_ptr<IResource> res = nullptr;
-
         try
         {
             switch (slot.info.type)
             {
             case Type::eFile:
                 {
-                    auto id = find(slot.info.path.data());
+                    auto id = find(slot.info.path.view());
                     assert(id.has_value());
-
                     res = std::make_unique<File>(this, id.value());
                     break;
                 }
             case Type::eShader:
                 {
-                    auto id = find(slot.info.path.data());
+                    auto id = find(slot.info.path.view());
                     assert(id.has_value());
-
-                    res = std::make_unique<Shader>(this, id.value(), std::make_unique<ShaderSpvLoader>());
+                    res = std::make_unique<Shader>(this, id.value(), make_res_loader<Shader>(slot));
+                    break;
+                }
+            case Type::eTexture:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value());
+                    res = std::make_unique<Texture>(this, id.value(), make_res_loader<Texture>(slot));
+                    break;
+                }
+            case Type::eMesh:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value());
+                    res = std::make_unique<Mesh>(this, id.value(), make_res_loader<Mesh>(slot));
+                    break;
+                }
+            case Type::eMaterial:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value());
+                    res = std::make_unique<Material>(this, id.value(), make_res_loader<Material>(slot));
                     break;
                 }
             default:
-                auto id = find(slot.info.path.data());
+                auto id = find(slot.info.path.view());
                 assert(id.has_value());
 
                 res = std::make_unique<File>(this, id.value());

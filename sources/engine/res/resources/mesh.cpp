@@ -1,3 +1,4 @@
+#include "pch.h"
 #include <nasral/res/resources/mesh.h>
 #include <nasral/res/manager.h>
 #include <nasral/engine.h>
@@ -5,7 +6,7 @@
 namespace nasral::res
 {
     Mesh::Mesh(Manager* manager, const ResourceId id, Loader<Data>::Ptr loader)
-        : IResource(Type::eTexture, id, manager)
+        : IResource(Type::eMesh, id, manager)
         , loader_(std::move(loader))
         , vertex_count_(0)
         , index_count_(0)

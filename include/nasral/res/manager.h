@@ -53,7 +53,7 @@ namespace nasral::res
         void request(ResourceId id, std::function<void(IResource*)> callback = nullptr, bool safe = true);
         void release(ResourceId id);
 
-        [[nodiscard]] std::optional<ResourceId> find(const std::string& path) const;
+        [[nodiscard]] std::optional<ResourceId> find(const std::string_view& path) const;
         [[nodiscard]] IResource* get(ResourceId id) const;
         [[nodiscard]] std::string path(ResourceId id, bool full = false) const;
         [[nodiscard]] size_t ref_count(ResourceId id) const;

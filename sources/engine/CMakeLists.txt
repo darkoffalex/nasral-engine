@@ -17,6 +17,7 @@ add_library(Engine OBJECT
         res/resources/shader.cpp
         res/resources/texture.cpp
         res/resources/mesh.cpp
+        res/resources/material.cpp
 
         # Рендеринг
         gfx/renderer.cpp

@@ -1,4 +1,4 @@
-<Material type="PBR">
+<Material type="ePbr">
     <Shaders>
         <Shader stage="vertex" path="materials/pbr/shader.vert.spv"/>
         <Shader stage="fragment" path="materials/pbr/shader.frag.spv"/>

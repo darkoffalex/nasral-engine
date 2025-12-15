@@ -1,4 +1,4 @@
-// #include "pch.h"
+#include "pch.h"
 #include <nasral/ecs/manager.h>
 
 namespace nasral::ecs

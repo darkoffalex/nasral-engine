@@ -40,8 +40,22 @@ namespace nasral
         }
     }
 
-    void Engine::update(float delta)
+    void Engine::update([[maybe_unused]] float delta)
     {
+        // TODO: Обновление систем ECS
 
+        // Загрузка/выгрузка ресурсов
+        if (res_) res_->update();
+
+        // Рендеринг
+        if (renderer_)
+        {
+            renderer_->cmd_begin_frame();
+            renderer_->cmd_bind_frame_descriptors();
+
+            // TODO: Рендеринг сцены (ECS)
+
+            renderer_->cmd_end_frame();
+        }
     }
 }

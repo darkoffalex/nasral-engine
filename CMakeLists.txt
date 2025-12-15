@@ -90,4 +90,4 @@ endfunction()
 
 # Добавить под-проекты
 add_subdirectory(sources/engine)
-add_subdirectory(sources/demo-app)
+add_subdirectory(sources/sandbox)

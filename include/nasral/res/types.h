@@ -94,6 +94,10 @@ namespace nasral::res
             return buffer.data();
         }
 
+        [[nodiscard]] bool is_builtin() const{
+            return view().find("builtin:") != std::string_view::npos;
+        }
+
         bool operator==(const Path& other) const{
             return view() == other.view();
         }

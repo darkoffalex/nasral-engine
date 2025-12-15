@@ -24,6 +24,8 @@ namespace nasral::res
         Shader(const Shader&) = delete;
         Shader& operator=(const Shader&) = delete;
 
+        [[nodiscard]] const vk::ShaderModule& vk_shader_module() const {return *vk_shader_module_;}
+
         void load() noexcept override;
 
     protected:
