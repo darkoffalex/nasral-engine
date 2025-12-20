@@ -41,6 +41,7 @@ namespace nasral::res
         eMesh,
         eShader,
         eMaterial,
+        eProject,
         TOTAL
     };
 
@@ -51,6 +52,7 @@ namespace nasral::res
     constexpr std::string_view kBuiltinMeshQuad         = "builtin:mesh/quad";
     constexpr std::string_view kBuiltinMeshCube         = "builtin:mesh/cube";
     constexpr std::string_view kBuiltinMeshSphere       = "builtin:mesh/sphere";
+    constexpr std::string_view kBuiltinProjectFile      = "builtin:config/project";
 
     struct TextureLoadParams
     {

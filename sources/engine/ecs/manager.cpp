@@ -6,8 +6,8 @@ namespace nasral::ecs
     Manager::Manager(Engine* engine, const Config& config)
         : Subsystem(engine, config)
     {
-        entities_.reserve(config_.max_entities);
-        free_slots_.reserve(config_.max_entities);
+        entities_.reserve(config.max_entities);
+        free_slots_.reserve(config.max_entities);
     }
 
     EntityId Manager::spawn()
@@ -22,7 +22,7 @@ namespace nasral::ecs
             return slot.id;
         }
 
-        if (entities_.size() >= config_.max_entities){
+        if (entities_.size() >= config().max_entities){
             throw std::runtime_error("Cannot create entity. Max entities reached.");
         }
 
@@ -62,13 +62,27 @@ namespace nasral::ecs
         free_slots_.push_back(entity_id.index);
     }
 
+    void Manager::destroy_deferred(const EntityId& entity_id){
+        deferred_actions_.emplace_back([entity_id](Manager& m){
+            m.destroy(entity_id);
+        });
+    }
+
+    void Manager::apply_deferred_actions(){
+        if (deferred_actions_.empty()) return;
+        for (auto& action : deferred_actions_){
+            action(*this);
+        }
+        deferred_actions_.clear();
+    }
+
     Archetype* Manager::find_or_create_archetype(const ComponentMask& mask){
         for (const auto& archetype : archetypes_){
             if (archetype->mask() == mask){
                 return archetype.get();
             }
         }
-        archetypes_.emplace_back(std::make_unique<Archetype>(mask, config_.max_entities));
+        archetypes_.emplace_back(std::make_unique<Archetype>(mask, config().max_entities));
         return archetypes_.back().get();
     }
 

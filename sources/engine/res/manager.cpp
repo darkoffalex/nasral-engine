@@ -3,6 +3,7 @@
 #include <nasral/res/manager.h>
 #include <nasral/res/resources/file.h>
 #include <nasral/res/resources/shader.h>
+#include <nasral/res/resources/project.h>
 #include <nasral/engine.h>
 
 #include "loaders/shader/spv.hpp"
@@ -11,6 +12,8 @@
 #include "loaders/texture/stb.hpp"
 #include "loaders/mesh/assimp.hpp"
 #include "loaders/mesh/builtins.hpp"
+#include "loaders/project/xml.hpp"
+#include "loaders/project/builtins.hpp"
 
 namespace nasral::res
 {
@@ -45,6 +48,7 @@ namespace nasral::res
         add_unsafe(Type::eMesh, kBuiltinMeshQuad.data());
         add_unsafe(Type::eMesh, kBuiltinMeshCube.data());
         add_unsafe(Type::eMesh, kBuiltinMeshSphere.data());
+        add_unsafe(Type::eProject, kBuiltinProjectFile.data());
 
         // Добавить изначальные ресурсы (из конфига)
         for (const auto& [type, path, params] : config().initial_resources){
@@ -53,6 +57,9 @@ namespace nasral::res
 
         // Запросить встроенные ресурсы (они должны быть всегда доступны)
         request_builtin();
+
+        // Запросить файл конфигурации проекта (должен быть доступен)
+        request_project_config();
     }
 
     Manager::~Manager(){
@@ -231,6 +238,68 @@ namespace nasral::res
         }
     }
 
+    void Manager::request_project_config()
+    {
+        // Обработка загрузки ресурса конфигурации проекта
+        auto on_parsed = [this](IResource* res){
+            if (res->status_ == Status::eError){
+                log_error("Config file loading error");
+                return;
+            }
+
+            assert(res->status_ == Status::eLoaded);
+            const auto* proj_cfg = static_cast<Project*>(res);
+
+            // Формирование реестра материалов
+            for (auto& m_io : proj_cfg->materials()){
+                engine()->renderer()->register_material(m_io);
+            }
+        };
+
+        // Поиск файла проекта среди initial ресурсов (обрабатываем первый попавшийся)
+        for (auto& [type, path, params] : config().initial_resources){
+            if (type == Type::eProject){
+                auto id = find(path);
+                assert(id.has_value());
+
+                if (id.has_value()){
+                    request(id.value(), on_parsed);
+                    return;
+                }
+            }
+        }
+
+        // Fallback (встроенная конфигурация проекта)
+        const auto id = find(kBuiltinProjectFile.data());
+        assert(id.has_value());
+        if (id.has_value()){
+            request(id.value(), on_parsed);
+        }
+    }
+
+    void Manager::release_project_config()
+    {
+        // Поиск файла проекта среди initial ресурсов (обрабатываем первый попавшийся)
+        for (auto& [type, path, params] : config().initial_resources){
+            if (type == Type::eProject){
+                auto id = find(path);
+                assert(id.has_value());
+
+                if (id.has_value()){
+                    release(id.value());
+                    return;
+                }
+            }
+        }
+
+        // Fallback (встроенная конфигурация проекта)
+        const auto id = find(kBuiltinProjectFile.data());
+        assert(id.has_value());
+        if (id.has_value()){
+            release(id.value());
+        }
+    }
+
     void Manager::await_all_tasks() const{
         for (const size_t index : active_slots_){
             if (auto& slot = slots_[index]; slot.loading.task.valid()){
@@ -241,6 +310,7 @@ namespace nasral::res
 
     void Manager::finalize(){
         await_all_tasks();
+        release_project_config();
         release_builtin();
         while (has_pending_unloads()){
             update();
@@ -382,6 +452,12 @@ namespace nasral::res
             assert(slot.info.type == Type::eMaterial);
             return Ret{std::make_unique<MaterialXmlLoader>()};
         }
+        else if constexpr (std::is_same_v<T, Project>){
+            assert(slot.info.type == Type::eProject);
+            return slot.info.path.is_builtin()
+                ? Ret{std::make_unique<ProjectBuiltinLoader>()}
+                : Ret{std::make_unique<ProjectXmlLoader>()};
+        }
 
         assert(false && "Unknown resource type");
         return Ret{nullptr};
@@ -432,6 +508,13 @@ namespace nasral::res
                     auto id = find(slot.info.path.view());
                     assert(id.has_value());
                     res = std::make_unique<Material>(this, id.value(), make_res_loader<Material>(slot));
+                    break;
+                }
+            case Type::eProject:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value());
+                    res = std::make_unique<Project>(this, id.value(), make_res_loader<Project>(slot));
                     break;
                 }
             default:

@@ -3,9 +3,9 @@
 #include <vector>
 #include <memory>
 #include <mutex>
-#include <functional>
 #include <cassert>
 #include <numeric>
+#include <nasral/core/types.h>
 
 namespace nasral::core
 {
@@ -32,12 +32,12 @@ namespace nasral::core
         }
 
         void release_unsafe(const T index){
-#ifndef NDEBUG
-            assert(indices_.size() == indices_.capacity() && "Index pool is full");
-            if (std::find(indices_.begin(), indices_.end(), index) != indices_.end()){
-                assert(false && "Double release of index!");
+            if constexpr (kDebugBuild){
+                assert(indices_.size() == indices_.capacity() && "Index pool is full");
+                if (std::find(indices_.begin(), indices_.end(), index) != indices_.end()){
+                    assert(false && "Double release of index!");
+                }
             }
-#endif
             indices_.emplace_back(index);
         }
 

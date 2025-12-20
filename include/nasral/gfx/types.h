@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <variant>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vulkan/vulkan.hpp>
@@ -137,6 +138,8 @@ namespace nasral::gfx
             glm::float32 ao = 1.0f;
             glm::float32 emission = 0.0f;
         };
+
+        using Material = std::variant<MaterialPhong, MaterialPbr>;
 
         struct LightSettings
         {

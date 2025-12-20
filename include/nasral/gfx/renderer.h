@@ -7,6 +7,7 @@
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/uniform_layout.hpp>
 #include <nasral/gfx/types.h>
+#include <nasral/gfx/types_io.h>
 #include <nasral/core/subsystem.h>
 #include <nasral/core/index_pool.h>
 #include <nasral/core/types.h>
@@ -49,6 +50,9 @@ namespace nasral::gfx
         void update_light_uniforms(const uniforms::LightSettings& uniforms, uint32_t index) const;
         void update_light_states_unsafe(const std::vector<uint32_t>& ids, bool active);
         void update_light_states(const std::vector<uint32_t>& ids, bool active);
+
+        void register_material(const io::Material& m);
+        void unregister_material(const core::UniqueId& id);
 
         [[nodiscard]] bool is_active() const noexcept{
             return is_active_;
@@ -100,7 +104,19 @@ namespace nasral::gfx
         }
 
         [[nodiscard]] size_t get_frame_index() const noexcept{
-            return current_frame_ % static_cast<size_t>(config_.max_frames_in_flight);
+            return current_frame_ % static_cast<size_t>(config().max_frames_in_flight);
+        }
+
+        [[nodiscard]] core::IndexPool<>& object_ids(){
+            return object_ids_;
+        }
+
+        [[nodiscard]] core::IndexPool<>& material_ids(){
+            return material_ids_;
+        }
+
+        [[nodiscard]] core::IndexPool<>& light_ids(){
+            return light_ids_;
         }
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(

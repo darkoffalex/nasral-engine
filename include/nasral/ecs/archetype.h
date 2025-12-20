@@ -46,7 +46,7 @@ namespace nasral::ecs
         [[nodiscard]] ComponentType& get_component(size_t entity_index){
             const size_t comp_idx = kComponentId<ComponentType>;
             const size_t pool_idx = pool_index(comp_idx);
-            return std::get<ComponentType>(pools_[pool_idx])[entity_index];
+            return std::get<std::vector<ComponentType>>(pools_[pool_idx])[entity_index];
         }
 
         template<typename... CTs>

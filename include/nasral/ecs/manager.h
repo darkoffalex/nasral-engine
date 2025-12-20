@@ -27,6 +27,8 @@ namespace nasral::ecs
 
         [[nodiscard]] EntityId spawn();
         void destroy(const EntityId& entity_id);
+        void destroy_deferred(const EntityId& entity_id);
+        void apply_deferred_actions();
 
         template<typename CT>
         void add_component(const EntityId& entity_id, CT&& component = {}){
@@ -38,11 +40,25 @@ namespace nasral::ecs
         }
 
         template<typename CT>
+        void add_component_deferred(const EntityId& entity_id, CT&& component = {}){
+            deferred_actions_.emplace_back([entity_id, comp = std::forward<CT>(component)](Manager& m){
+                m.add_component<CT>(entity_id, std::forward<CT>(comp));
+            });
+        }
+
+        template<typename CT>
         void remove_component(const EntityId& entity_id){
             auto& slot = entities_[entity_id.index];
             slot.mask.reset(kComponentId<CT>);
             auto* archetype = find_or_create_archetype(slot.mask);
             assign_archetype(slot, archetype);
+        }
+
+        template<typename CT>
+        void remove_component_deferred(const EntityId& entity_id){
+            deferred_actions_.emplace_back([entity_id](Manager& m){
+                m.remove_component<CT>(entity_id);
+            });
         }
 
         template<typename CT>
@@ -79,8 +95,11 @@ namespace nasral::ecs
         void assign_archetype(EntitySlot& slot, Archetype* archetype);
 
     protected:
+        typedef std::function<void(Manager&)> DeferredAction;
+
         std::vector<EntitySlot> entities_;
         std::vector<size_t> free_slots_;
         std::vector<Archetype::Ptr> archetypes_;
+        std::vector<DeferredAction> deferred_actions_;
     };
 }

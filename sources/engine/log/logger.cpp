@@ -7,8 +7,8 @@ namespace nasral::log
     Logger::Logger(Engine* engine, const Config& config)
     : Subsystem(engine, config)
     {
-        if (!config_.file.empty()){
-            fs_.open(config_.file, std::ios::out | std::ios::app);
+        if (!config.file.empty()){
+            fs_.open(config.file, std::ios::out | std::ios::app);
 
             if (!fs_.is_open() || fs_.fail()){
                 throw std::runtime_error("Failed to open log file");
@@ -25,7 +25,7 @@ namespace nasral::log
     void Logger::log_unsafe(const Level level, const std::string& message)
     {
         // Если требуемый уровень логирования отключен - выйти
-        if ((config_.level & level) != level){
+        if ((config().level & level) != level){
             return;
         }
 
@@ -42,7 +42,7 @@ namespace nasral::log
         result += " " + message + "\n";
 
         // Вывод в консоль если нужно
-        if (config_.console){
+        if (config().console){
             if (level == Level::eError || level == Level::eFatal){
                 std::cerr << result;
                 std::flush(std::cerr);

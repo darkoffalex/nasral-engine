@@ -42,20 +42,22 @@ namespace nasral
 
     void Engine::update([[maybe_unused]] float delta)
     {
-        // TODO: Обновление систем ECS
+        assert(ecs_ != nullptr);
+        assert(res_ != nullptr);
+        assert(renderer_ != nullptr);
+
+        // TODO: Обновление систем (ECS)
+
+        // Выполнение отложенных действий в ECS
+        ecs_->apply_deferred_actions();
 
         // Загрузка/выгрузка ресурсов
         if (res_) res_->update();
 
         // Рендеринг
-        if (renderer_)
-        {
-            renderer_->cmd_begin_frame();
-            renderer_->cmd_bind_frame_descriptors();
-
-            // TODO: Рендеринг сцены (ECS)
-
-            renderer_->cmd_end_frame();
-        }
+        renderer_->cmd_begin_frame();
+        renderer_->cmd_bind_frame_descriptors();
+        // TODO: Рендеринг сцены (ECS)
+        renderer_->cmd_end_frame();
     }
 }

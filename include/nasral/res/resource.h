@@ -66,13 +66,13 @@ namespace nasral::log
 } while (0)
 
 #define RES_LOG_LOADED() do { \
-    const std::string path = manager_->path(id_, false); \
-    log_info("Resource ["+id_str()+"|"+path+"]["+type_str()+"] loaded."); \
+    const std::string p = manager_->path(id_, false); \
+    log_info("Resource ["+id_str()+"|"+p+"]["+type_str()+"] loaded."); \
 } while (0)
 
 #define RES_LOG_DESTRUCTION() do { \
-    const std::string path = manager_->path(id_, false); \
-    log_info("Resource ["+id_str()+"|"+path+"]["+type_str()+"] destroyed."); \
+    const std::string p = manager_->path(id_, false); \
+    log_info("Resource ["+id_str()+"|"+p+"]["+type_str()+"] destroyed."); \
 } while (0)
 
 #pragma endregion

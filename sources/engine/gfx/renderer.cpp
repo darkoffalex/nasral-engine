@@ -101,19 +101,19 @@ namespace nasral::gfx
     void Renderer::init_vk_instance()
     {
         // Требуемые расширения и слои
-        std::vector<const char*> req_extensions = config_.surface_provider->extensions();
+        std::vector<const char*> req_extensions = config().surface_provider->extensions();
         std::vector<const char*> req_layers = {};
 
         // Если нужна валидация
-        if (config_.enable_validation_layers){
+        if (config().enable_validation_layers){
             req_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
             req_layers.push_back("VK_LAYER_KHRONOS_validation");
         }
 
         // Информация о приложении
         const auto app_info = vk::ApplicationInfo()
-            .setPApplicationName(config_.app_name.c_str())
-            .setPEngineName(config_.engine_name.c_str())
+            .setPApplicationName(config().app_name.c_str())
+            .setPEngineName(config().engine_name.c_str())
             .setApiVersion(VK_API_VERSION_1_4)
             .setApplicationVersion(kVkAppVersion)
             .setEngineVersion(kVkEngineVersion);
@@ -135,7 +135,7 @@ namespace nasral::gfx
     void Renderer::init_vk_loader()
     {
         assert(vk_instance_);
-        vk_loader_ = vk::detail::DispatchLoaderDynamic(vk_instance_.get(), config_.pfn_vk_get_proc_addr);
+        vk_loader_ = vk::detail::DispatchLoaderDynamic(vk_instance_.get(), config().pfn_vk_get_proc_addr);
         vk_loader_.init(vk_instance_.get());
     }
 
@@ -150,7 +150,7 @@ namespace nasral::gfx
     void Renderer::init_vk_debug_callback()
     {
         assert(vk_instance_);
-        if (!config_.enable_validation_layers){
+        if (!config().enable_validation_layers){
             return;
         }
 
@@ -179,7 +179,7 @@ namespace nasral::gfx
     void Renderer::init_vk_surface()
     {
         // Поверхность создается вне системы рендеринга (на стороне приложения, например, при помощи GLFW)
-        const vk::SurfaceKHR surface = config_.surface_provider->create_surface(*vk_instance_);
+        const vk::SurfaceKHR surface = config().surface_provider->create_surface(*vk_instance_);
 
         // Поскольку был создан "голый" handler, нужно обернуть его в unique pointer
         // Также нужно предоставить функтор удаления (второй аргумент, используем стандартный)
@@ -241,11 +241,11 @@ namespace nasral::gfx
         assert(vk_surface_);
         assert(vk_device_);
 
-        if (!vk_device_->supports_color(config_.color_format, vk_surface_)){
+        if (!vk_device_->supports_color(config().color_format, vk_surface_)){
             throw std::runtime_error("Color format is not supported by the device");
         }
 
-        if (!vk_device_->supports_depth(config_.depth_format)){
+        if (!vk_device_->supports_depth(config().depth_format)){
             throw std::runtime_error("Depth format is not supported by the device");
         }
 
@@ -258,7 +258,7 @@ namespace nasral::gfx
         // Цвет
         attachment_descriptions.push_back(
             vk::AttachmentDescription()
-            .setFormat(config_.color_format)
+            .setFormat(config().color_format)
             .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
             .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
             .setStoreOp(vk::AttachmentStoreOp::eStore)                      // Хранить для показа (один под-проход)
@@ -271,7 +271,7 @@ namespace nasral::gfx
         // Глубина/трафарет
         attachment_descriptions.push_back(
             vk::AttachmentDescription()
-            .setFormat(config_.depth_format)
+            .setFormat(config().depth_format)
             .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
             .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
             .setStoreOp(vk::AttachmentStoreOp::eDontCare)                   // Хранить для показа не нужно (не показываем)
@@ -344,10 +344,10 @@ namespace nasral::gfx
      * @brief Создаёт swap chain — очередь изображений для показа на экране.
      * @details Смысл swap chain: хранит несколько изображений (двойная/тройная буферизация),
      * которые по очереди заполняются renderer'ом и представляются на поверхность.
-     * Здесь проверяем поддержку формата/цвет. пространства, нужного present mode и
+     * Здесь проверяем поддержку формата/цвет-пространства, нужного present mode и
      * допустимого числа изображений. Далее формируем vk::SwapchainCreateInfoKHR:
      * - setMinImageCount(config_.swap_chain_images) в пределах min/max драйвера;
-     * - формат и цвет. пространство берутся из config_ (SurfaceFormatKHR);
+     * - формат и цвет-пространство берутся из config_ (SurfaceFormatKHR);
      * - размер равен capabilities.currentExtent (размер поверхности);
      * - usage = eColorAttachment, arrayLayers = 1;
      * - sharingMode: eExclusive, либо eConcurrent если разные семейства очередей;
@@ -361,20 +361,20 @@ namespace nasral::gfx
         assert(vk_device_);
 
         // Проверка формата поверхности
-        const vk::SurfaceFormatKHR surface_format = {config_.color_format, config_.color_space};
+        const vk::SurfaceFormatKHR surface_format = {config().color_format, config().color_space};
         if (!vk_device_->supports_format(surface_format, vk_surface_)){
             throw std::runtime_error("Color format is not supported by the device");
         }
 
         // Проверка поддержки нужного кол-ва изображений
         const auto surface_capabilities = vk_device_->physical_device().getSurfaceCapabilitiesKHR(*vk_surface_);
-        if (config_.swap_chain_images > surface_capabilities.maxImageCount){
+        if (config().swap_chain_images > surface_capabilities.maxImageCount){
             throw std::runtime_error("Surface does not support requested number of swap chain images");
         }
 
         // Проверка поддержки нужного режима представления (показа)
         const auto present_modes = vk_device_->physical_device().getSurfacePresentModesKHR(*vk_surface_);
-        if (std::find(present_modes.begin(), present_modes.end(), config_.present_mode) == present_modes.end()){
+        if (std::find(present_modes.begin(), present_modes.end(), config().present_mode) == present_modes.end()){
             throw std::runtime_error("Present mode is not supported by the surface");
         }
 
@@ -399,7 +399,7 @@ namespace nasral::gfx
         // Инициализация swap chain
         auto create_info = vk::SwapchainCreateInfoKHR()
         .setSurface(vk_surface_.get())
-        .setMinImageCount(config_.swap_chain_images)
+        .setMinImageCount(config().swap_chain_images)
         .setImageFormat(surface_format.format)
         .setImageColorSpace(surface_format.colorSpace)
         .setImageExtent(surface_capabilities.currentExtent)
@@ -460,7 +460,7 @@ namespace nasral::gfx
             // Вложение цвета (используем изображение из swap-chain)
             vk::utils::Framebuffer::AttachmentInfo color{};
             color.image = sci;
-            color.format = config_.color_format;
+            color.format = config().color_format;
             color.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
             color.aspect = vk::ImageAspectFlagBits::eColor;
             attachments.push_back(color);
@@ -468,7 +468,7 @@ namespace nasral::gfx
             // Для вложения глубины-трафарета изображения не создано (swap-chain создает только показываемые изображения)
             // НЕ указываем ничего в поле image (оно будет создано внутри кадрового буфера)
             vk::utils::Framebuffer::AttachmentInfo depth{};
-            depth.format = config_.depth_format;
+            depth.format = config().depth_format;
             depth.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
             depth.aspect = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
             attachments.push_back(depth);
@@ -983,7 +983,7 @@ namespace nasral::gfx
             vk::CommandBufferAllocateInfo()
             .setCommandPool(pool.get())
             .setLevel(vk::CommandBufferLevel::ePrimary)
-            .setCommandBufferCount(config_.max_frames_in_flight));
+            .setCommandBufferCount(config().max_frames_in_flight));
     }
 
     /**
@@ -999,7 +999,7 @@ namespace nasral::gfx
 
         // Создать необходимые примитивы синхронизации для каждого активного кадра
         const auto& ld = vk_device_->logical_device();
-        for (size_t i = 0; i < config_.max_frames_in_flight; ++i)
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i)
         {
             // Семафор, который будет ожидаться конвейером перед выполнением команд рендеринга
             vk_render_available_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
@@ -1090,10 +1090,10 @@ namespace nasral::gfx
         std::array<vk::ClearValue, 2> clear_values{};
 
         clear_values[0].color = vk::ClearColorValue(
-            config_.clear_color.r,
-            config_.clear_color.g,
-            config_.clear_color.b,
-            config_.clear_color.a);
+            config().clear_color.r,
+            config().clear_color.g,
+            config().clear_color.b,
+            config().clear_color.a);
 
         clear_values[1].depthStencil = vk::ClearDepthStencilValue(
             1.0f,
@@ -1250,7 +1250,7 @@ namespace nasral::gfx
         .setMaxDepth(1.0f);
 
         // Совместимость координат с OpenGL
-        if (config_.opengl_compatible){
+        if (config().opengl_compatible){
             viewport.setY(static_cast<float>(height));
             viewport.setHeight(-static_cast<float>(height));
         }else{
@@ -1464,6 +1464,16 @@ namespace nasral::gfx
     {
         std::lock_guard lock(light_ids_mutex_);
         update_light_states_unsafe(ids, active);
+    }
+
+    void Renderer::register_material(const io::Material& m)
+    {
+        // TODO: Implement
+    }
+
+    void Renderer::unregister_material(const core::UniqueId& id)
+    {
+        // TODO: Implement
     }
 
 #pragma endregion

@@ -65,6 +65,8 @@ namespace nasral::res
         bool has_pending_unloads() const;
         void request_builtin();
         void release_builtin();
+        void request_project_config();
+        void release_project_config();
         void await_all_tasks() const;
         void finalize();
 

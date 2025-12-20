@@ -13,14 +13,17 @@ add_library(Engine OBJECT
 
         # Ресурсы
         res/manager.cpp
+        res/system.cpp
         res/resources/file.cpp
         res/resources/shader.cpp
         res/resources/texture.cpp
         res/resources/mesh.cpp
         res/resources/material.cpp
+        res/resources/project.cpp
 
         # Рендеринг
         gfx/renderer.cpp
+        gfx/system.cpp
 )
 add_default_configurations(Engine demo_app)
 
