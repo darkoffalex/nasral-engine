@@ -32,9 +32,9 @@ namespace nasral::ecs
 
             value_type operator*() const noexcept{
                 auto* arc = manager_->archetypes_[archetype_idx_].get();
-                return std::tuple_cat(
-                    std::make_tuple(arc->entities()[entity_idx_]),
-                    arc->get_components<CTs...>(arc->entities()[entity_idx_]));
+                const auto& entity_id = arc->entities()[entity_idx_];
+                auto components = arc->get_components<CTs...>(entity_idx_);
+                return std::tuple<EntityId, CTs&...>{entity_id, std::get<CTs&>(components)...};
             }
 
             Iterator& operator++(){
@@ -65,10 +65,10 @@ namespace nasral::ecs
                     return;
                 }
 
-                const auto& filter = kMaskOf<CTs...>;
+                const auto filter = kMaskOf<CTs...>;
                 while (archetype_idx_ < manager_->archetypes_.size()){
                     const auto& archetype = manager_->archetypes_[archetype_idx_];
-                    if ((archetype->mask() && filter) == filter){
+                    if ((archetype->mask() & filter) == filter){
                         if (entity_idx_ < archetype->entities().size()){
                             return;
                         }

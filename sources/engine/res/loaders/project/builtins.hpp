@@ -18,12 +18,14 @@ namespace nasral::res
                         gfx::MaterialType::eDummy,
                         "materials/dummy/material.xml",
                         {},
+                        {},
                         {}
                     },
                     {
                         core::UniqueId(),
                         gfx::MaterialType::eVertexColored,
                         "materials/vertex-colored/material.xml",
+                        {},
                         {},
                         {}
                     },
@@ -35,6 +37,11 @@ namespace nasral::res
                             "textures/chair/chair_diff_1k.png:v0",
                             "textures/chair/chair_nor_gl_1k.png",
                             "textures/chair/chair_spec_1k.png"
+                        },
+                        {
+                            gfx::TextureSamplerType::eLinear,
+                            gfx::TextureSamplerType::eLinear,
+                            gfx::TextureSamplerType::eLinear,
                         },
                         {}
                     },
@@ -49,6 +56,14 @@ namespace nasral::res
                             "builtin:tex/white-pixel",
                             "textures/chair/chair_metal_1k.png",
                             "builtin:tex/white-pixel"
+                        },
+                        {
+                            gfx::TextureSamplerType::eLinear,
+                            gfx::TextureSamplerType::eLinear,
+                            gfx::TextureSamplerType::eLinear,
+                            gfx::TextureSamplerType::eLinear,
+                            gfx::TextureSamplerType::eLinear,
+                            gfx::TextureSamplerType::eLinear,
                         },
                         {}
                     }

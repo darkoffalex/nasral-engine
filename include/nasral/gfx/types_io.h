@@ -10,7 +10,8 @@ namespace nasral::gfx::io
         core::UniqueId id;
         MaterialType type;
         std::string material_path;
-        core::EnumArray<TextureType, std::string> texture_path;
+        core::EnumArray<TextureType, std::string> texture_paths;
+        core::EnumArray<TextureType, TextureSamplerType> texture_samplers;
         uniforms::Material material_settings;
     };
 }

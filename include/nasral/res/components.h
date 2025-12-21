@@ -13,8 +13,9 @@ namespace nasral::res::comp
      */
     struct MaterialDescriptors : core::Component<MaterialDescriptors>
     {
-        ResourceId material_id = 0;
-        core::EnumArray<gfx::TextureType, ResourceId> texture_ids = {};
+        core::UniqueId uid = {};
+        ResourceId mat_res_id = 0;
+        core::EnumArray<gfx::TextureType, ResourceId> tex_res_ids = {};
     };
 
     /**
@@ -33,5 +34,11 @@ namespace nasral::res::comp
      * @brief Тег - сигнализирует об ошибке загрузки материала или его под-ресурсов
      */
     struct MaterialError : core::Component<MaterialError>
+    {};
+
+    /**
+     * @brief Тег - сигнализирует о том, что материал в очереди на удаление
+     */
+    struct MaterialPendingRemove : core::Component<MaterialPendingRemove>
     {};
 }

@@ -19,7 +19,8 @@ namespace nasral::ecs
         res::comp::MaterialDescriptors,
         res::comp::MaterialRequest,
         res::comp::MaterialRelease,
-        res::comp::MaterialError
+        res::comp::MaterialError,
+        res::comp::MaterialPendingRemove
     >;
 
     // Битовая маска компонентов (размер зависит от кол-ва возможных типов компонентов)
@@ -34,11 +35,14 @@ namespace nasral::ecs
 
     // Получение битовой маски типу компонентов
     template<typename... Ts>
-    constexpr auto kMaskOf = [] {
+    ComponentMask make_mask(){
         ComponentMask mask;
         ((mask.set(kComponentId<Ts>)), ...);
         return mask;
-    }();
+    }
+
+    template<typename... Ts>
+    inline const ComponentMask kMaskOf = make_mask<Ts...>();
 
     struct Config
     {

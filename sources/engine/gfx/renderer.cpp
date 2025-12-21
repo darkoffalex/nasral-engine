@@ -1,6 +1,7 @@
 #include "pch.h"
 #include <nasral/gfx/renderer.h>
 #include <nasral/gfx/utils.h>
+#include <nasral/ecs/view.h>
 #include <nasral/log/logger.h>
 #include <nasral/engine.h>
 
@@ -1465,17 +1466,99 @@ namespace nasral::gfx
         std::lock_guard lock(light_ids_mutex_);
         update_light_states_unsafe(ids, active);
     }
+#pragma endregion
 
     void Renderer::register_material(const io::Material& m)
     {
-        // TODO: Implement
+        // Найти ID ресурса материала
+        const auto m_res_id = engine()->res()->find(m.material_path);
+        if (!m_res_id.has_value()){
+            log_error("Material resource not found in list: " + m.material_path);
+            return;
+        }
+
+        // Создать Entity для экземпляра материала и добавить необходимые компоненты:
+        // - Дескрипторы ресурсов.
+        // - Параметры материала.
+        // - Тег "настройки изменились" для обновления UBO/SSBO
+        // - Тег "текстуры изменились" для обновления дескрипторов
+        const auto m_entity = engine()->ecs()->spawn();
+        engine()->ecs()->add_component<res::comp::MaterialDescriptors>(m_entity);
+        engine()->ecs()->add_component<comp::MaterialSettings>(m_entity);
+        engine()->ecs()->add_component<comp::MaterialDirtySettings>(m_entity);
+        engine()->ecs()->add_component<comp::MaterialDirtyTextures>(m_entity);
+
+        // Задать идентификаторы материала
+        auto& m_desc = engine()->ecs()->get_component<res::comp::MaterialDescriptors>(m_entity);
+        m_desc.uid = m.id;
+        m_desc.mat_res_id = m_res_id.value();
+
+        // Задать идентификаторы текстур
+        for (const TextureType tt : magic_enum::enum_values<TextureType>()){
+            m_desc.tex_res_ids[tt] = res::kInvalidResourceId;
+            auto& tex_path = m.texture_paths[tt];
+            if (!tex_path.empty()){
+                auto tex_res_id = engine()->res()->find(tex_path);
+                if (!tex_res_id.has_value()){
+                    log_error("Texture resource not found in list: " + tex_path);
+                    continue;
+                }
+                m_desc.tex_res_ids[tt] = tex_res_id.value();
+            }
+        }
+
+        // Задать параметры материала
+        auto& m_settings = engine()->ecs()->get_component<comp::MaterialSettings>(m_entity);
+        m_settings.type = m.type;
+        m_settings.index = material_ids().acquire(); // Внимание! Выделение ID материала (нужно затем освободить)
+        m_settings.uniforms = m.material_settings;
+        m_settings.samplers = m.texture_samplers;
+
+        // Запросить ресурс (добавить соответствующий тег)
+        // Внимание! Это сделает материал загруженным изначально, в перспективе это может быть лишним.
+        engine()->ecs()->add_component<res::comp::MaterialRequest>(m_entity);
+
+        log_info("Material instance registered [" + m.id.to_string() + "][" + m.material_path + "]");
     }
 
     void Renderer::unregister_material(const core::UniqueId& id)
     {
-        // TODO: Implement
+        using MatDesc = res::comp::MaterialDescriptors;
+        using MatHandles = comp::MaterialHandles;
+        using MatSettings = comp::MaterialSettings;
+
+        // Для уже загруженных материалов (хендлы в наличии)
+        for (auto [e, d, s, h] : engine()->ecs()->view<MatDesc, MatSettings, MatHandles>())
+        {
+            // Только для нужного UID
+            if (id != d.uid) continue;
+
+            // Освободить ресурсы
+            engine()->res()->release(d.mat_res_id);
+            for (const TextureType tt : magic_enum::enum_values<TextureType>()){
+                if (h.textures[tt] && d.tex_res_ids[tt] != res::kInvalidResourceId){
+                    //update_mat_textures({tt, TextureSamplerType::eNearest, {}}, s.index);
+                    engine()->res()->release(d.tex_res_ids[tt]);
+                }
+            }
+
+            // Вернуть индекс материала в пул
+            material_ids().release(s.index);
+
+            // Удалить entity
+            engine()->ecs()->destroy_deferred(e);
+            log_info("Material instance unregistered [" + id.to_string() + "]");
+        }
+
+        // Для еще не загруженных материалов (без хендлов)
+        for (auto [e, d, s] : engine()->ecs()->view<MatDesc, MatSettings>())
+        {
+            // Только для нужного UID
+            if (id != d.uid) continue;
+
+            // Удалить entity
+            engine()->ecs()->destroy_deferred(e);
+            log_info("Material instance unregistered [" + id.to_string() + "]");
+        }
     }
-
-#pragma endregion
-
 }

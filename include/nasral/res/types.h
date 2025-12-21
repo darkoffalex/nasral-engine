@@ -14,6 +14,8 @@ namespace nasral::res
     constexpr size_t kMaxResourceCount = 1024;
     constexpr size_t kMinRefsCount = 10;
 
+    constexpr uint32_t kInvalidResourceId = std::numeric_limits<uint32_t>::max();
+
     enum class Status : uint32_t
     {
         eUnloaded = 0,

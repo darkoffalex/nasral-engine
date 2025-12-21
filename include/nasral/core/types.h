@@ -30,6 +30,10 @@ namespace nasral::core
             return data[0] == other.data[0] && data[1] == other.data[1];
         }
 
+        bool operator!=(const UniqueId& other) const noexcept{
+            return !(*this == other);
+        }
+
         bool operator<(const UniqueId& other) const noexcept {
             if (data[0] < other.data[0]) return true;
             if (data[0] > other.data[0]) return false;
@@ -46,6 +50,10 @@ namespace nasral::core
         void set(const uint64_t a, const uint64_t b){
             data[0] = a;
             data[1] = b;
+        }
+
+        [[nodiscard]] std::string to_string() const{
+            return std::to_string(data[0]) + "_" + std::to_string(data[1]);
         }
     };
 

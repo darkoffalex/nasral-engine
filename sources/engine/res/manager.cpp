@@ -248,7 +248,7 @@ namespace nasral::res
             }
 
             assert(res->status_ == Status::eLoaded);
-            const auto* proj_cfg = static_cast<Project*>(res);
+            const auto* proj_cfg = dynamic_cast<Project*>(res);
 
             // Формирование реестра материалов
             for (auto& m_io : proj_cfg->materials()){
@@ -279,6 +279,16 @@ namespace nasral::res
 
     void Manager::release_project_config()
     {
+        // Обработка выгрузки ресурса конфигурации проекта
+        auto on_release = [this](IResource* res){
+            assert(res->status_ == Status::eLoaded);
+
+            // Удаление материалов из реестра
+            for (auto& m_io : dynamic_cast<Project*>(res)->materials()){
+                engine()->renderer()->unregister_material(m_io.id);
+            }
+        };
+
         // Поиск файла проекта среди initial ресурсов (обрабатываем первый попавшийся)
         for (auto& [type, path, params] : config().initial_resources){
             if (type == Type::eProject){
@@ -286,6 +296,7 @@ namespace nasral::res
                 assert(id.has_value());
 
                 if (id.has_value()){
+                    on_release(get(id.value()));
                     release(id.value());
                     return;
                 }
@@ -296,6 +307,7 @@ namespace nasral::res
         const auto id = find(kBuiltinProjectFile.data());
         assert(id.has_value());
         if (id.has_value()){
+            on_release(get(id.value()));
             release(id.value());
         }
     }

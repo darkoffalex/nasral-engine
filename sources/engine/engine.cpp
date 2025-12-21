@@ -5,17 +5,24 @@ namespace nasral
 {
     Engine::Engine(const Config& config)
     {
-        logger_ = std::make_unique<log::Logger>(this, config.log);
-        logger()->info("Logger initialized.");
+        try
+        {
+            logger_ = std::make_unique<log::Logger>(this, config.log);
+            logger()->info("Logger initialized.");
 
-        ecs_ = std::make_unique<ecs::Manager>(this, config.ecs);
-        logger()->info("ECS manager initialized.");
+            ecs_ = std::make_unique<ecs::Manager>(this, config.ecs);
+            logger()->info("ECS manager initialized.");
 
-        renderer_ = std::make_unique<gfx::Renderer>(this, config.gfx);
-        logger()->info("Renderer initialized.");
+            renderer_ = std::make_unique<gfx::Renderer>(this, config.gfx);
+            logger()->info("Renderer initialized.");
 
-        res_ = std::make_unique<res::Manager>(this, config.res);
-        logger()->info("Resource manager initialized.");
+            res_ = std::make_unique<res::Manager>(this, config.res);
+            logger()->info("Resource manager initialized.");
+        }
+        catch (const std::runtime_error& e){
+            if (logger_) logger()->fatal(e.what());
+            throw;
+        }
     }
 
     Engine::~Engine()

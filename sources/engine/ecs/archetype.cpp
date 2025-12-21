@@ -112,7 +112,7 @@ namespace nasral::ecs
         std::apply([&]([[maybe_unused]] auto... component_dummies){
             [[maybe_unused]] size_t comp_idx = 0;
             ([&]{
-                if (mask_.test(comp_idx++)){
+                if (mask_.test(comp_idx)){
                     // Если в исходном архетипе (откуда перенос) есть компонент
                     if (src->mask_.test(comp_idx)){
                         using ComponentType = decltype(component_dummies);

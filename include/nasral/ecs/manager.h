@@ -12,7 +12,8 @@ namespace nasral::ecs
     {
     public:
         typedef std::unique_ptr<Manager> Ptr;
-        friend class View<>;
+        template<typename... Ts>
+        friend class View;
 
         struct EntitySlot
         {
@@ -41,9 +42,12 @@ namespace nasral::ecs
 
         template<typename CT>
         void add_component_deferred(const EntityId& entity_id, CT&& component = {}){
-            deferred_actions_.emplace_back([entity_id, comp = std::forward<CT>(component)](Manager& m){
-                m.add_component<CT>(entity_id, std::forward<CT>(comp));
-            });
+            using T = std::decay_t<CT>;
+            deferred_actions_.emplace_back(
+                [entity_id, comp = T(std::forward<CT>(component))](Manager& m) mutable {
+                    m.add_component<T>(entity_id, std::move(comp));
+                }
+            );
         }
 
         template<typename CT>

@@ -88,6 +88,11 @@ namespace nasral::ecs
 
     void Manager::assign_archetype(EntitySlot& slot, Archetype* archetype)
     {
+        assert(archetype != nullptr);
+        if (!archetype){
+            return;
+        }
+
         // Архетип отсутствует (новая entity)
         if (!slot.archetype)
         {
@@ -105,7 +110,7 @@ namespace nasral::ecs
             auto* prev_arc = slot.archetype;
 
             // Перемещение между архетипами
-            const auto& [new_idx, prev_idx, swapped] = archetype->move_from(prev_arc, slot.id);
+            const auto [new_idx, prev_idx, swapped] = archetype->move_from(prev_arc, slot.id);
 
             // Если внутри архетипа была перестановка (swap & pop)
             if (swapped.has_value()){
