@@ -15,7 +15,7 @@ namespace nasral::gfx
 
     constexpr uint32_t kMaxCameras = 1;
     constexpr uint32_t kMaxObjects = 1024;
-    constexpr uint32_t kMaxMaterials = 64;
+    constexpr uint32_t kMaxMaterials = 100;
     constexpr uint32_t kMaxLights = 64;
 
     struct Vertex

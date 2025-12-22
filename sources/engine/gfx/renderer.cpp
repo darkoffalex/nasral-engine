@@ -1468,6 +1468,11 @@ namespace nasral::gfx
     }
 #pragma endregion
 
+    /**
+     * @brief Создает entity материала на основании IO структуры
+     * @details На данную сущность затем могут ссылаться другие сущности (сущности сцены)
+     * @param m IO структура (данные из файла конфигурации проекта)
+     */
     void Renderer::register_material(const io::Material& m)
     {
         // Найти ID ресурса материала
@@ -1518,9 +1523,13 @@ namespace nasral::gfx
         // Внимание! Это сделает материал загруженным изначально, в перспективе это может быть лишним.
         engine()->ecs()->add_component<res::comp::MaterialRequest>(m_entity);
 
-        log_info("Material instance registered [" + m.id.to_string() + "][" + m.material_path + "]");
+        log_info("Material instance registered [" + m.id.to_string() + "|" + m.material_path + "]");
     }
 
+    /**
+     * @brief Удалять entity материала по уникальному и постоянному UID
+     * @param id Уникальный ID сущности/ассета (сохраняется с данными в файл, читается из него)
+     */
     void Renderer::unregister_material(const core::UniqueId& id)
     {
         using MatDesc = res::comp::MaterialDescriptors;
@@ -1546,8 +1555,9 @@ namespace nasral::gfx
             material_ids().release(s.index);
 
             // Удалить entity
-            engine()->ecs()->destroy_deferred(e);
-            log_info("Material instance unregistered [" + id.to_string() + "]");
+            engine()->ecs()->destroy_deferred(e, [this, id]{
+                log_info("Material instance unregistered [" + id.to_string() + "]");
+            });
         }
 
         // Для еще не загруженных материалов (без хендлов)
@@ -1557,8 +1567,9 @@ namespace nasral::gfx
             if (id != d.uid) continue;
 
             // Удалить entity
-            engine()->ecs()->destroy_deferred(e);
-            log_info("Material instance unregistered [" + id.to_string() + "]");
+            engine()->ecs()->destroy_deferred(e, [this, id]{
+                log_info("Material instance unregistered [" + id.to_string() + "]");
+            });
         }
     }
 }

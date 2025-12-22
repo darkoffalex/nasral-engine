@@ -33,7 +33,7 @@ namespace nasral::res
             // Прочесть пути к шейдерам
             for (auto shader_info : shaders_conf.children("Shader"))
             {
-                static const std::unordered_map<std::string, std::string*> map = {
+                const std::unordered_map<std::string, std::string*> map = {
                     {"vertex", &data.vert_shader_path},
                     {"fragment", &data.frag_shader_path},
                     {"geometry", &data.geom_shader_path}
@@ -53,7 +53,7 @@ namespace nasral::res
                 std::string name = setting.attribute("name").as_string();
                 if (name == "PolygonMode")
                 {
-                    static const std::unordered_map<std::string, vk::PolygonMode> map = {
+                    const std::unordered_map<std::string, vk::PolygonMode> map = {
                         {"eFill", vk::PolygonMode::eFill},
                         {"eLine", vk::PolygonMode::eLine},
                         {"ePoint", vk::PolygonMode::ePoint}

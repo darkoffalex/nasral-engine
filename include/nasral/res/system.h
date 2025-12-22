@@ -1,6 +1,9 @@
 #pragma once
 #include <nasral/ecs/system.h>
+#include <nasral/ecs/entity.h>
+#include <nasral/res/resource.h>
 #include <nasral/log/loggable.h>
+#include <nasral/gfx/types.h>
 
 namespace nasral::res
 {
@@ -17,6 +20,13 @@ namespace nasral::res
         void init();
         void update(float dt);
         void shutdown();
+
+    private:
+        void update_requested_materials() const;
+        void update_released_materials() const;
+
+        void on_material_loaded(const ecs::EntityId& entity, IResource* res) const;
+        void on_texture_loaded(const ecs::EntityId& entity, IResource* res, gfx::TextureType type) const;
     };
 }
 

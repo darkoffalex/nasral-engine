@@ -122,7 +122,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
         }
 
         // Завершение работы с движком
-        engine.~Engine();
+        engine.finalize();
 
         // Завершение работы с GLFW
         glfwTerminate();

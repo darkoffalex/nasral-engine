@@ -33,11 +33,11 @@ namespace nasral::ecs
         return slot.id;
     }
 
-    void Manager::destroy(const EntityId& entity_id)
+    bool Manager::destroy(const EntityId& entity_id)
     {
         if (entity_id.index >= entities_.size()
             || !entities_[entity_id.index].is_alive
-            || entity_id.version != entities_[entity_id.index].id.version) return;
+            || entity_id.version != entities_[entity_id.index].id.version) return false;
 
         auto& slot = entities_[entity_id.index];
 
@@ -60,11 +60,15 @@ namespace nasral::ecs
 
         // Добавить в список освобожденных слотов
         free_slots_.push_back(entity_id.index);
+        return true;
     }
 
-    void Manager::destroy_deferred(const EntityId& entity_id){
-        deferred_actions_.emplace_back([entity_id](Manager& m){
-            m.destroy(entity_id);
+    void Manager::destroy_deferred(const EntityId& entity_id, std::function<void()> on_destroy){
+        deferred_actions_.emplace_back([entity_id, callback = std::move(on_destroy)](Manager& m){
+            const auto destroyed = m.destroy(entity_id);
+            if (destroyed && callback){
+                callback();
+            }
         });
     }
 

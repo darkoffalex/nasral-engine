@@ -41,7 +41,7 @@ namespace nasral::res
         }
 
     private:
-        void release_all_sub_resources() const;
+        void release_all_sub_resources();
         void try_init_vk_pipeline();
 
     protected:

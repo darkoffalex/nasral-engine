@@ -33,7 +33,7 @@ namespace nasral::core
 
         void release_unsafe(const T index){
             if constexpr (kDebugBuild){
-                assert(indices_.size() == indices_.capacity() && "Index pool is full");
+                assert(indices_.size() < indices_.capacity() && "Index pool is full");
                 if (std::find(indices_.begin(), indices_.end(), index) != indices_.end()){
                     assert(false && "Double release of index!");
                 }

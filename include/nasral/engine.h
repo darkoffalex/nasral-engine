@@ -5,6 +5,9 @@
 #include <nasral/res/manager.h>
 #include <nasral/gfx/renderer.h>
 
+#include <nasral/res/system.h>
+#include <nasral/gfx/system.h>
+
 namespace nasral
 {
     class Engine
@@ -18,6 +21,7 @@ namespace nasral
         Engine(const Engine&) = delete;
         Engine& operator=(const Engine&) = delete;
 
+        void finalize() const;
         void update(float delta);
 
         [[nodiscard]] log::Logger* logger() const noexcept { return logger_.get(); }
@@ -30,5 +34,8 @@ namespace nasral
         ecs::Manager::Ptr ecs_;
         res::Manager::Ptr res_;
         gfx::Renderer::Ptr renderer_;
+
+        gfx::System::Ptr gfx_system_;
+        res::System::Ptr res_system_;
     };
 }

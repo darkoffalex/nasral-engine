@@ -1,10 +1,10 @@
 <Material type="eVertexColored">
-    <Settings>
-        <Setting name="ePolygonMode">Line</Setting>
-        <Setting name="LineWidth">1</Setting>
-    </Settings>
     <Shaders>
         <Shader stage="vertex" path="materials/vertex-colored/shader.vert.spv"/>
         <Shader stage="fragment" path="materials/vertex-colored/shader.frag.spv"/>
     </Shaders>
+    <Settings>
+        <Setting name="ePolygonMode">Line</Setting>
+        <Setting name="LineWidth">1</Setting>
+    </Settings>
 </Material>

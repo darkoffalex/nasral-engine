@@ -82,35 +82,38 @@ namespace nasral::res
             // Запрос под-ресурса вершинного шейдера
             // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_pipeline()
             manager()->request(vert_shader_id_.value(), [this](IResource* resource){
-                base_shd_loads_needed_.fetch_sub(1, std::memory_order_acq_rel);
                 const auto* shader = dynamic_cast<Shader*>(resource);
                 if (shader && shader->status() == Status::eLoaded){
                     vk_vert_shader_ = shader->vk_shader_module();
-                    try_init_vk_pipeline();
                 }
+
+                base_shd_loads_needed_.fetch_sub(1, std::memory_order_acq_rel);
+                try_init_vk_pipeline();
             });
 
             // Запрос под-ресурса фрагментного шейдера
             // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_pipeline()
             manager()->request(frag_shader_id_.value(), [this](IResource* resource){
-                base_shd_loads_needed_.fetch_sub(1, std::memory_order_acq_rel);
                 const auto* shader = dynamic_cast<Shader*>(resource);
                 if (shader && shader->status() == Status::eLoaded){
                     vk_frag_shader_ = shader->vk_shader_module();
-                    try_init_vk_pipeline();
                 }
+
+                base_shd_loads_needed_.fetch_sub(1, std::memory_order_acq_rel);
+                try_init_vk_pipeline();
             });
 
             // Опционально - запрос под-ресурсы геометрического shader-а
             // После завершения ПОПЫТКИ загрузки вызовет try_init_vk_pipeline()
             if (geom_shader_id_.has_value()){
                 manager()->request(geom_shader_id_.value(), [this](IResource* resource){
-                    geom_shd_loads_needed_.fetch_sub(1, std::memory_order_acq_rel);
                     const auto* shader = dynamic_cast<Shader*>(resource);
                     if (shader && shader->status() == Status::eLoaded){
                         vk_geom_shader_ = shader->vk_shader_module();
-                        try_init_vk_pipeline();
                     }
+
+                    geom_shd_loads_needed_.fetch_sub(1, std::memory_order_acq_rel);
+                    try_init_vk_pipeline();
                 });
             }
         }
@@ -122,17 +125,20 @@ namespace nasral::res
         }
     }
 
-    void Material::release_all_sub_resources() const
+    void Material::release_all_sub_resources()
     {
         if (vert_shader_id_.has_value()) manager()->release(vert_shader_id_.value());
         if (frag_shader_id_.has_value()) manager()->release(frag_shader_id_.value());
         if (geom_shader_id_.has_value()) manager()->release(geom_shader_id_.value());
+        vert_shader_id_ = std::nullopt;
+        frag_shader_id_ = std::nullopt;
+        geom_shader_id_ = std::nullopt;
     }
 
     void Material::try_init_vk_pipeline()
     {
         // Если не все обязательные шейдеры запрошены - выход (ожидаем другого вызова)
-        if (geom_shd_loads_needed_.load(std::memory_order_acquire) > 0){
+        if (base_shd_loads_needed_.load(std::memory_order_acquire) > 0){
             return;
         }
 
@@ -384,7 +390,7 @@ namespace nasral::res
             return;
         }
 
-        // Освободить суб-ресурсы
+        // Освободить суб-ресурсы и обнулить их
         release_all_sub_resources();
 
         // Ресурс готов

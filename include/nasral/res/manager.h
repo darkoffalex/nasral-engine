@@ -59,6 +59,7 @@ namespace nasral::res
         [[nodiscard]] size_t ref_count(ResourceId id) const;
 
         void update();
+        void finalize();
 
     private:
         IResource::Ptr make_resource(const Slot& slot);
@@ -68,7 +69,6 @@ namespace nasral::res
         void request_project_config();
         void release_project_config();
         void await_all_tasks() const;
-        void finalize();
 
     protected:
         /// Фиксированный массив слотов ресурсов (кеш-когерентность)

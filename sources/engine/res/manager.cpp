@@ -62,9 +62,7 @@ namespace nasral::res
         request_project_config();
     }
 
-    Manager::~Manager(){
-        finalize();
-    }
+    Manager::~Manager() = default;
 
     void Manager::add_unsafe(const Type type, const std::string& path, const std::optional<LoadParams>& params)
     {
@@ -189,6 +187,10 @@ namespace nasral::res
         auto& slot = slots_[index];
         if (!slot.used){
             engine()->logger()->error("Resource slot is not used");
+        }
+
+        if (core::kDebugBuild){
+            assert(slot.refs.count.load(std::memory_order_acquire) > 0 && "Trying to release already released resource");
         }
 
         slot.refs.count.fetch_sub(1, std::memory_order_release);
