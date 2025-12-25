@@ -1,9 +1,11 @@
 #include "pch.h"
 #include <nasral/gfx/renderer.h>
 #include <nasral/gfx/utils.h>
+#include <nasral/evt/utils.h>
 #include <nasral/ecs/view.h>
 #include <nasral/log/logger.h>
 #include <nasral/engine.h>
+#include <nasral/res/resources/project.h>
 
 namespace nasral::gfx
 {
@@ -31,6 +33,8 @@ namespace nasral::gfx
         , is_active_(false)
         , frame_in_progress_(false)
         , surface_refresh_requested_(false)
+        , evt_h_proj_load_(evt::kInvalidListener)
+        , evt_h_proj_release_(evt::kInvalidListener)
         , current_frame_(0)
         , available_image_index_(0)
         , object_ids_(kMaxObjects)
@@ -82,6 +86,16 @@ namespace nasral::gfx
         init_vk_synchronization();
         log_info("Vulkan: Synchronization initialized.");
 
+        // Регистрация обработки нужных событий
+        evt_h_proj_load_ = engine->events()->register_l(
+            evt::Type::eProjectResLoaded,
+            evt::bind(this, &Renderer::on_project_loaded));
+
+        evt_h_proj_release_ = engine->events()->register_l(
+            evt::Type::eProjectResReleasing,
+            evt::bind(this, &Renderer::on_project_releasing));
+
+        // Выделение нужного кол-ва памяти
         light_active_ids_.reserve(kMaxLights);
         light_states_.resize(kMaxLights, 0);
         is_active_ = true;
@@ -89,6 +103,11 @@ namespace nasral::gfx
 
     Renderer::~Renderer()
     {
+        // Де-регистрировать обработчики событий
+        engine()->events()->unregister_l(evt::Type::eProjectResLoaded, evt_h_proj_load_);
+        engine()->events()->unregister_l(evt::Type::eProjectResReleasing, evt_h_proj_release_);
+
+        // Остановить рендеринг и дождаться завершения кадра
         is_active_ = false;
         cmd_wait_for_frame();
     }
@@ -1058,6 +1077,7 @@ namespace nasral::gfx
         // Включить рендеринг
         is_active_ = true;
     }
+
 #pragma endregion
 
 #pragma region render_commands
@@ -1468,12 +1488,44 @@ namespace nasral::gfx
     }
 #pragma endregion
 
+#pragma region handlers
+
+    /**
+     * @brief Обработка события загрузки файла проекта
+     * @param arg Аргумент события
+     */
+    void Renderer::on_project_loaded(const evt::Arg& arg) const
+    {
+        auto* r_ptr = static_cast<res::IResource*>(*std::get_if<evt::ArgPtr>(&arg));
+        if (const auto* proj = dynamic_cast<res::Project*>(r_ptr)){
+            assert(proj->status() == res::Status::eLoaded);
+            for (auto& m_io : proj->materials()){
+                this->engine()->renderer()->on_register_material(m_io);
+            }
+        }
+    }
+
+    /**
+     * @brief Обработка события выгрузки проекта
+     * @param arg Аргумент события
+     */
+    void Renderer::on_project_releasing(const evt::Arg& arg) const
+    {
+        auto* r_ptr = static_cast<res::IResource*>(*std::get_if<evt::ArgPtr>(&arg));
+        if (const auto* proj = dynamic_cast<res::Project*>(r_ptr)){
+            assert(proj->status() == res::Status::eLoaded);
+            for (auto& m_io : proj->materials()){
+                this->engine()->renderer()->on_unregister_material(m_io.id);
+            }
+        }
+    }
+
     /**
      * @brief Создает entity материала на основании IO структуры
      * @details На данную сущность затем могут ссылаться другие сущности (сущности сцены)
      * @param m IO структура (данные из файла конфигурации проекта)
      */
-    void Renderer::register_material(const io::Material& m)
+    void Renderer::on_register_material(const io::Material& m)
     {
         // Найти ID ресурса материала
         const auto m_res_id = engine()->res()->find(m.material_path);
@@ -1530,7 +1582,7 @@ namespace nasral::gfx
      * @brief Удалять entity материала по уникальному и постоянному UID
      * @param id Уникальный ID сущности/ассета (сохраняется с данными в файл, читается из него)
      */
-    void Renderer::unregister_material(const core::UniqueId& id)
+    void Renderer::on_unregister_material(const core::UniqueId& id)
     {
         using MatDesc = res::comp::MaterialDescriptors;
         using MatHandles = comp::MaterialHandles;
@@ -1572,4 +1624,7 @@ namespace nasral::gfx
             });
         }
     }
+
+#pragma endregion
+
 }

@@ -74,9 +74,11 @@ namespace nasral::res
                     materials[i].id.set(0, i);
                 }
 
-                return std::optional{
-                    Project::Data{std::move(materials)}
-                };
+                error_ = Error::eNone;
+                return std::optional{Project::Data{
+                    std::move(materials),
+                    kBuiltinSceneDefault.data(),
+                }};
             }
 
             return std::nullopt;

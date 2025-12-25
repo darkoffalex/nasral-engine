@@ -4,6 +4,7 @@
 #include <nasral/res/resources/file.h>
 #include <nasral/res/resources/shader.h>
 #include <nasral/res/resources/project.h>
+#include <nasral/res/resources/scene.h>
 #include <nasral/engine.h>
 
 #include "loaders/shader/spv.hpp"
@@ -14,6 +15,8 @@
 #include "loaders/mesh/builtins.hpp"
 #include "loaders/project/xml.hpp"
 #include "loaders/project/builtins.hpp"
+#include "loaders/scene/xml.hpp"
+#include "loaders/scene/builtins.hpp"
 
 namespace nasral::res
 {
@@ -49,6 +52,7 @@ namespace nasral::res
         add_unsafe(Type::eMesh, kBuiltinMeshCube.data());
         add_unsafe(Type::eMesh, kBuiltinMeshSphere.data());
         add_unsafe(Type::eProject, kBuiltinProjectFile.data());
+        add_unsafe(Type::eScene, kBuiltinSceneDefault.data());
 
         // Добавить изначальные ресурсы (из конфига)
         for (const auto& [type, path, params] : config().initial_resources){
@@ -242,75 +246,52 @@ namespace nasral::res
 
     void Manager::request_project_config()
     {
-        // Обработка загрузки ресурса конфигурации проекта
-        auto on_parsed = [this](IResource* res){
-            if (res->status_ == Status::eError){
-                log_error("Config file loading error");
-                return;
-            }
-
-            assert(res->status_ == Status::eLoaded);
-            const auto* proj_cfg = dynamic_cast<Project*>(res);
-
-            // Формирование реестра материалов
-            for (auto& m_io : proj_cfg->materials()){
-                engine()->renderer()->register_material(m_io);
-            }
-        };
-
         // Поиск файла проекта среди initial ресурсов (обрабатываем первый попавшийся)
+        std::optional<ResourceId> id = std::nullopt;
         for (auto& [type, path, params] : config().initial_resources){
             if (type == Type::eProject){
-                auto id = find(path);
-                assert(id.has_value());
-
-                if (id.has_value()){
-                    request(id.value(), on_parsed);
-                    return;
+                id = find(path);
+                if (!id.has_value()){
+                    log_warn("Can't find project file resource in the list (\"" + path + "\")");
                 }
+                break;
             }
         }
 
-        // Fallback (встроенная конфигурация проекта)
-        const auto id = find(kBuiltinProjectFile.data());
-        assert(id.has_value());
-        if (id.has_value()){
-            request(id.value(), on_parsed);
+        // Если файл проекта не указан в изначальных ресурсах - полагаться нв встроенный
+        if (!id.has_value()){
+            id = find(kBuiltinProjectFile.data());
+            if (id.has_value() && id.value() != kInvalidResourceId){
+                request(id.value(), [this](IResource* res){
+                    if (res->status_ == Status::eError){return;}
+                    assert(res->status_ == Status::eLoaded);
+                    engine()->events()->send(evt::Type::eProjectResLoaded, evt::ArgPtr{res});
+                });
+            }
         }
     }
 
     void Manager::release_project_config()
     {
-        // Обработка выгрузки ресурса конфигурации проекта
-        auto on_release = [this](IResource* res){
-            assert(res->status_ == Status::eLoaded);
-
-            // Удаление материалов из реестра
-            for (auto& m_io : dynamic_cast<Project*>(res)->materials()){
-                engine()->renderer()->unregister_material(m_io.id);
-            }
-        };
-
         // Поиск файла проекта среди initial ресурсов (обрабатываем первый попавшийся)
+        std::optional<ResourceId> id = std::nullopt;
         for (auto& [type, path, params] : config().initial_resources){
             if (type == Type::eProject){
-                auto id = find(path);
-                assert(id.has_value());
-
-                if (id.has_value()){
-                    on_release(get(id.value()));
-                    release(id.value());
-                    return;
+                id = find(path);
+                if (!id.has_value()){
+                    log_warn("Can't find project file resource in the list (\"" + path + "\")");
                 }
+                break;
             }
         }
 
-        // Fallback (встроенная конфигурация проекта)
-        const auto id = find(kBuiltinProjectFile.data());
-        assert(id.has_value());
-        if (id.has_value()){
-            on_release(get(id.value()));
-            release(id.value());
+        // Если файл проекта не указан в изначальных ресурсах - полагаться нв встроенный
+        if (!id.has_value()){
+            id = find(kBuiltinProjectFile.data());
+            if (id.has_value() && id.value() != kInvalidResourceId){
+                engine()->events()->send(evt::Type::eProjectResReleasing, evt::ArgPtr{get(id.value())});
+                release(id.value());
+            }
         }
     }
 
@@ -472,6 +453,12 @@ namespace nasral::res
                 ? Ret{std::make_unique<ProjectBuiltinLoader>()}
                 : Ret{std::make_unique<ProjectXmlLoader>()};
         }
+        else if constexpr (std::is_same_v<T, Scene>){
+            assert(slot.info.type == Type::eScene);
+            return slot.info.path.is_builtin()
+                ? Ret{std::make_unique<SceneBuiltinLoader>()}
+                : Ret{std::make_unique<SceneXmlLoader>()};
+        }
 
         assert(false && "Unknown resource type");
         return Ret{nullptr};
@@ -529,6 +516,13 @@ namespace nasral::res
                     auto id = find(slot.info.path.view());
                     assert(id.has_value());
                     res = std::make_unique<Project>(this, id.value(), make_res_loader<Project>(slot));
+                    break;
+                }
+            case Type::eScene:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value());
+                    res = std::make_unique<Scene>(this, id.value(), make_res_loader<Scene>(slot));
                     break;
                 }
             default:

@@ -12,6 +12,9 @@ namespace nasral
             logger_ = std::make_unique<log::Logger>(this, config.log);
             logger()->info("Logger initialized.");
 
+            evt_ = std::make_unique<evt::Manager>(this);
+            logger()->info("Event manager initialized.");
+
             ecs_ = std::make_unique<ecs::Manager>(this, config.ecs);
             logger()->info("ECS manager initialized.");
 
@@ -66,6 +69,9 @@ namespace nasral
         ecs_.reset();
         logger()->info("ECS manager destroyed.");
 
+        evt_.reset();
+        logger()->info("Event manager destroyed.");
+
         logger_.reset();
     }
 
@@ -94,12 +100,13 @@ namespace nasral
         assert(res_system_ != nullptr);
         assert(gfx_system_ != nullptr);
 
-        // TODO: Обновление систем (ECS)
+        // Обновление систем ECS
         res_system_->update(delta);
         gfx_system_->update(delta);
 
-        // Выполнение отложенных действий в ECS
+        // Выполнение отложенных действий
         ecs_->apply_deferred_actions();
+        evt_->apply_deferred_actions();
 
         // Загрузка/выгрузка ресурсов
         res_->update();

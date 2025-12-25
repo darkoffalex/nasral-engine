@@ -8,9 +8,10 @@
 #include <vulkan/utils/uniform_layout.hpp>
 #include <nasral/gfx/types.h>
 #include <nasral/gfx/types_io.h>
+#include <nasral/evt/types.h>
+#include <nasral/core/types.h>
 #include <nasral/core/subsystem.h>
 #include <nasral/core/index_pool.h>
-#include <nasral/core/types.h>
 #include <nasral/log/loggable.h>
 
 namespace nasral::gfx
@@ -50,9 +51,6 @@ namespace nasral::gfx
         void update_light_uniforms(const uniforms::LightSettings& uniforms, uint32_t index) const;
         void update_light_states_unsafe(const std::vector<uint32_t>& ids, bool active);
         void update_light_states(const std::vector<uint32_t>& ids, bool active);
-
-        void register_material(const io::Material& m);
-        void unregister_material(const core::UniqueId& id);
 
         [[nodiscard]] bool is_active() const noexcept{
             return is_active_;
@@ -145,11 +143,20 @@ namespace nasral::gfx
         void init_vk_synchronization();
         void refresh_vk_surface();
 
+        void on_project_loaded(const evt::Arg& arg) const;
+        void on_project_releasing(const evt::Arg& arg) const;
+        void on_register_material(const io::Material& m);
+        void on_unregister_material(const core::UniqueId& id);
+
     protected:
         // Состояние
         bool is_active_;
         bool frame_in_progress_;
         std::atomic<bool> surface_refresh_requested_;
+
+        // События
+        evt::ListenerHandle evt_h_proj_load_;
+        evt::ListenerHandle evt_h_proj_release_;
 
         // Основные сущности Vulkan (включая кастомные RAII обертки)
         vk::UniqueInstance vk_instance_;
@@ -205,14 +212,4 @@ namespace nasral::gfx
     };
 }
 
-namespace nasral::log
-{
-    class Logger;
-
-    template <typename T>
-    struct LoggerAccessor<T, std::enable_if_t<std::is_same_v<gfx::Renderer, T>>> {
-        static Logger* get(const T* mgr) {
-            return mgr->engine()->logger();
-        }
-    };
-}
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(gfx::Renderer)

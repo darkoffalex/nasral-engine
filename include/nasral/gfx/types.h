@@ -67,6 +67,14 @@ namespace nasral::gfx
         TOTAL
     };
 
+    enum class LightType : uint32_t
+    {
+        ePointLight = 0,
+        eDirectionalLight,
+        eSpotLight,
+        TOTAL
+    };
+
     struct VulkanSurfaceProvider
     {
         typedef std::shared_ptr<VulkanSurfaceProvider> Ptr;

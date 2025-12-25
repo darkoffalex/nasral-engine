@@ -7,6 +7,9 @@ add_library(Engine OBJECT
         # Логирование
         log/logger.cpp
 
+        # События
+        evt/manager.cpp
+
         # ECS
         ecs/archetype.cpp
         ecs/manager.cpp
@@ -20,10 +23,15 @@ add_library(Engine OBJECT
         res/resources/mesh.cpp
         res/resources/material.cpp
         res/resources/project.cpp
+        res/resources/scene.cpp
 
         # Рендеринг
         gfx/renderer.cpp
         gfx/system.cpp
+
+        # Сцена
+        scn/manager.cpp
+        scn/system.cpp
 )
 add_default_configurations(Engine demo_app)
 

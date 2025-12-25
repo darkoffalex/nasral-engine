@@ -17,6 +17,7 @@ namespace nasral::res
         struct Data
         {
             std::vector<gfx::io::Material> materials;
+            std::string initial_scene_path;
         };
 
         Project(Manager* manager, ResourceId id, Loader<Data>::Ptr loader);
@@ -26,11 +27,13 @@ namespace nasral::res
         Project& operator=(const Project&) = delete;
 
         [[nodiscard]] const std::vector<gfx::io::Material>& materials() const {return materials_;}
+        [[nodiscard]] ResourceId initial_scene() const {return initial_scene_;}
 
         void load() noexcept override;
 
     protected:
         Loader<Data>::Ptr loader_;
         std::vector<gfx::io::Material> materials_;
+        ResourceId initial_scene_;
     };
 }

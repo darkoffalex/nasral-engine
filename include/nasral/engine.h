@@ -1,6 +1,7 @@
 #pragma once
 #include <nasral/types.h>
 #include <nasral/log/logger.h>
+#include <nasral/evt/manager.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/res/manager.h>
 #include <nasral/gfx/renderer.h>
@@ -25,12 +26,14 @@ namespace nasral
         void update(float delta);
 
         [[nodiscard]] log::Logger* logger() const noexcept { return logger_.get(); }
+        [[nodiscard]] evt::Manager* events() const noexcept { return evt_.get(); }
         [[nodiscard]] ecs::Manager* ecs() const noexcept { return ecs_.get(); }
         [[nodiscard]] res::Manager* res() const noexcept { return res_.get(); }
         [[nodiscard]] gfx::Renderer* renderer() const noexcept { return renderer_.get(); }
 
     protected:
         log::Logger::Ptr logger_;
+        evt::Manager::Ptr evt_;
         ecs::Manager::Ptr ecs_;
         res::Manager::Ptr res_;
         gfx::Renderer::Ptr renderer_;

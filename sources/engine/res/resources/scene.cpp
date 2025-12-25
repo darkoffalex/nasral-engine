@@ -1,22 +1,21 @@
 #include "pch.h"
-#include <nasral/res/resources/project.h>
+#include <nasral/res/resources/scene.h>
 #include <nasral/res/manager.h>
 #include <nasral/engine.h>
 
 namespace nasral::res
 {
-    Project::Project(Manager* manager, const ResourceId id, Loader<Data>::Ptr loader)
-        : IResource(Type::eProject, id, manager)
+    Scene::Scene(Manager* manager, const ResourceId id, Loader<Data>::Ptr loader)
+        : IResource(Type::eScene, id, manager)
         , loader_(std::move(loader))
-        , initial_scene_(kInvalidResourceId)
     {}
 
-    Project::~Project(){
-        materials_.clear();
+    Scene::~Scene(){
+        nodes_.clear();
         RES_LOG_DESTRUCTION();
     }
 
-    void Project::load() noexcept
+    void Scene::load() noexcept
     {
         assert(loader_ != nullptr);
         if (status_ == Status::eLoaded) return;
@@ -24,7 +23,7 @@ namespace nasral::res
 
         try
         {
-            auto data = loader_->load(path);
+            const auto data = loader_->load(path);
             if (!data.has_value()){
                 status_ = Status::eError;
                 error_ = loader_->error();
@@ -32,16 +31,7 @@ namespace nasral::res
                 return;
             }
 
-            materials_ = std::move(data.value().materials);
-
-            if (!data.value().initial_scene_path.empty()){
-                const auto rid = manager()->find(data.value().initial_scene_path);
-                if (rid.has_value()){
-                    initial_scene_ = rid.value();
-                }else{
-                    log_warn("Initial scene resource not found in list (" + data.value().initial_scene_path + ")");
-                }
-            }
+            nodes_ = std::move(data.value().nodes);
         }
         catch (const std::exception& e){
             status_ = Status::eError;

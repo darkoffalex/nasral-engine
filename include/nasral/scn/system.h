@@ -1,8 +1,9 @@
 #pragma once
 #include <nasral/ecs/system.h>
+#include <nasral/res/resource.h>
 #include <nasral/log/loggable.h>
 
-namespace nasral::gfx
+namespace nasral::scn
 {
     class System final : public ecs::System<System>, public log::Loggable<System>
     {
@@ -17,10 +18,17 @@ namespace nasral::gfx
         void init();
         void update(float dt);
         void shutdown();
-
-        void update_material_settings() const;
-        void update_material_textures() const;
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(gfx::System)
+namespace nasral::log
+{
+    class Logger;
+
+    template <typename T>
+    struct LoggerAccessor<T, std::enable_if_t<std::is_same_v<scn::System, T>>> {
+        static Logger* get(const T* mgr) {
+            return mgr->engine()->logger();
+        }
+    };
+}

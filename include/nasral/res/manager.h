@@ -83,16 +83,6 @@ namespace nasral::res
 
 }
 
-namespace nasral::log
-{
-    class Logger;
-
-    template <typename T>
-    struct LoggerAccessor<T, std::enable_if_t<std::is_same_v<res::Manager, T>>> {
-        static Logger* get(const T* mgr) {
-            return mgr->engine()->logger();
-        }
-    };
-}
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(res::Manager)
 
 
