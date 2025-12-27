@@ -16,11 +16,13 @@ namespace nasral::ecs
         gfx::comp::MaterialDirtyTextures,
 
         // Подсистема ресурсов
-        res::comp::MaterialDescriptors,
-        res::comp::MaterialRequest,
-        res::comp::MaterialRelease,
-        res::comp::MaterialError,
-        res::comp::MaterialPendingRemove
+        res::comp::AssetId,
+        res::comp::Descriptor,
+        res::comp::DescriptorList<gfx::TextureType>,
+        res::comp::Request,
+        res::comp::Release,
+        res::comp::Error,
+        res::comp::PendingDelete
     >;
 
     // Битовая маска компонентов (размер зависит от кол-ва возможных типов компонентов)

@@ -1494,13 +1494,13 @@ namespace nasral::gfx
      * @brief Обработка события загрузки файла проекта
      * @param arg Аргумент события
      */
-    void Renderer::on_project_loaded(const evt::Arg& arg) const
+    void Renderer::on_project_loaded(const evt::Arg& arg)
     {
         auto* r_ptr = static_cast<res::IResource*>(*std::get_if<evt::ArgPtr>(&arg));
         if (const auto* proj = dynamic_cast<res::Project*>(r_ptr)){
             assert(proj->status() == res::Status::eLoaded);
             for (auto& m_io : proj->materials()){
-                this->engine()->renderer()->on_register_material(m_io);
+                on_register_material(m_io);
             }
         }
     }
@@ -1509,13 +1509,13 @@ namespace nasral::gfx
      * @brief Обработка события выгрузки проекта
      * @param arg Аргумент события
      */
-    void Renderer::on_project_releasing(const evt::Arg& arg) const
+    void Renderer::on_project_releasing(const evt::Arg& arg)
     {
         auto* r_ptr = static_cast<res::IResource*>(*std::get_if<evt::ArgPtr>(&arg));
         if (const auto* proj = dynamic_cast<res::Project*>(r_ptr)){
             assert(proj->status() == res::Status::eLoaded);
             for (auto& m_io : proj->materials()){
-                this->engine()->renderer()->on_unregister_material(m_io.id);
+                on_unregister_material(m_io.id);
             }
         }
     }
@@ -1534,25 +1534,27 @@ namespace nasral::gfx
             return;
         }
 
-        // Создать Entity для экземпляра материала и добавить необходимые компоненты:
-        // - Дескрипторы ресурсов.
-        // - Параметры материала.
-        // - Тег "настройки изменились" для обновления UBO/SSBO
-        // - Тег "текстуры изменились" для обновления дескрипторов
+        // Создать Entity для экземпляра материала
+        auto* ecs = engine()->ecs();
         const auto m_entity = engine()->ecs()->spawn();
-        engine()->ecs()->add_component<res::comp::MaterialDescriptors>(m_entity);
-        engine()->ecs()->add_component<comp::MaterialSettings>(m_entity);
-        engine()->ecs()->add_component<comp::MaterialDirtySettings>(m_entity);
-        engine()->ecs()->add_component<comp::MaterialDirtyTextures>(m_entity);
 
-        // Задать идентификаторы материала
-        auto& m_desc = engine()->ecs()->get_component<res::comp::MaterialDescriptors>(m_entity);
-        m_desc.uid = m.id;
-        m_desc.mat_res_id = m_res_id.value();
+        // Добавить необходимые компоненты (дескрипторы ресурсов, настройки, dirty-теги для обновления)
+        ecs->add_component<res::comp::AssetId>(m_entity);
+        ecs->add_component<res::comp::Descriptor>(m_entity);
+        ecs->add_component<res::comp::DescriptorList<TextureType>>(m_entity);
+        ecs->add_component<comp::MaterialSettings>(m_entity);
+        ecs->add_component<comp::MaterialDirtySettings>(m_entity);
+        ecs->add_component<comp::MaterialDirtyTextures>(m_entity);
 
-        // Задать идентификаторы текстур
+        // Задать ID и дескрипторы ресурсов
+        auto& m_uid  = engine()->ecs()->get_component<res::comp::AssetId>(m_entity);
+        auto& m_desc = engine()->ecs()->get_component<res::comp::Descriptor>(m_entity);
+        auto& t_desc = engine()->ecs()->get_component<res::comp::DescriptorList<TextureType>>(m_entity);
+
+        m_uid.uid = m.id;
+        m_desc.res_id = m_res_id.value();
         for (const TextureType tt : magic_enum::enum_values<TextureType>()){
-            m_desc.tex_res_ids[tt] = res::kInvalidResourceId;
+            t_desc.res_ids[tt] = res::kInvalidResourceId;
             auto& tex_path = m.texture_paths[tt];
             if (!tex_path.empty()){
                 auto tex_res_id = engine()->res()->find(tex_path);
@@ -1560,21 +1562,20 @@ namespace nasral::gfx
                     log_error("Texture resource not found in list: " + tex_path);
                     continue;
                 }
-                m_desc.tex_res_ids[tt] = tex_res_id.value();
+                t_desc.res_ids[tt] = tex_res_id.value();
             }
         }
 
         // Задать параметры материала
-        auto& m_settings = engine()->ecs()->get_component<comp::MaterialSettings>(m_entity);
+        auto& m_settings = ecs->get_component<comp::MaterialSettings>(m_entity);
         m_settings.type = m.type;
         m_settings.index = material_ids().acquire(); // Внимание! Выделение ID материала (нужно затем освободить)
         m_settings.uniforms = m.material_settings;
         m_settings.samplers = m.texture_samplers;
 
-        // Запросить ресурс (добавить соответствующий тег)
+        // Требуется запрос ресурса
         // Внимание! Это сделает материал загруженным изначально, в перспективе это может быть лишним.
-        engine()->ecs()->add_component<res::comp::MaterialRequest>(m_entity);
-
+        ecs->add_component<res::comp::Request>(m_entity);
         log_info("Material instance registered [" + m.id.to_string() + "|" + m.material_path + "]");
     }
 
@@ -1584,22 +1585,26 @@ namespace nasral::gfx
      */
     void Renderer::on_unregister_material(const core::UniqueId& id)
     {
-        using MatDesc = res::comp::MaterialDescriptors;
-        using MatHandles = comp::MaterialHandles;
+        using Id = res::comp::AssetId;
+        using MatDesc = res::comp::Descriptor;
+        using TexDesc = res::comp::DescriptorList<TextureType>;
         using MatSettings = comp::MaterialSettings;
+        using MatHandles = comp::MaterialHandles;
+
+        auto* ecs = engine()->ecs();
+        auto* res = engine()->res();
 
         // Для уже загруженных материалов (хендлы в наличии)
-        for (auto [e, d, s, h] : engine()->ecs()->view<MatDesc, MatSettings, MatHandles>())
+        for (auto [e, uid, md, td, s, h] : ecs->view<Id, MatDesc, TexDesc, MatSettings, MatHandles>())
         {
-            // Только для нужного UID
-            if (id != d.uid) continue;
+            // Выполнять только для нужного UID
+            if (uid.uid != id) continue;
 
             // Освободить ресурсы
-            engine()->res()->release(d.mat_res_id);
+            res->release(md.res_id);
             for (const TextureType tt : magic_enum::enum_values<TextureType>()){
-                if (h.textures[tt] && d.tex_res_ids[tt] != res::kInvalidResourceId){
-                    //update_mat_textures({tt, TextureSamplerType::eNearest, {}}, s.index);
-                    engine()->res()->release(d.tex_res_ids[tt]);
+                if (td.res_ids[tt] != res::kInvalidResourceId){
+                    res->release(td.res_ids[tt]);
                 }
             }
 
@@ -1607,19 +1612,19 @@ namespace nasral::gfx
             material_ids().release(s.index);
 
             // Удалить entity
-            engine()->ecs()->destroy_deferred(e, [this, id]{
+            ecs->destroy_deferred(e, [this, id]{
                 log_info("Material instance unregistered [" + id.to_string() + "]");
             });
         }
 
         // Для еще не загруженных материалов (без хендлов)
-        for (auto [e, d, s] : engine()->ecs()->view<MatDesc, MatSettings>())
+        for (auto [e, uid, md, td, s] : ecs->view<Id, MatDesc, TexDesc, MatSettings>())
         {
-            // Только для нужного UID
-            if (id != d.uid) continue;
+            // Выполнять только для нужного UID
+            if (uid.uid != id) continue;
 
             // Удалить entity
-            engine()->ecs()->destroy_deferred(e, [this, id]{
+            ecs->destroy_deferred(e, [this, id]{
                 log_info("Material instance unregistered [" + id.to_string() + "]");
             });
         }

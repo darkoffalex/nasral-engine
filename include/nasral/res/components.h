@@ -3,42 +3,59 @@
 #include <nasral/core/types.h>
 #include <nasral/core/component.h>
 #include <nasral/res/types.h>
-#include <nasral/gfx/types.h>
 
 namespace nasral::res::comp
 {
     /**
-     * @brief Компонент дескрипторов материала
-     * @details Содержит идентификаторы ресурсов материала и текстур
+     * @brief Уникальный идентификатор ассета
+     * @details Используется для связи между сущностями при построении и сохранении сцены
      */
-    struct MaterialDescriptors : core::Component<MaterialDescriptors>
+    struct AssetId : core::Component<AssetId>
     {
         core::UniqueId uid = {};
-        ResourceId mat_res_id = 0;
-        core::EnumArray<gfx::TextureType, ResourceId> tex_res_ids = {};
     };
 
     /**
-     * @brief Тег - сигнализирует о том, что материал нужно запросить
+     * @brief Дескриптор ресурса
+     * @details Хранит идентификатор ресурса (используется для запроса/освобождения)
      */
-    struct MaterialRequest : core::Component<MaterialRequest>
+    struct Descriptor : core::Component<Descriptor>
+    {
+        ResourceId res_id = 0;
+    };
+
+    /**
+     * @brief Список дескрипторов ресурсов
+     * @tparam E Тип перечисления
+     * @details Хранит для каждого варианта перечисления по дескриптору ресурса
+     */
+    template <typename E>
+    struct DescriptorList : core::Component<DescriptorList<E>>
+    {
+        core::EnumArray<E, ResourceId> res_ids = {};
+    };
+
+    /**
+     * @brief Тег - требуется запрос ресурса
+     */
+    struct Request : core::Component<Request>
     {};
 
     /**
-     * @brief Тег - сигнализирует о том, что материал нужно освободить
+     * @brief Тег - требуется освобождение ресурса
      */
-    struct MaterialRelease : core::Component<MaterialRelease>
+    struct Release : core::Component<Release>
     {};
 
     /**
-     * @brief Тег - сигнализирует об ошибке загрузки материала или его под-ресурсов
+     * @brief Тег - ошибка загрузки ресурса
      */
-    struct MaterialError : core::Component<MaterialError>
+    struct Error : core::Component<Error>
     {};
 
     /**
-     * @brief Тег - сигнализирует о том, что материал в очереди на удаление
+     * @brief Тег - требуется удаление ассета
      */
-    struct MaterialPendingRemove : core::Component<MaterialPendingRemove>
+    struct PendingDelete : core::Component<PendingDelete>
     {};
 }

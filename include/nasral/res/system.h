@@ -22,10 +22,10 @@ namespace nasral::res
         void shutdown();
 
     private:
-        void update_requested_materials() const;
-        void update_released_materials() const;
+        void update_generic_resources(float dt) const;
+        void update_texture_resources(float dt) const;
 
-        void on_material_loaded(const ecs::EntityId& entity, IResource* res) const;
+        void on_generic_loaded(const ecs::EntityId& entity, IResource* res) const;
         void on_texture_loaded(const ecs::EntityId& entity, IResource* res, gfx::TextureType type) const;
     };
 }
