@@ -3,114 +3,118 @@
 
 namespace nasral
 {
-    Engine::Engine() = default;
+    Engine::Engine(const Config& config)
+    {
+        try
+        {
+            /* Engine subsystems */
 
-    Engine::~Engine(){
-        if (!initialized_) return;
-        shutdown();
-    }
-
-    bool Engine::initialize(const Config& config) noexcept{
-        try{
-            logger_ = std::make_unique<logging::Logger>(config.log);
+            logger_ = std::make_unique<log::Logger>(this, config.log);
             logger()->info("Logger initialized.");
 
-            ecs_ = std::make_unique<ecs::EcsManager>(this, config.ecs);
-            logger()->info("ECS initialized.");
+            evt_ = std::make_unique<evt::Manager>(this);
+            logger()->info("Event manager initialized.");
 
-            renderer_ = std::make_unique<rendering::Renderer>(this, config.rendering);
+            ecs_ = std::make_unique<ecs::Manager>(this, config.ecs);
+            logger()->info("ECS manager initialized.");
+
+            renderer_ = std::make_unique<gfx::Renderer>(this, config.gfx);
             logger()->info("Renderer initialized.");
 
-            resource_manager_ = std::make_unique<resources::ResourceManager>(this, config.resources);
+            res_ = std::make_unique<res::Manager>(this, config.res);
             logger()->info("Resource manager initialized.");
 
-            resource_system_ = std::make_unique<resources::ResourceSystem>(this);
-            logger()->info("Resource system initialized.");
+            /* E C S */
 
-            rendering_system_ = std::make_unique<rendering::RenderingSystem>(this);
-            logger()->info("Rendering system initialized.");
+            res_system_ = std::make_unique<res::System>(this);
+            res_system_->init();
+            logger()->info("ECS: Resource system initialized.");
 
-            initialized_ = true;
-            return true;
+            gfx_system_ = std::make_unique<gfx::System>(this);
+            gfx_system_->init();
+            logger()->info("ECS: GFX system initialized.");
         }
-        catch(const logging::LoggerError& e) {
-            const auto& msg = "Can't initialize logger: " + std::string(e.what());
-            std::cerr << msg << std::endl;
-            return false;
-        }
-        catch (const rendering::RenderingError& e) {
-            logger()->error("Can't initialize renderer: " + std::string(e.what()));
-            return false;
-        }
-        catch (const resources::ResourceError& e) {
-            logger()->error("Can't initialize resource manager: " + std::string(e.what()));
-            return false;
-        }
-        catch(const std::exception& e){
-            logger()->error(e.what());
-            return false;
+        catch (const std::runtime_error& e){
+            if (logger_) logger()->fatal(e.what());
+            throw;
         }
     }
 
-    void Engine::update([[maybe_unused]] const float delta) noexcept
+    Engine::~Engine()
     {
-        if (!initialized_) return;
-
-        assert(logger_ != nullptr);
         assert(ecs_ != nullptr);
-        assert(resource_manager_ != nullptr);
+        assert(res_ != nullptr);
         assert(renderer_ != nullptr);
+        assert(logger_ != nullptr);
 
-        try{
-            // Обновление ресурсов
-            resource_system_->update(delta);
+        assert(res_system_ != nullptr);
+        assert(gfx_system_ != nullptr);
 
-            // Обновление материалов
-            rendering_system_->update(delta);
+        /* E C S */
 
-            // Рендеринг
-            rendering_system_->render();
-        }
-        catch(const std::exception& e){
-            logger()->error(e.what());
-        }
+        res_system_.reset();
+        logger()->info("ECS: Resource system destroyed.");
+
+        gfx_system_.reset();
+        logger()->info("ECS: GFX system destroyed.");
+
+        /* Engine subsystems */
+
+        res_.reset();
+        logger()->info("Resource manager destroyed.");
+
+        renderer_.reset();
+        logger()->info("Renderer destroyed.");
+
+        ecs_.reset();
+        logger()->info("ECS manager destroyed.");
+
+        evt_.reset();
+        logger()->info("Event manager destroyed.");
+
+        logger_.reset();
     }
 
-    void Engine::shutdown() noexcept{
-        initialized_ = false;
-        try{
-            if (rendering_system_){
-                rendering_system_.reset();
-                logger()->info("Rendering system destroyed.");
-            }
+    void Engine::finalize() const
+    {
+        logger()->info("Finalizing...");
 
-            if (resource_system_){
-                resource_system_.reset();
-                logger()->info("Resource system destroyed.");
-            }
+        /* E C S */
 
-            if (resource_manager_){
-                resource_manager_.reset();
-                logger()->info("Resource manager destroyed.");
-            }
+        gfx_system_->shutdown();
+        res_system_->shutdown();
 
-            if (renderer_){
-                renderer_.reset();
-                logger()->info("Renderer destroyed.");
-            }
+        /* Engine subsystems */
 
-            if (ecs_){
-                ecs_.reset();
-                logger()->info("ECS destroyed.");
-            }
+        res_->finalize();
+        ecs_->apply_deferred_actions();
+    }
 
-            if (logger_){
-                logger()->info("Destroying logger.");
-                logger_.reset();
-            }
-        }
-        catch(const std::exception& e){
-            logger()->error(e.what());
-        }
+    void Engine::update(const float delta)
+    {
+        assert(ecs_ != nullptr);
+        assert(res_ != nullptr);
+        assert(renderer_ != nullptr);
+        assert(logger_ != nullptr);
+
+        assert(res_system_ != nullptr);
+        assert(gfx_system_ != nullptr);
+
+        // Обновление систем ECS
+        res_system_->update(delta);
+        gfx_system_->update(delta);
+
+        // Выполнение отложенных действий
+        ecs_->apply_deferred_actions();
+        evt_->apply_deferred_actions();
+
+        // Загрузка/выгрузка ресурсов
+        res_->update();
+
+        // Рендеринг
+        renderer_->cmd_begin_frame();
+        renderer_->cmd_bind_frame_descriptors();
+        // TODO: Рендеринг сцены (ECS)
+        renderer_->cmd_end_frame();
     }
 }
