@@ -1019,14 +1019,21 @@ namespace nasral::gfx
 
         // Создать необходимые примитивы синхронизации для каждого активного кадра
         const auto& ld = vk_device_->logical_device();
+
+        // Per-frame синхронизация
         for (size_t i = 0; i < config().max_frames_in_flight; ++i)
         {
             // Семафор, который будет ожидаться конвейером перед выполнением команд рендеринга
             vk_render_available_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
-            // Семафор, который будет сигнализировать о готовности к показу изображения (для команд показа)
-            vk_render_finished_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
             // Барьеры, которые показывают, что буфер был выполнен и готов к использованию
             vk_frame_fence_.emplace_back(ld.createFenceUnique(vk::FenceCreateInfo{vk::FenceCreateFlagBits::eSignaled}));
+        }
+
+        // Per-swap-chain-image синхронизация
+        for (size_t i = 0; i < config().swap_chain_images; ++i)
+        {
+            // Семафор, который будет сигнализировать о готовности к показу изображения (для команд показа)
+            vk_render_finished_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
         }
     }
 
@@ -1102,11 +1109,6 @@ namespace nasral::gfx
         // Текущий индекс кадра (от 0 включительно до config_.max_frames_in_flight)
         const auto frame_index = get_frame_index();
 
-        // Размеры области рендеринга
-        const auto& extent = vk_framebuffers_[frame_index]->extent();
-        const auto& width = extent.width;
-        const auto& height = extent.height;
-
         // Описываем очистку вложений кадрового буфера (цвет, глубина/трафарет)
         std::array<vk::ClearValue, 2> clear_values{};
 
@@ -1145,6 +1147,11 @@ namespace nasral::gfx
         // Если изображение было получено
         if (result == vk::Result::eSuccess)
         {
+            // Размеры области рендеринга
+            const auto& extent = vk_framebuffers_[available_image_index_]->extent();
+            const auto& width = extent.width;
+            const auto& height = extent.height;
+
             // Получить буфер кадра и команд
             auto& cmd_buffer = vk_command_buffers_[frame_index];
             auto& frame_buffer = vk_framebuffers_[available_image_index_]->vk_framebuffer();
@@ -1197,7 +1204,7 @@ namespace nasral::gfx
 
         // Семафоры, сигнализирующие готовность к показу
         std::array<vk::Semaphore, 1> signal_semaphores{
-            vk_render_finished_semaphore_[frame_index].get()
+            vk_render_finished_semaphore_[available_image_index_].get()
         };
 
         // Стадии, на которых конвейер будет ждать wait_semaphores
@@ -1232,6 +1239,7 @@ namespace nasral::gfx
             }
         }
         catch(const ::vk::OutOfDateKHRError&){
+            frame_in_progress_ = false;
             request_surface_refresh();
             return;
         }
@@ -1249,8 +1257,10 @@ namespace nasral::gfx
         if (!is_active_) return;
 
         // Если кадр не был начат - выйти
-        assert(frame_in_progress_ == true);
-        if (!frame_in_progress_) return;
+        if (!frame_in_progress_) {
+            assert(false && "Frame not started.");
+            return;
+        }
 
         // Текущий индекс кадра (от 0 включительно до config_.max_frames_in_flight)
         const auto frame_index = get_frame_index();
@@ -1315,8 +1325,10 @@ namespace nasral::gfx
         if (!is_active_) return;
 
         // Если кадр не был начат - выйти
-        assert(frame_in_progress_ == true);
-        if (!frame_in_progress_) return;
+        if (!frame_in_progress_) {
+            assert(false && "Frame not started.");
+            return;
+        }
 
         // Получить буфер команд
         auto& cmd_buffer = vk_command_buffers_[get_frame_index()];
@@ -1343,8 +1355,10 @@ namespace nasral::gfx
         if (!is_active_) return;
 
         // Если кадр не был начат - выйти
-        assert(frame_in_progress_ == true);
-        if (!frame_in_progress_) return;
+        if (!frame_in_progress_) {
+            assert(false && "Frame not started.");
+            return;
+        }
 
         // Получить буфер команд
         auto& cmd_buffer = vk_command_buffers_[get_frame_index()];
@@ -1618,7 +1632,7 @@ namespace nasral::gfx
         }
 
         // Для еще не загруженных материалов (без хендлов)
-        for (auto [e, uid, md, td, s] : ecs->view<Id, MatDesc, TexDesc, MatSettings>())
+        for (const auto [e, uid, md, td, s] : ecs->view<Id, MatDesc, TexDesc, MatSettings>())
         {
             // Выполнять только для нужного UID
             if (uid.uid != id) continue;

@@ -35,8 +35,8 @@ namespace nasral::res
             }
 
             // Кол-во вершин и индексов
-            vertex_count_ = data->vertices.size();
-            index_count_ = data->indices.size();
+            vertex_count_ = static_cast<uint32_t>(data->vertices.size());
+            index_count_ = static_cast<uint32_t>(data->indices.size());
 
             constexpr auto group_idx = static_cast<size_t>(gfx::Renderer::CommandGroup::eTransfer);
             const auto renderer = manager()->engine()->renderer();
