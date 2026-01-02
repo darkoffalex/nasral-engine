@@ -6,6 +6,9 @@ namespace nasral::res
     class TextureBuiltinLoader final : public Loader<Texture::Data>
     {
     public:
+        explicit TextureBuiltinLoader(Engine* const engine) : Loader(engine)
+        {}
+
         std::optional<Texture::Data> load(const std::string_view& path) override
         {
             if (path.find(kBuiltinTexWhitePixel) != std::string::npos){

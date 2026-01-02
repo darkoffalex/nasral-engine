@@ -10,7 +10,7 @@ namespace nasral::res
     class TextureStbLoader final : public Loader<Texture::Data>
     {
     public:
-        explicit TextureStbLoader(const LoadParamsOpt& params = std::nullopt) : Loader(params)
+        explicit TextureStbLoader(Engine* const engine, const LoadParamsOpt& params = std::nullopt) : Loader(engine, params)
         {
             if (params.has_value()){
                 assert(std::holds_alternative<TextureLoadParams>(params.value()));

@@ -7,30 +7,51 @@ namespace nasral::res
     class ProjectBuiltinLoader final : public Loader<Project::Data>
     {
     public:
+        explicit ProjectBuiltinLoader(Engine* const engine) : Loader(engine)
+        {}
+
         std::optional<Project::Data> load(const std::string_view& path) override
         {
             if (path.find(kBuiltinProjectFile) != std::string::npos)
             {
                 // Список материалов по умолчанию
-                std::vector<gfx::io::Material> materials = {
+                std::vector<gfx::io::Material::Ptr> materials = {};
+                materials.reserve(4);
+
+                // Dummy (UID 01)
+                materials.emplace_back(std::make_unique<gfx::io::Material>(
+                    engine(),
+                    gfx::io::Material::Data
                     {
-                        core::UniqueId(),
+                        core::UniqueId(0, 1),
                         gfx::MaterialType::eDummy,
                         "materials/dummy/material.xml",
                         {},
                         {},
                         {}
-                    },
+                    }
+                ));
+
+                // Цветные вершины (UID 02)
+                materials.emplace_back(std::make_unique<gfx::io::Material>(
+                    engine(),
+                    gfx::io::Material::Data
                     {
-                        core::UniqueId(),
+                        core::UniqueId(0, 2),
                         gfx::MaterialType::eVertexColored,
                         "materials/vertex-colored/material.xml",
                         {},
                         {},
                         {}
-                    },
+                    }
+                ));
+
+                // Освещение Phong (UID 03)
+                materials.emplace_back(std::make_unique<gfx::io::Material>(
+                    engine(),
+                    gfx::io::Material::Data
                     {
-                        core::UniqueId(),
+                        core::UniqueId(0, 3),
                         gfx::MaterialType::ePhong,
                         "materials/phong/material.xml",
                         {
@@ -43,10 +64,16 @@ namespace nasral::res
                             gfx::TextureSamplerType::eLinear,
                             gfx::TextureSamplerType::eLinear,
                         },
-                        {}
-                    },
+                        gfx::uniforms::MaterialPhong{}
+                    }
+                ));
+
+                // Освещение PBR (UID 04)
+                materials.emplace_back(std::make_unique<gfx::io::Material>(
+                    engine(),
+                    gfx::io::Material::Data
                     {
-                        core::UniqueId(),
+                        core::UniqueId(0, 4),
                         gfx::MaterialType::ePbr,
                         "materials/pbr/material.xml",
                         {
@@ -65,18 +92,15 @@ namespace nasral::res
                             gfx::TextureSamplerType::eLinear,
                             gfx::TextureSamplerType::eLinear,
                         },
-                        {}
+                        gfx::uniforms::MaterialPbr{}
                     }
-                };
-
-                // Уникальные ID соответствуют порядковому номеру в списке
-                for (size_t i = 0; i < materials.size(); ++i){
-                    materials[i].id.set(0, i);
-                }
+                ));
 
                 error_ = Error::eNone;
                 return std::optional{Project::Data{
+                    // Список материалов
                     std::move(materials),
+                    // Путь к изначальной сцене
                     kBuiltinSceneDefault.data(),
                 }};
             }

@@ -3,7 +3,7 @@
 #include <vector>
 #include <nasral/res/resource.h>
 #include <nasral/res/loader.h>
-#include <nasral/gfx/types_io.h>
+#include <nasral/gfx/io/material.h>
 #include <nasral/log/loggable.h>
 
 namespace nasral::res
@@ -16,7 +16,7 @@ namespace nasral::res
 
         struct Data
         {
-            std::vector<gfx::io::Material> materials;
+            std::vector<gfx::io::Material::Ptr> materials;
             std::string initial_scene_path;
         };
 
@@ -26,14 +26,14 @@ namespace nasral::res
         Project(const Project&) = delete;
         Project& operator=(const Project&) = delete;
 
-        [[nodiscard]] const std::vector<gfx::io::Material>& materials() const {return materials_;}
+        [[nodiscard]] const std::vector<gfx::io::Material::Ptr>& materials() const {return materials_;}
         [[nodiscard]] ResourceId initial_scene() const {return initial_scene_;}
 
         void load() noexcept override;
 
     protected:
         Loader<Data>::Ptr loader_;
-        std::vector<gfx::io::Material> materials_;
+        std::vector<gfx::io::Material::Ptr> materials_;
         ResourceId initial_scene_;
     };
 }

@@ -9,7 +9,7 @@ namespace nasral::res
     class MeshAssimpLoader final : public Loader<Mesh::Data>
     {
     public:
-        explicit MeshAssimpLoader(const LoadParamsOpt& params = std::nullopt) : Loader(params)
+        explicit MeshAssimpLoader(Engine* const engine, const LoadParamsOpt& params = std::nullopt) : Loader(engine, params)
         {
             if (params.has_value()){
                 assert(std::holds_alternative<MeshLoadParams>(params.value()));

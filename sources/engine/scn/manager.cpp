@@ -1,4 +1,4 @@
-// #include "pch.h"
+#include "pch.h"
 #include <nasral/scn/manager.h>
 #include <nasral/evt/utils.h>
 #include <nasral/res/resources/project.h>

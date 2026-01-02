@@ -8,6 +8,9 @@ namespace nasral::res
     class MaterialXmlLoader final : public Loader<Material::Data>
     {
     public:
+        explicit MaterialXmlLoader(Engine* const engine) : Loader(engine)
+        {}
+
         std::optional<Material::Data> load(const std::string_view& path) override
         {
             pugi::xml_document doc;

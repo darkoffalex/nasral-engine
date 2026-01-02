@@ -3,7 +3,7 @@
 #include <vector>
 #include <nasral/res/resource.h>
 #include <nasral/res/loader.h>
-#include <nasral/scn/types_io.h>
+#include <nasral/scn/io/base_node.h>
 #include <nasral/log/loggable.h>
 
 namespace nasral::res
@@ -16,7 +16,7 @@ namespace nasral::res
 
         struct Data
         {
-            std::vector<scn::io::Node> nodes;
+            std::vector<scn::io::Node::Ptr> nodes;
         };
 
         Scene(Manager* manager, ResourceId id, Loader<Data>::Ptr loader);
@@ -29,6 +29,6 @@ namespace nasral::res
 
     protected:
         Loader<Data>::Ptr loader_;
-        std::vector<scn::io::Node> nodes_;
+        std::vector<scn::io::Node::Ptr> nodes_;
     };
 }

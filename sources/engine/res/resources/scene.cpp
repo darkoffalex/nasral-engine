@@ -23,7 +23,7 @@ namespace nasral::res
 
         try
         {
-            const auto data = loader_->load(path);
+            auto data = loader_->load(path);
             if (!data.has_value()){
                 status_ = Status::eError;
                 error_ = loader_->error();

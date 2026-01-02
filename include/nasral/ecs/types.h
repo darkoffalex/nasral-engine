@@ -4,6 +4,7 @@
 #include <nasral/ecs/utils.h>
 #include <nasral/gfx/components.h>
 #include <nasral/res/components.h>
+#include <nasral/scn/components.h>
 
 namespace nasral::ecs
 {
@@ -22,7 +23,18 @@ namespace nasral::ecs
         res::comp::Request,
         res::comp::Release,
         res::comp::Error,
-        res::comp::PendingDelete
+        res::comp::PendingDelete,
+
+        // Сцена
+        scn::comp::Node,
+        scn::comp::Spatial,
+        scn::comp::Camera,
+        scn::comp::Mesh,
+        scn::comp::Light,
+        scn::comp::SpatialDirty,
+        scn::comp::CameraDirty,
+        scn::comp::LightDirty,
+        scn::comp::MeshDirty
     >;
 
     // Битовая маска компонентов (размер зависит от кол-ва возможных типов компонентов)

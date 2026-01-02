@@ -26,6 +26,9 @@ namespace nasral::core
     {
         uint64_t data[2] = {0, 0};
 
+        UniqueId() = default;
+        UniqueId(const uint64_t a, const uint64_t b) { set(a, b); }
+
         bool operator==(const UniqueId& other) const noexcept {
             return data[0] == other.data[0] && data[1] == other.data[1];
         }

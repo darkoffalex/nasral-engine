@@ -28,10 +28,16 @@ add_library(Engine OBJECT
         # Рендеринг
         gfx/renderer.cpp
         gfx/system.cpp
+        gfx/io/material.cpp
 
         # Сцена
         scn/manager.cpp
         scn/system.cpp
+        scn/io/base_node.cpp
+        scn/io/spatial_node.cpp
+        scn/io/camera_node.cpp
+        scn/io/light_node.cpp
+        scn/io/mesh_node.cpp
 )
 add_default_configurations(Engine demo_app)
 

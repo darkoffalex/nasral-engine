@@ -12,8 +12,9 @@ namespace nasral::res
     public:
         typedef std::unique_ptr<Loader> Ptr;
 
-        explicit Loader(const std::optional<LoadParams>& params = std::nullopt)
-        : load_params_{params}
+        explicit Loader(Engine* engine, const std::optional<LoadParams>& params = std::nullopt)
+            : engine_(engine)
+            , load_params_{params}
         {
             static_assert(std::is_move_constructible_v<Data>, "Data MUST be move-constructible.");
             static_assert(std::is_move_assignable_v<Data>, "Data MUST be move-assignable.");
@@ -23,9 +24,8 @@ namespace nasral::res
 
         virtual std::optional<Data> load(const std::string_view& path) = 0;
 
-        [[nodiscard]] Error error() const noexcept{
-            return error_;
-        }
+        [[nodiscard]] Error error() const noexcept { return error_; }
+        [[nodiscard]] Engine* engine() const noexcept { return engine_; }
 
         template<typename LP>
         [[nodiscard]] const LP* load_params() const{
@@ -34,6 +34,7 @@ namespace nasral::res
 
 
     protected:
+        Engine* const engine_;
         Error error_ = Error::eNone;
         std::optional<LoadParams> load_params_;
     };
