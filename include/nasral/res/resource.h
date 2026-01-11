@@ -30,6 +30,10 @@ namespace nasral::res
             return std::string(magic_enum::enum_name(type_));
         }
 
+        [[nodiscard]] std::string error_str() const noexcept{
+            return std::string(magic_enum::enum_name(error_));
+        }
+
     protected:
         IResource(const Type type, const ResourceId id, Manager* manager)
             : type_(type)

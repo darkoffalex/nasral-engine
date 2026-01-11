@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nasral/scn/io/spatial_node.h>
+#include <nasral/gfx/types.h>
 
 namespace nasral::scn::io
 {
@@ -16,8 +17,8 @@ namespace nasral::scn::io
             glm::vec4 color = glm::vec4(1.0f);
         } io_light_data;
 
-        LightNode(Engine* engine, Data data);
-        void unpack_to(const ecs::EntityId& entity_id) const override;
+        LightNode(Engine* engine, std::tuple<Node::Data, SpatialNode::Data, Data> data_tuple);
+        void unpack_to(const ecs::EntityId& entity_id, UnpackFlags flags) const override;
         void pack_from(ecs::EntityId& entity_id) override;
     };
 }

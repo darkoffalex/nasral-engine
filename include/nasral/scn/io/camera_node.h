@@ -17,8 +17,8 @@ namespace nasral::scn::io
             glm::float32_t far = 1000.0f;
         } io_cam_data;
 
-        CameraNode(Engine* engine, Data data);
-        void unpack_to(const ecs::EntityId& entity_id) const override;
+        CameraNode(Engine* engine, std::tuple<Node::Data, SpatialNode::Data, Data> data_tuple);
+        void unpack_to(const ecs::EntityId& entity_id, UnpackFlags flags) const override;
         void pack_from(ecs::EntityId& entity_id) override;
     };
 }

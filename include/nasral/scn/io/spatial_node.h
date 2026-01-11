@@ -13,8 +13,8 @@ namespace nasral::scn::io
             glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
         } io_spatial_data;
 
-        SpatialNode(Engine* engine, Data data);
-        void unpack_to(const ecs::EntityId& entity_id) const override;
+        SpatialNode(Engine* engine, std::tuple<Node::Data, Data> data_tuple);
+        void unpack_to(const ecs::EntityId& entity_id, UnpackFlags flags) const override;
         void pack_from(ecs::EntityId& entity_id) override;
     };
 }

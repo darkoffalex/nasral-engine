@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <nasral/engine.h>
 #include <nasral/gfx/io/material.h>
 #include <nasral/ecs/entity.h>
 #include <nasral/ecs/manager.h>
@@ -10,7 +11,7 @@ namespace nasral::gfx::io
         , io_material_data(std::move(data))
     {}
 
-    void Material::unpack_to(const ecs::EntityId& entity_id) const
+    void Material::unpack_to(const ecs::EntityId& entity_id, [[maybe_unused]] UnpackFlags flags) const
     {
         auto* ecs = engine()->ecs();
         auto* gfx = engine()->renderer();
@@ -59,6 +60,6 @@ namespace nasral::gfx::io
         m_settings.samplers = m.texture_samplers;
     }
 
-    void Material::pack_from(ecs::EntityId &entity_id)
+    void Material::pack_from([[maybe_unused]] ecs::EntityId &entity_id)
     {}
 }

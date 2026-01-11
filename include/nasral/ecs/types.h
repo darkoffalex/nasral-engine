@@ -27,6 +27,7 @@ namespace nasral::ecs
 
         // Сцена
         scn::comp::Node,
+        scn::comp::NodeChildren,
         scn::comp::Spatial,
         scn::comp::Camera,
         scn::comp::Mesh,

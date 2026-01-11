@@ -12,6 +12,7 @@
 #include <nasral/core/subsystem.h>
 #include <nasral/core/index_pool.h>
 #include <nasral/log/loggable.h>
+#include <nasral/ecs/entity.h>
 
 namespace nasral::gfx
 {
@@ -125,6 +126,8 @@ namespace nasral::gfx
             const char* layer_prefix,
             const char* msg,
             void* user_data);
+
+        [[nodiscard]] std::optional<ecs::EntityId> find_material_entity(const core::UniqueId& uid) const;
 
     private:
         void init_vk_instance();

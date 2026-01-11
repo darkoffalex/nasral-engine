@@ -14,8 +14,11 @@ namespace nasral::scn::comp
     {
         core::UniqueId uid;
         std::optional<ecs::EntityId> parent = std::nullopt;
-        std::optional<ecs::EntityId> first_child = std::nullopt;
-        std::optional<ecs::EntityId> next_sibling = std::nullopt;
+    };
+
+    struct NodeChildren : core::Component<NodeChildren>
+    {
+        ecs::EntityIdVector<4> children;
     };
 
     struct Spatial : core::Component<Spatial>

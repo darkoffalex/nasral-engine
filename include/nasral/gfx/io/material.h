@@ -23,7 +23,7 @@ namespace nasral::gfx::io
         } io_material_data;
 
         Material(Engine* engine, Data data);
-        void unpack_to(const ecs::EntityId& entity_id) const override;
+        void unpack_to(const ecs::EntityId& entity_id, UnpackFlags flags) const override;
         void pack_from(ecs::EntityId& entity_id) override;
     };
 }

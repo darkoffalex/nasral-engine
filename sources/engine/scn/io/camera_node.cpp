@@ -3,16 +3,16 @@
 
 namespace nasral::scn::io
 {
-    CameraNode::CameraNode(Engine *engine, Data data)
-        : SpatialNode(engine, {})
-        , io_cam_data(std::move(data))
+    CameraNode::CameraNode(Engine *engine, std::tuple<Node::Data, SpatialNode::Data, Data> data_tuple)
+        : SpatialNode(engine, {std::move(std::get<0>(data_tuple)), std::get<1>(data_tuple)})
+        , io_cam_data(std::get<2>(data_tuple))
     {}
 
-    void CameraNode::unpack_to(const ecs::EntityId &entity_id) const
+    void CameraNode::unpack_to([[maybe_unused]] const ecs::EntityId &entity_id, [[maybe_unused]] UnpackFlags flags) const
     {
     }
 
-    void CameraNode::pack_from(ecs::EntityId &entity_id)
+    void CameraNode::pack_from([[maybe_unused]] ecs::EntityId &entity_id)
     {
     }
 }

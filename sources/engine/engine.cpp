@@ -24,6 +24,9 @@ namespace nasral
             res_ = std::make_unique<res::Manager>(this, config.res);
             logger()->info("Resource manager initialized.");
 
+            scn_ = std::make_unique<scn::Manager>(this, config.scn);
+            logger()->info("Scene manager initialized.");
+
             /* E C S */
 
             res_system_ = std::make_unique<res::System>(this);
@@ -59,6 +62,9 @@ namespace nasral
         logger()->info("ECS: GFX system destroyed.");
 
         /* Engine subsystems */
+
+        scn_.reset();
+        logger()->info("Scene manager destroyed.");
 
         res_.reset();
         logger()->info("Resource manager destroyed.");

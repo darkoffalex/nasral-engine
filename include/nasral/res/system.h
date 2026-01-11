@@ -22,11 +22,15 @@ namespace nasral::res
         void shutdown();
 
     private:
-        void update_generic_resources(float dt) const;
-        void update_texture_resources(float dt) const;
+        bool validate(const ecs::EntityId& entity, const IResource* resource, bool add_err = true) const;
 
-        void on_generic_loaded(const ecs::EntityId& entity, IResource* res) const;
+        void update_requested() const;
+        void update_released() const;
+
         void on_texture_loaded(const ecs::EntityId& entity, IResource* res, gfx::TextureType type) const;
+        void on_material_loaded(const ecs::EntityId& entity, IResource* res) const;
+        void on_mesh_loaded(const ecs::EntityId& entity, IResource* res) const;
+        void on_scene_loaded(const ecs::EntityId& entity, IResource* res) const;
     };
 }
 

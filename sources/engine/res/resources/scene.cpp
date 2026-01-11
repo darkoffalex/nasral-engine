@@ -11,7 +11,7 @@ namespace nasral::res
     {}
 
     Scene::~Scene(){
-        nodes_.clear();
+        scene_root_.reset();
         RES_LOG_DESTRUCTION();
     }
 
@@ -31,7 +31,7 @@ namespace nasral::res
                 return;
             }
 
-            nodes_ = std::move(data.value().nodes);
+            scene_root_ = std::move(data.value().scene_root);
         }
         catch (const std::exception& e){
             status_ = Status::eError;

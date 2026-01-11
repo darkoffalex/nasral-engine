@@ -24,6 +24,19 @@ namespace nasral::gfx
         logger->warn(msg_str);
         return VK_FALSE;
     }
+
+    std::optional<ecs::EntityId> Renderer::find_material_entity(const core::UniqueId& uid) const
+    {
+        using Id = res::comp::AssetId;
+        using MatDesc = res::comp::Descriptor;
+        using TexDesc = res::comp::DescriptorList<TextureType>;
+
+        for (auto [e, id, md, td] : engine()->ecs()->view<Id, MatDesc, TexDesc>()){
+            if (id.uid == uid) return e;
+        }
+
+        return std::nullopt;
+    }
 }
 
 namespace nasral::gfx
@@ -1528,7 +1541,7 @@ namespace nasral::gfx
                 const auto m_entity = engine()->ecs()->spawn();
 
                 // Создать необходимые компоненты для entity
-                m_io->unpack_to(m_entity);
+                m_io->unpack_to(m_entity, core::IOStruct::eUFStandard);
 
                 // Запросить ресурсы материала
                 engine()->ecs()->add_component<res::comp::Request>(m_entity);
@@ -1543,7 +1556,6 @@ namespace nasral::gfx
      */
     void Renderer::on_project_releasing(const evt::Arg& arg)
     {
-        using Id = res::comp::AssetId;
         using MatDesc = res::comp::Descriptor;
         using TexDesc = res::comp::DescriptorList<TextureType>;
         using MatSettings = comp::MaterialSettings;
@@ -1559,37 +1571,38 @@ namespace nasral::gfx
             assert(proj->status() == res::Status::eLoaded);
             for (auto& m_io : proj->materials())
             {
-                // Для уже загруженных материалов (хендлы в наличии)
-                for (auto [e, uid, md, td, s, h] : ecs->view<Id, MatDesc, TexDesc, MatSettings, MatHandles>())
+                auto m_entity = find_material_entity(m_io->io_material_data.id);
+                if (m_entity.has_value())
                 {
-                    // Выполнять только для нужного UID
-                    if (uid.uid != m_io->io_material_data.id) continue;
+                    assert(ecs->has_component<MatDesc>(*m_entity));
+                    assert(ecs->has_component<MatHandles>(*m_entity));
+                    assert(ecs->has_component<MatSettings>(*m_entity));
 
-                    // Освободить ресурсы
-                    res->release(md.res_id);
-                    for (const TextureType tt : magic_enum::enum_values<TextureType>()){
-                        if (td.res_ids[tt] != res::kInvalidResourceId){
-                            res->release(td.res_ids[tt]);
+                    const auto& md = ecs->get_component<MatDesc>(m_entity.value());
+                    const auto& td = ecs->get_component<TexDesc>(m_entity.value());
+                    const auto& ms = ecs->get_component<MatSettings>(m_entity.value());
+
+                    // Если есть компоненты хендлов (ресурс загружен)
+                    if (ecs->has_component<MatHandles>(m_entity.value()))
+                    {
+                        // Освободить ресурс материала
+                        if (md.res_id != res::kInvalidResourceId){
+                            res->release(md.res_id);
+                        }
+
+                        // Освободить ресурс текстуры
+                        for (const TextureType tt : magic_enum::enum_values<TextureType>()){
+                            if (td.res_ids[tt] != res::kInvalidResourceId){
+                                res->release(td.res_ids[tt]);
+                            }
                         }
                     }
 
                     // Вернуть индекс материала в пул
-                    material_ids().release(s.index);
+                    material_ids().release(ms.index);
 
                     // Удалить entity
-                    ecs->destroy_deferred(e, [this, id = m_io->io_material_data.id]{
-                        log_info("Material instance unregistered [" + id.to_string() + "]");
-                    });
-                }
-
-                // Для еще не загруженных материалов (без хендлов)
-                for (const auto [e, uid, md, td, s] : ecs->view<Id, MatDesc, TexDesc, MatSettings>())
-                {
-                    // Выполнять только для нужного UID
-                    if (uid.uid != m_io->io_material_data.id) continue;
-
-                    // Удалить entity
-                    ecs->destroy_deferred(e, [this, id = m_io->io_material_data.id]{
+                    ecs->destroy_deferred(m_entity.value(), [this, id = m_io->io_material_data.id]{
                         log_info("Material instance unregistered [" + id.to_string() + "]");
                     });
                 }
