@@ -54,6 +54,12 @@ namespace nasral::res::comp
     {};
 
     /**
+     * @brief Тег - ресурс загружен и доступен
+     */
+    struct Loaded : core::Component<Loaded>
+    {};
+
+    /**
      * @brief Тег - требуется удаление ассета
      */
     struct PendingDelete : core::Component<PendingDelete>

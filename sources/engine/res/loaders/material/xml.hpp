@@ -57,12 +57,12 @@ namespace nasral::res
                 if (name == "PolygonMode")
                 {
                     const std::unordered_map<std::string, vk::PolygonMode> map = {
-                        {"eFill", vk::PolygonMode::eFill},
-                        {"eLine", vk::PolygonMode::eLine},
-                        {"ePoint", vk::PolygonMode::ePoint}
+                        {"Fill", vk::PolygonMode::eFill},
+                        {"Line", vk::PolygonMode::eLine},
+                        {"Point", vk::PolygonMode::ePoint}
                     };
 
-                    const auto mode = setting.text().as_string("eFill");
+                    const auto mode = setting.text().as_string("Fill");
                     if (map.count(mode) > 0){
                         data.polygon_mode = map.at(mode);
                     }else{

@@ -13,6 +13,7 @@ namespace nasral::scn::comp
     struct Node : core::Component<Node>
     {
         core::UniqueId uid;
+        NodeType type = NodeType::eDummy;
         std::optional<ecs::EntityId> parent = std::nullopt;
     };
 
@@ -42,7 +43,6 @@ namespace nasral::scn::comp
     struct Mesh : core::Component<Mesh>
     {
         std::optional<ecs::EntityId> material_entity = std::nullopt;
-        res::ResourceId mesh_resource = res::kInvalidResourceId;
     };
 
     struct Light : core::Component<Light>
@@ -55,6 +55,7 @@ namespace nasral::scn::comp
         glm::vec4 color = glm::vec4(1.0f);
     };
 
+    struct Active : core::Component<Active> {};
     struct SpatialDirty : core::Component<SpatialDirty> {};
     struct CameraDirty : core::Component<SpatialDirty> {};
     struct LightDirty : core::Component<LightDirty> {};

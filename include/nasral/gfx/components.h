@@ -29,6 +29,15 @@ namespace nasral::gfx::comp
     };
 
     /**
+     * @brief Компонент хендлов меша
+     * @details Содержит хендлы геометрических буферов меша и кол-во индексов
+     */
+    struct MeshHandles : core::Component<MeshHandles>
+    {
+        handles::Mesh mesh;
+    };
+
+    /**
      * @brief Тег - сигнализирует о том, что текстуры изменились (нужно обновить дескрипторы)
      */
     struct MaterialDirtyTextures : core::Component<MaterialDirtyTextures>

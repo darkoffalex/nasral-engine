@@ -36,6 +36,10 @@ namespace nasral
             gfx_system_ = std::make_unique<gfx::System>(this);
             gfx_system_->init();
             logger()->info("ECS: GFX system initialized.");
+
+            scn_system_ = std::make_unique<scn::System>(this);
+            scn_system_->init();
+            logger()->info("ECS: Scene system initialized.");
         }
         catch (const std::runtime_error& e){
             if (logger_) logger()->fatal(e.what());
@@ -54,6 +58,9 @@ namespace nasral
         assert(gfx_system_ != nullptr);
 
         /* E C S */
+
+        scn_system_.reset();
+        logger()->info("ECS: Scene system destroyed.");
 
         res_system_.reset();
         logger()->info("ECS: Resource system destroyed.");
@@ -85,15 +92,22 @@ namespace nasral
     {
         logger()->info("Finalizing...");
 
-        /* E C S */
-
+        // Заключительные операции ECS систем
+        scn_system_->shutdown();
         gfx_system_->shutdown();
         res_system_->shutdown();
 
-        /* Engine subsystems */
-
-        res_->finalize();
+        // Выполнить отложенные действия
         ecs_->apply_deferred_actions();
+        evt_->apply_deferred_actions();
+
+        // Последний loop ECS систем
+        res_system_->update(0.0f);
+        gfx_system_->update(0.0f);
+
+        // Заключительная обработка ресурсов
+        renderer_->cmd_wait_for_frame();
+        res_->finalize();
     }
 
     void Engine::update(const float delta)
@@ -120,7 +134,7 @@ namespace nasral
         // Рендеринг
         renderer_->cmd_begin_frame();
         renderer_->cmd_bind_frame_descriptors();
-        // TODO: Рендеринг сцены (ECS)
+        gfx_system_->render();
         renderer_->cmd_end_frame();
     }
 }

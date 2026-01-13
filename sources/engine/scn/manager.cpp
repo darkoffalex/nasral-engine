@@ -123,7 +123,7 @@ namespace nasral::scn
             node.uid = core::UniqueId(1, 1);
 
             auto& spatial = ecs->get_component<comp::Spatial>(camera_);
-            spatial.position = glm::vec3(0.0f, 0.0f, 5.0f);
+            spatial.position = glm::vec3(0.0f, 0.0f, 1.0f);
             spatial.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
             spatial.scale = glm::vec3(1.0f, 1.0f, 1.0f);
 

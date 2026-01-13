@@ -8,6 +8,7 @@
 #include <nasral/res/resources/material.h>
 #include <nasral/res/resources/texture.h>
 #include <nasral/res/resources/scene.h>
+#include <nasral/res/resources/mesh.h>
 
 namespace nasral::res
 {
@@ -44,6 +45,7 @@ namespace nasral::res
             return false;
         }
 
+        engine()->ecs()->add_component<comp::Loaded>(entity);
         return true;
     }
 
@@ -108,12 +110,13 @@ namespace nasral::res
         using Desc = comp::Descriptor;
         using DescTexList = comp::DescriptorList<gfx::TextureType>;
         using Rel = comp::Release;
+        using Loaded = comp::Loaded;
 
         auto* ecs = engine()->ecs();
         auto* res = engine()->res();
 
-        // Освободить нужные ресурсы
-        for (auto[e, d, r] : ecs->view<Desc, Rel>())
+        // Освободить нужные ресурсы (требует освобождения и загружен)
+        for (auto[e, d, r, l] : ecs->view<Desc, Rel, Loaded>())
         {
             if (d.res_id != kInvalidResourceId){
                 res->release(d.res_id);
@@ -130,6 +133,7 @@ namespace nasral::res
 
             // Освобождение выполнено
             ecs->remove_component_deferred<Rel>(e);
+            ecs->remove_component_deferred<Loaded>(e);
         }
     }
 
@@ -169,9 +173,16 @@ namespace nasral::res
 
     void System::on_mesh_loaded(const ecs::EntityId& entity, IResource* res) const
     {
-        (void)entity;
-        (void)res;
-        // TODO: Implement
+        auto* ecs = engine()->ecs();
+
+        const auto* m_res = dynamic_cast<Mesh*>(res);
+        if (!m_res){
+            log_error("Using wrong resource type for mesh entity update");
+            return;
+        }
+
+        auto& m_handles = ecs->get_or_add_component<gfx::comp::MeshHandles>(entity);
+        m_handles.mesh = m_res->render_handles();
     }
 
     void System::on_scene_loaded(const ecs::EntityId& entity, IResource* res) const

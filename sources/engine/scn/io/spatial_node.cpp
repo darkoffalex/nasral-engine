@@ -1,5 +1,8 @@
 #include "pch.h"
 #include <nasral/scn/io/spatial_node.h>
+#include <nasral/ecs/manager.h>
+#include <nasral/scn/components.h>
+#include <nasral/engine.h>
 
 namespace nasral::scn::io
 {
@@ -10,9 +13,33 @@ namespace nasral::scn::io
 
     void SpatialNode::unpack_to([[maybe_unused]] const ecs::EntityId &entity_id, [[maybe_unused]] UnpackFlags flags) const
     {
+        if (!(flags & eUFSkipRootComp)){
+            try_add_node_components(entity_id);
+        }
+
+        try_add_spatial_components(entity_id);
+        try_add_children_components(entity_id, true);
     }
 
     void SpatialNode::pack_from([[maybe_unused]] ecs::EntityId &entity_id)
     {
+        // TODO: Implement
+    }
+
+    void SpatialNode::try_add_spatial_components(const ecs::EntityId& entity_id, const bool renderable) const
+    {
+        auto* ecs = engine()->ecs();
+        auto* gfx = engine()->renderer();
+
+        auto& spatial_c = ecs->get_or_add_component<comp::Spatial>(entity_id);
+        spatial_c.position = io_spatial_data.position;
+        spatial_c.rotation = io_spatial_data.rotation;
+        spatial_c.scale = io_spatial_data.scale;
+
+        if (renderable)
+        {
+            spatial_c.obj_index = gfx->object_ids().acquire();
+            ecs->add_component<comp::SpatialDirty>(entity_id);
+        }
     }
 }

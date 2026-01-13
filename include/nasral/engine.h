@@ -9,6 +9,7 @@
 
 #include <nasral/res/system.h>
 #include <nasral/gfx/system.h>
+#include <nasral/scn/system.h>
 
 namespace nasral
 {
@@ -43,5 +44,6 @@ namespace nasral
 
         gfx::System::Ptr gfx_system_;
         res::System::Ptr res_system_;
+        scn::System::Ptr scn_system_;
     };
 }

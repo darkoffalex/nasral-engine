@@ -16,5 +16,8 @@ namespace nasral::scn::io
         SpatialNode(Engine* engine, std::tuple<Node::Data, Data> data_tuple);
         void unpack_to(const ecs::EntityId& entity_id, UnpackFlags flags) const override;
         void pack_from(ecs::EntityId& entity_id) override;
+
+    protected:
+        void try_add_spatial_components(const ecs::EntityId& entity_id, bool renderable = false) const;
     };
 }

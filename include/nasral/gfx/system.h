@@ -17,9 +17,14 @@ namespace nasral::gfx
         void init();
         void update(float dt);
         void shutdown();
+        void render() const;
 
+    private:
         void update_material_settings() const;
         void update_material_textures() const;
+        void update_objects_uniforms() const;
+        void update_lights_uniforms() const;
+        void update_cam_uniforms() const;
     };
 }
 

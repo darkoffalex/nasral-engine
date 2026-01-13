@@ -20,5 +20,9 @@ namespace nasral::scn::io
         Node(Engine* engine, Data data);
         void unpack_to(const ecs::EntityId& entity_id, UnpackFlags flags) const override;
         void pack_from(ecs::EntityId& entity_id) override;
+
+    protected:
+        void try_add_node_components(const ecs::EntityId& entity_id) const;
+        void try_add_children_components(const ecs::EntityId& entity_id, bool unpack_children = true) const;
     };
 }

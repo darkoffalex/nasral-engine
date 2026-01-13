@@ -13,6 +13,7 @@ namespace nasral::ecs
         // Подсистема рендеринга
         gfx::comp::MaterialHandles,
         gfx::comp::MaterialSettings,
+        gfx::comp::MeshHandles,
         gfx::comp::MaterialDirtySettings,
         gfx::comp::MaterialDirtyTextures,
 
@@ -23,6 +24,7 @@ namespace nasral::ecs
         res::comp::Request,
         res::comp::Release,
         res::comp::Error,
+        res::comp::Loaded,
         res::comp::PendingDelete,
 
         // Сцена

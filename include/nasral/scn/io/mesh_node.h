@@ -17,5 +17,8 @@ namespace nasral::scn::io
         MeshNode(Engine* engine, DataTuple data_tuple);
         void unpack_to(const ecs::EntityId& entity_id, UnpackFlags flags) const override;
         void pack_from(ecs::EntityId& entity_id) override;
+
+    protected:
+        [[nodiscard]] bool try_add_mesh_components(const ecs::EntityId& entity_id, bool request_resource) const;
     };
 }

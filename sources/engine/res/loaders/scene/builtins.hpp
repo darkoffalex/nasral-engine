@@ -37,12 +37,12 @@ namespace nasral::res
                     },
                     scn::io::SpatialNode::Data{
                         glm::vec3(0.0f, 0.0f, 0.0f),
-                        glm::vec3(1.0f),
+                        glm::vec3(1.2f),
                         glm::vec3(0.0f)
                     },
                     scn::io::MeshNode::Data{
                         "meshes/chair/chair.obj",
-                        core::UniqueId(0, 3) // Phong
+                        core::UniqueId(0, 2) // Цветные вершины (UID 02)
                     }
                 }));
 

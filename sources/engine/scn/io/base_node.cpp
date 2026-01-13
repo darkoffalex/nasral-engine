@@ -14,34 +14,46 @@ namespace nasral::scn::io
 
     void Node::unpack_to(const ecs::EntityId &entity_id, const UnpackFlags flags) const
     {
-        auto* ecs = engine()->ecs();
-
-        // Если не нужно пропускать обновление корня
         if (!(flags & eUFSkipRootComp)){
-            auto& node = ecs->get_or_add_component<comp::Node>(entity_id);
-            node.uid = io_node_data.id;
+            try_add_node_components(entity_id);
         }
 
-        // Если нет потомков - выход
-        if (io_node_data.children.empty()){
-            return;
-        }
-
-        // Добавить потомков
-        ecs->add_component<comp::NodeChildren>(entity_id);
-        for (auto& child_ptr : io_node_data.children)
-        {
-            auto child_entity = ecs->spawn();
-            auto& parent_cc = ecs->get_component<comp::NodeChildren>(entity_id);
-            auto& child_nc = ecs->get_or_add_component<comp::Node>(child_entity);
-
-            parent_cc.children.push_back(child_entity);
-            child_nc.parent = entity_id;
-            child_ptr->unpack_to(child_entity, eUFStandard);
-        }
+        try_add_children_components(entity_id);
     }
 
     void Node::pack_from([[maybe_unused]] ecs::EntityId &entity_id)
     {
+        // TODO: Implement
+    }
+
+    void Node::try_add_node_components(const ecs::EntityId& entity_id) const
+    {
+        auto* ecs = engine()->ecs();
+        auto& node_c = ecs->get_or_add_component<comp::Node>(entity_id);
+        node_c.uid = io_node_data.id;
+        node_c.type = io_node_data.type;
+    }
+
+    void Node::try_add_children_components(const ecs::EntityId& entity_id, const bool unpack_children) const
+    {
+        if (io_node_data.children.empty()){
+            return;
+        }
+
+        auto* ecs = engine()->ecs();
+        auto& parent_cc = ecs->get_or_add_component<comp::NodeChildren>(entity_id);
+
+        for (auto& child_ptr : io_node_data.children)
+        {
+            auto ce = ecs->spawn();
+            auto& child_nc = ecs->get_or_add_component<comp::Node>(ce);
+
+            parent_cc.children.push_back(ce);
+            child_nc.parent = entity_id;
+
+            if (unpack_children){
+                child_ptr->unpack_to(ce, eUFStandard);
+            }
+        }
     }
 }
