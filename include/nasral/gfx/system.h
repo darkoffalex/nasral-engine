@@ -20,6 +20,8 @@ namespace nasral::gfx
         void render() const;
 
     private:
+        void render_meshes() const;
+
         void update_material_settings() const;
         void update_material_textures() const;
         void update_objects_uniforms() const;

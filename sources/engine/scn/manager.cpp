@@ -118,9 +118,12 @@ namespace nasral::scn
             ecs->add_component<comp::Node>(camera_);
             ecs->add_component<comp::Spatial>(camera_);
             ecs->add_component<comp::Camera>(camera_);
+            ecs->add_component<gfx::comp::UniformIndex>(camera_);
+            ecs->add_component<gfx::comp::UniformState>(camera_);
 
             auto& node = ecs->get_component<comp::Node>(camera_);
             node.uid = core::UniqueId(1, 1);
+            node.type = NodeType::eCamera;
 
             auto& spatial = ecs->get_component<comp::Spatial>(camera_);
             spatial.position = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -132,10 +135,14 @@ namespace nasral::scn
             camera.fov = 90.0f;
             camera.far = 1000.0f;
             camera.near = 0.1f;
-            camera.obj_index = 0;
             camera.type = CameraType::ePerspective;
 
-            ecs->add_component<comp::CameraDirty>(camera_);
+            auto& ubo_id = ecs->get_component<gfx::comp::UniformIndex>(camera_);
+            ubo_id.index = 0;
+
+            auto& ubo_s = ecs->get_component<gfx::comp::UniformState>(camera_);
+            ubo_s.dirty = true;
+
             set_parent(camera_, root_);
         }
     }

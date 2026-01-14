@@ -14,8 +14,10 @@ namespace nasral::ecs
         gfx::comp::MaterialHandles,
         gfx::comp::MaterialSettings,
         gfx::comp::MeshHandles,
-        gfx::comp::MaterialDirtySettings,
-        gfx::comp::MaterialDirtyTextures,
+        gfx::comp::UniformIndex,
+        gfx::comp::UniformState,
+        gfx::comp::DirtyUniform,
+        gfx::comp::DirtyTextures,
 
         // Подсистема ресурсов
         res::comp::AssetId,
@@ -33,11 +35,7 @@ namespace nasral::ecs
         scn::comp::Spatial,
         scn::comp::Camera,
         scn::comp::Mesh,
-        scn::comp::Light,
-        scn::comp::SpatialDirty,
-        scn::comp::CameraDirty,
-        scn::comp::LightDirty,
-        scn::comp::MeshDirty
+        scn::comp::Light
     >;
 
     // Битовая маска компонентов (размер зависит от кол-ва возможных типов компонентов)

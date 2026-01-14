@@ -1554,59 +1554,38 @@ namespace nasral::gfx
      * @brief Обработка события выгрузки проекта
      * @param arg Аргумент события
      */
-    void Renderer::on_project_releasing(const evt::Arg& arg)
+    void Renderer::on_project_releasing([[maybe_unused]] const evt::Arg& arg)
     {
         using MatDesc = res::comp::Descriptor;
         using TexDesc = res::comp::DescriptorList<TextureType>;
-        using MatSettings = comp::MaterialSettings;
-        using MatHandles = comp::MaterialHandles;
+        using Loaded = res::comp::Loaded;
+        using UboIndex = comp::UniformIndex;
+        using Uid = res::comp::AssetId;
 
         auto* ecs = engine()->ecs();
         auto* res = engine()->res();
 
-        auto* r_ptr = static_cast<res::IResource*>(*std::get_if<evt::ArgPtr>(&arg));
-        if (const auto* proj = dynamic_cast<res::Project*>(r_ptr))
+        for (auto [e, d, td, uid, l, idx] : ecs->view<MatDesc, TexDesc, Uid, Loaded, UboIndex>())
         {
-            // Пройтись по списку материалов
-            assert(proj->status() == res::Status::eLoaded);
-            for (auto& m_io : proj->materials())
-            {
-                auto m_entity = find_material_entity(m_io->io_material_data.id);
-                if (m_entity.has_value())
-                {
-                    assert(ecs->has_component<MatDesc>(*m_entity));
-                    assert(ecs->has_component<MatHandles>(*m_entity));
-                    assert(ecs->has_component<MatSettings>(*m_entity));
+            // Освободить ресурс материала
+            if (d.res_id != res::kInvalidResourceId){
+                res->release(d.res_id);
+            }
 
-                    const auto& md = ecs->get_component<MatDesc>(m_entity.value());
-                    const auto& td = ecs->get_component<TexDesc>(m_entity.value());
-                    const auto& ms = ecs->get_component<MatSettings>(m_entity.value());
-
-                    // Если есть компоненты хендлов (ресурс загружен)
-                    if (ecs->has_component<MatHandles>(m_entity.value()))
-                    {
-                        // Освободить ресурс материала
-                        if (md.res_id != res::kInvalidResourceId){
-                            res->release(md.res_id);
-                        }
-
-                        // Освободить ресурс текстуры
-                        for (const TextureType tt : magic_enum::enum_values<TextureType>()){
-                            if (td.res_ids[tt] != res::kInvalidResourceId){
-                                res->release(td.res_ids[tt]);
-                            }
-                        }
-                    }
-
-                    // Вернуть индекс материала в пул
-                    material_ids().release(ms.index);
-
-                    // Удалить entity
-                    ecs->destroy_deferred(m_entity.value(), [this, id = m_io->io_material_data.id]{
-                        log_info("Material instance unregistered [" + id.to_string() + "]");
-                    });
+            // Освободить ресурс текстуры
+            for (const TextureType tt : magic_enum::enum_values<TextureType>()){
+                if (td.res_ids[tt] != res::kInvalidResourceId){
+                    res->release(td.res_ids[tt]);
                 }
             }
+
+            // Вернуть индекс материала в пул
+            material_ids().release(idx.index);
+
+            // Удалить entity
+            ecs->destroy_deferred(e, [this, id = uid.uid]{
+                log_info("Material instance unregistered [" + id.to_string() + "]");
+            });
         }
     }
 

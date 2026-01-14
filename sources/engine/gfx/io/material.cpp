@@ -21,19 +21,23 @@ namespace nasral::gfx::io
         const auto m_res_id = engine()->res()->find(m.material_path);
         assert(m_res_id.has_value() && "Material resource not found in list");
 
-        // Добавить необходимые компоненты
+        // Добавить необходимые компоненты сущности материала
+        ecs->add_component<comp::MaterialSettings>(entity_id);
+        ecs->add_component<comp::MaterialHandles>(entity_id);
+        ecs->add_component<comp::DirtyUniform>(entity_id);
+        ecs->add_component<comp::DirtyTextures>(entity_id);
+        ecs->add_component<comp::UniformIndex>(entity_id);
         ecs->add_component<res::comp::AssetId>(entity_id);
         ecs->add_component<res::comp::Descriptor>(entity_id);
         ecs->add_component<res::comp::DescriptorList<TextureType>>(entity_id);
-        ecs->add_component<comp::MaterialSettings>(entity_id);
-        ecs->add_component<comp::MaterialDirtySettings>(entity_id);
-        ecs->add_component<comp::MaterialDirtyTextures>(entity_id);
 
         // Получить основные компоненты
         auto& m_uid  = ecs->get_component<res::comp::AssetId>(entity_id);
         auto& m_desc = ecs->get_component<res::comp::Descriptor>(entity_id);
         auto& t_desc = ecs->get_component<res::comp::DescriptorList<TextureType>>(entity_id);
         auto& m_settings = ecs->get_component<comp::MaterialSettings>(entity_id);
+        auto& m_ubo = ecs->get_component<comp::UniformIndex>(entity_id);
+
 
         // Задать UID
         m_uid.uid = m.id;
@@ -53,9 +57,12 @@ namespace nasral::gfx::io
             }
         }
 
+        // Индекс в UBO/SSBO
+        // Внимание! Выделение ID материала (нужно затем освободить)
+        m_ubo.index = gfx->material_ids().acquire();
+
         // Задать параметры материала
         m_settings.type = m.type;
-        m_settings.index = gfx->material_ids().acquire(); // Внимание! Выделение ID материала (нужно затем освободить)
         m_settings.uniforms = m.material_settings;
         m_settings.samplers = m.texture_samplers;
     }

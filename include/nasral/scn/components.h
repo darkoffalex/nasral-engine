@@ -3,7 +3,6 @@
 #include <glm/glm.hpp>
 #include <nasral/core/types.h>
 #include <nasral/scn/types.h>
-#include <nasral/res/types.h>
 #include <nasral/gfx/types.h>
 #include <nasral/ecs/entity.h>
 #include <nasral/core/component.h>
@@ -24,7 +23,6 @@ namespace nasral::scn::comp
 
     struct Spatial : core::Component<Spatial>
     {
-        uint32_t obj_index = 0;
         glm::vec3 position = {0.0f, 0.0f, 0.0f};
         glm::vec3 scale = {1.0f, 1.0f, 1.0f};
         glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
@@ -32,7 +30,6 @@ namespace nasral::scn::comp
 
     struct Camera : core::Component<Camera>
     {
-        uint32_t obj_index = 0;
         CameraType type = CameraType::ePerspective;
         glm::float32_t fov = 90.0f;
         glm::float32_t aspect = 1.0f;
@@ -47,7 +44,6 @@ namespace nasral::scn::comp
 
     struct Light : core::Component<Light>
     {
-        uint32_t obj_index = 0;
         gfx::LightType type = gfx::LightType::ePointLight;
         glm::float32_t intensity = 1.0f;
         glm::float32_t radius = 1.0f;
@@ -56,8 +52,4 @@ namespace nasral::scn::comp
     };
 
     struct Active : core::Component<Active> {};
-    struct SpatialDirty : core::Component<SpatialDirty> {};
-    struct CameraDirty : core::Component<SpatialDirty> {};
-    struct LightDirty : core::Component<LightDirty> {};
-    struct MeshDirty : core::Component<MeshDirty> {};
 }

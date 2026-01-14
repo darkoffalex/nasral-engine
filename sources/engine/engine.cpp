@@ -97,17 +97,24 @@ namespace nasral
         gfx_system_->shutdown();
         res_system_->shutdown();
 
-        // Выполнить отложенные действия
-        ecs_->apply_deferred_actions();
+        // Выполнить отложенные действия (после заключительных ECS операций)
         evt_->apply_deferred_actions();
+        ecs_->apply_deferred_actions();
 
         // Последний loop ECS систем
+        scn_system_->update(0.0f);
         res_system_->update(0.0f);
         gfx_system_->update(0.0f);
 
-        // Заключительная обработка ресурсов
+        // Подождать завершения кадра
         renderer_->cmd_wait_for_frame();
+
+        // Заключительная обработка ресурсов
         res_->finalize();
+
+        // Выполнить отложенные действия (завершение)
+        evt_->apply_deferred_actions();
+        ecs_->apply_deferred_actions();
     }
 
     void Engine::update(const float delta)
@@ -121,6 +128,7 @@ namespace nasral
         assert(gfx_system_ != nullptr);
 
         // Обновление систем ECS
+        scn_system_->update(delta);
         res_system_->update(delta);
         gfx_system_->update(delta);
 

@@ -31,15 +31,22 @@ namespace nasral::scn::io
         auto* ecs = engine()->ecs();
         auto* gfx = engine()->renderer();
 
-        auto& spatial_c = ecs->get_or_add_component<comp::Spatial>(entity_id);
-        spatial_c.position = io_spatial_data.position;
-        spatial_c.rotation = io_spatial_data.rotation;
-        spatial_c.scale = io_spatial_data.scale;
+        ecs->add_component<comp::Spatial>(entity_id);
+        ecs->add_component<gfx::comp::UniformIndex>(entity_id);
+        ecs->add_component<gfx::comp::UniformState>(entity_id);
+
+        auto& spatial = ecs->get_component<comp::Spatial>(entity_id);
+        spatial.position = io_spatial_data.position;
+        spatial.rotation = io_spatial_data.rotation;
+        spatial.scale = io_spatial_data.scale;
 
         if (renderable)
         {
-            spatial_c.obj_index = gfx->object_ids().acquire();
-            ecs->add_component<comp::SpatialDirty>(entity_id);
+            auto& ubo_id = ecs->get_component<gfx::comp::UniformIndex>(entity_id);
+            auto& ubo_s = ecs->get_component<gfx::comp::UniformState>(entity_id);
+
+            ubo_id.index = gfx->object_ids().acquire();
+            ubo_s.dirty = true;
         }
     }
 }

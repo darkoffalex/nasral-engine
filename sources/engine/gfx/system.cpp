@@ -29,72 +29,80 @@ namespace nasral::gfx
 
     void System::render() const
     {
-        using Mesh = scn::comp::Mesh;
+        render_meshes();
+    }
+
+    void System::render_meshes() const
+    {
         using Spatial = scn::comp::Spatial;
+        using MeshNode = scn::comp::Mesh;
         using MeshHandles = comp::MeshHandles;
         using MatHandles = comp::MaterialHandles;
         using MatSettings = comp::MaterialSettings;
+        using UboIdx = comp::UniformIndex;
 
         auto* renderer = engine()->renderer();
         auto* ecs = engine()->ecs();
 
-        for (auto [e, m, s, h] : ecs->view<Mesh, Spatial, MeshHandles>())
+        for (auto [e, spatial, mesh, mesh_hdl, mesh_ubo] : ecs->view<Spatial, MeshNode, MeshHandles, UboIdx>())
         {
-            if (!m.material_entity.has_value()){
-                log_warn("Mesh has no material!");
+            if (!mesh_hdl.mesh){
+                log_warn("Mesh node has no render handles!");
                 continue;
             }
 
-            if (!ecs->is_valid(m.material_entity.value())
-                || !ecs->has_component<MatSettings>(m.material_entity.value())
-                || !ecs->has_component<MatHandles>(m.material_entity.value()))
+            if (!mesh.material_entity.has_value()){
+                log_warn("Mesh node has no material!");
+                continue;
+            }
+
+            auto mat_e = mesh.material_entity.value();
+            if (!ecs->is_valid(mat_e)
+                || !ecs->has_component<MatSettings>(mat_e)
+                || !ecs->has_component<MatHandles>(mat_e))
             {
                 log_warn("Material entity is invalid!");
                 continue;
             }
 
-            if (!h.mesh){
-                log_warn("Mesh has no render handles!");
-                continue;
-            }
+            const auto& mat_ubo = ecs->get_component<UboIdx>(mat_e);
+            const auto& mat_hdl = ecs->get_component<MatHandles>(mat_e);
 
-            const auto& mts = ecs->get_component<MatSettings>(m.material_entity.value());
-            const auto& mth = ecs->get_component<MatHandles>(m.material_entity.value());
-
-            renderer->cmd_bind_material(mth.material, mts.index);
-            renderer->cmd_draw_mesh(h.mesh, s.obj_index);
+            renderer->cmd_bind_material(mat_hdl.material, mat_ubo.index);
+            renderer->cmd_draw_mesh(mesh_hdl.mesh, mesh_ubo.index);
         }
     }
 
     void System::update_material_settings() const
     {
-        using MatDirtyTag = comp::MaterialDirtySettings;
-        using MatSettings = comp::MaterialSettings;
+        using Dirty = comp::DirtyUniform;
+        using Settings = comp::MaterialSettings;
+        using UboIdx = comp::UniformIndex;
 
         // Сущности материалов с тегом MatDirtyTag должны обновить свои данные в SSBO/UBO рендерера
-        for (auto [e, d, s] : engine()->ecs()->view<MatDirtyTag, MatSettings>())
+        for (auto [e, d, s, ubo] : engine()->ecs()->view<Dirty, Settings, UboIdx>())
         {
             if (s.type == MaterialType::ePhong){
                 const auto* u = std::get_if<uniforms::MaterialPhong>(&s.uniforms);
-                engine()->renderer()->update_mat_phong_uniforms(*u, s.index);
+                engine()->renderer()->update_mat_phong_uniforms(*u, ubo.index);
             }
             else if (s.type == MaterialType::ePbr){
                 const auto* u = std::get_if<uniforms::MaterialPbr>(&s.uniforms);
-                engine()->renderer()->update_mat_pbr_uniforms(*u, s.index);
+                engine()->renderer()->update_mat_pbr_uniforms(*u, ubo.index);
             }
 
-            engine()->ecs()->remove_component_deferred<MatDirtyTag>(e);
+            engine()->ecs()->remove_component_deferred<Dirty>(e);
         }
     }
 
     void System::update_material_textures() const
     {
-        using MatDirtyTag = comp::MaterialDirtyTextures;
-        using MatSettings = comp::MaterialSettings;
-        using MatHandles = comp::MaterialHandles;
+        using Dirty = comp::DirtyTextures;
+        using Settings = comp::MaterialSettings;
+        using Handles = comp::MaterialHandles;
+        using UboIdx = comp::UniformIndex;
 
-        // Сущности материалов с тегом MatDirtyTag должны обновить свои данные текстурных дескрипторов
-        for (auto [e, d, s, h] : engine()->ecs()->view<MatDirtyTag, MatSettings, MatHandles>())
+        for (auto [e, d, s, h, ubo] : engine()->ecs()->view<Dirty, Settings, Handles, UboIdx>())
         {
             for (const TextureType tt : magic_enum::enum_values<TextureType>())
             {
@@ -104,34 +112,36 @@ namespace nasral::gfx
                     tt,
                     s.samplers[tt],
                     h.textures[tt]
-                }, s.index);
+                }, ubo.index);
             }
-
-            engine()->ecs()->remove_component_deferred<MatDirtyTag>(e);
         }
     }
 
     void System::update_objects_uniforms() const
     {
-        using Mesh = scn::comp::Mesh;
         using Spatial = scn::comp::Spatial;
-        using Dirty = scn::comp::SpatialDirty;
+        using UboIdx = comp::UniformIndex;
+        using State = comp::UniformState;
+        using Cam = scn::comp::Camera;
 
-        for (auto [e, m, s, d] : engine()->ecs()->view<Mesh, Spatial, Dirty>())
+        for (auto [e, settings, ubo, state] : engine()->ecs()->view<Spatial, UboIdx, State>())
         {
+            if (engine()->ecs()->has_component<Cam>(e)) continue;
+            if (!state.dirty) continue;
+
             uniforms::Object uniforms = {};
             auto& model = uniforms.model;
             auto& normals = uniforms.normals;
 
-            model = glm::translate(model, s.position);
-            model = glm::rotate(model, glm::radians(s.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-            model = glm::rotate(model, glm::radians(s.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-            model = glm::rotate(model, glm::radians(s.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-            model = glm::scale(model, s.scale);
+            model = glm::translate(model, settings.position);
+            model = glm::rotate(model, glm::radians(settings.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, glm::radians(settings.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(settings.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::scale(model, settings.scale);
             normals = glm::transpose(glm::inverse(glm::mat3(model)));
 
-            engine()->renderer()->update_obj_uniforms(uniforms, s.obj_index);
-            engine()->ecs()->remove_component_deferred<Dirty>(e);
+            engine()->renderer()->update_obj_uniforms(uniforms, ubo.index);
+            state.dirty = false;
         }
     }
 
@@ -142,23 +152,26 @@ namespace nasral::gfx
 
     void System::update_cam_uniforms() const
     {
-        using Cam = scn::comp::Camera;
         using Spatial = scn::comp::Spatial;
-        using Dirty = scn::comp::CameraDirty;
+        using Cam = scn::comp::Camera;
+        using UboIdx = comp::UniformIndex;
+        using State = comp::UniformState;
 
-        for (auto [e, c, s, d] : engine()->ecs()->view<Cam, Spatial, Dirty>())
+        for (auto [e, spatial, cam, ubo, state] : engine()->ecs()->view<Spatial, Cam, UboIdx, State>())
         {
-            uniforms::Camera uniforms = {};
-            uniforms.position = glm::vec4(s.position, 1.0f);
-            uniforms.view = glm::translate(glm::mat4(1.0f), -glm::vec3(s.position));
-            uniforms.projection = glm::perspective(
-                    glm::radians(c.fov),
-                    engine()->renderer()->get_rendering_aspect(),
-                    c.near,
-                    c.far);
+            if (!state.dirty) continue;
 
-            engine()->renderer()->update_cam_uniforms(uniforms, c.obj_index);
-            engine()->ecs()->remove_component_deferred<Cam>(e);
+            uniforms::Camera uniforms = {};
+            uniforms.position = glm::vec4(spatial.position, 1.0f);
+            uniforms.view = glm::translate(glm::mat4(1.0f), -glm::vec3(spatial.position));
+            uniforms.projection = glm::perspective(
+                    glm::radians(cam.fov),
+                    engine()->renderer()->get_rendering_aspect(),
+                    cam.near,
+                    cam.far);
+
+            engine()->renderer()->update_cam_uniforms(uniforms, ubo.index);
+            state.dirty = false;
         }
     }
 }
