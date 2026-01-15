@@ -39,13 +39,12 @@ namespace nasral::scn
         }
 
         // Освободить UBO индексы у пространственных узлов
-        for (auto [e, n, s, u] : ecs->view<Node, Spatial, UboIdx>())
+        for (auto [e, n, s, u] : ecs->view<Node, Spatial, UboIdx>(ecs::kMaskOf<Cam>))
         {
-            if (ecs->has_component<Cam>(e)) continue;
-
             if (ecs->has_component<Light>(e)){
                 gfx->light_ids().release(u.index);
-            }else{
+            }
+            else{
                 gfx->object_ids().release(u.index);
             }
         }
@@ -53,15 +52,14 @@ namespace nasral::scn
 
     void System::update_obj_transforms(const float dt) const
     {
-        const auto* ecs = engine()->ecs();
+        auto* ecs = engine()->ecs();
 
         using Spatial = comp::Spatial;
         using UboState = gfx::comp::UniformState;
         using Cam = comp::Camera;
 
-        for (auto [e, spatial, state] : engine()->ecs()->view<Spatial, UboState>())
+        for (auto [e, spatial, state] : ecs->view<Spatial, UboState>(ecs::kMaskOf<Cam>))
         {
-            if (ecs->has_component<Cam>(e)) continue;
             if (state.dirty) continue;
 
             constexpr float rot_speed = 10.0f;

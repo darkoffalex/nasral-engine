@@ -123,7 +123,7 @@ namespace nasral::ecs
         }
 
         template<typename... CTs>
-        View<CTs...> view();
+        View<CTs...> view(const ComponentMask& exclusion = {});
 
     private:
         template <class T, class V>

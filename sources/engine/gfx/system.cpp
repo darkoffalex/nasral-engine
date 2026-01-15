@@ -124,9 +124,8 @@ namespace nasral::gfx
         using State = comp::UniformState;
         using Cam = scn::comp::Camera;
 
-        for (auto [e, settings, ubo, state] : engine()->ecs()->view<Spatial, UboIdx, State>())
+        for (auto [e, settings, ubo, state] : engine()->ecs()->view<Spatial, UboIdx, State>(ecs::kMaskOf<Cam>))
         {
-            if (engine()->ecs()->has_component<Cam>(e)) continue;
             if (!state.dirty) continue;
 
             uniforms::Object uniforms = {};
