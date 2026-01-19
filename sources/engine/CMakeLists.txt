@@ -5,27 +5,43 @@ add_library(Engine OBJECT
         engine.cpp
 
         # Логирование
-        logging/logger.cpp
+        log/logger.cpp
+
+        # События
+        evt/manager.cpp
+
+        # Ввод
+        inp/manager.cpp
+        inp/provider.cpp
+
+        # ECS
+        ecs/archetype.cpp
+        ecs/manager.cpp
 
         # Ресурсы
-        resources/ref.cpp
-        resources/file.cpp
-        resources/shader.cpp
-        resources/material.cpp
-        resources/mesh.cpp
-        resources/texture.cpp
-        resources/loaders/shader_loader.hpp
-        resources/loaders/material_loader.hpp
-        resources/loaders/mesh_loader.hpp
-        resources/loaders/mesh_builtin_loader.hpp
-        resources/loaders/texture_loader.hpp
-        resources/loaders/texture_builtin_loader.hpp
-        resources/resource_manager.cpp
+        res/manager.cpp
+        res/system.cpp
+        res/resources/file.cpp
+        res/resources/shader.cpp
+        res/resources/texture.cpp
+        res/resources/mesh.cpp
+        res/resources/material.cpp
+        res/resources/project.cpp
+        res/resources/scene.cpp
 
         # Рендеринг
-        rendering/renderer.cpp
-        rendering/material_instance.cpp
-        rendering/mesh_instance.cpp
+        gfx/renderer.cpp
+        gfx/system.cpp
+        gfx/io/material.cpp
+
+        # Сцена
+        scn/manager.cpp
+        scn/system.cpp
+        scn/io/base_node.cpp
+        scn/io/spatial_node.cpp
+        scn/io/camera_node.cpp
+        scn/io/light_node.cpp
+        scn/io/mesh_node.cpp
 )
 add_default_configurations(Engine demo_app)
 
@@ -45,4 +61,5 @@ target_link_libraries(Engine PRIVATE
         pugixml::pugixml
         assimp::assimp
         Vulkan::Vulkan
+        magic_enum::magic_enum
 )

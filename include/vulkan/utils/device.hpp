@@ -16,6 +16,7 @@
 #include <vector>
 #include <optional>
 #include <mutex>
+#include <memory>
 #include <vulkan/vulkan.hpp>
 
 namespace vk::utils

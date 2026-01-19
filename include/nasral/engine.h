@@ -1,119 +1,52 @@
 #pragma once
-#include <nasral/logging/logger.h>
-#include <nasral/resources/resource_manager.h>
-#include <nasral/rendering/renderer.h>
-#include <nasral/rendering/mesh_instance.h>
+#include <nasral/types.h>
+#include <nasral/log/logger.h>
+#include <nasral/evt/manager.h>
+#include <nasral/ecs/manager.h>
+#include <nasral/res/manager.h>
+#include <nasral/gfx/renderer.h>
+#include <nasral/scn/manager.h>
+#include <nasral/inp/manager.h>
+
+#include <nasral/res/system.h>
+#include <nasral/gfx/system.h>
+#include <nasral/scn/system.h>
 
 namespace nasral
 {
     class Engine
     {
     public:
-        struct Config
-        {
-            logging::LoggingConfig log;
-            resources::ResourceConfig resources;
-            rendering::RenderingConfig rendering;
-        };
+        typedef std::unique_ptr<Engine> Ptr;
 
-        class TestNode
-        {
-        public:
-            friend class rendering::Renderer;
-            struct SpatialSettings
-            {
-                glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
-                glm::vec3 rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-                glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
-                bool updated = true;
-            };
-
-            TestNode() = default;
-            explicit TestNode(const Engine* engine);
-            ~TestNode();
-
-            void request_resources();
-            void release_resources();
-            void update();
-            void render() const;
-
-            void set_position(const glm::vec3& position);
-            void set_rotation(const glm::vec3& rotation);
-            void set_scale(const glm::vec3& scale);
-            void set_material(uint32_t index);
-            void set_mesh(rendering::MeshInstance instance);
-
-            [[nodiscard]] const SpatialSettings& spatial_settings() const {return spatial_settings_;}
-            [[nodiscard]] rendering::MeshInstance& mesh_instance() {return mesh_;}
-
-        private:
-            SafeHandle<const Engine> engine_;
-            uint32_t obj_index_ = 0;
-            uint32_t material_index_ = 0;
-            rendering::MeshInstance mesh_ = {};
-            SpatialSettings spatial_settings_ = {};
-        };
-
-        class LightSource
-        {
-        public:
-            friend class rendering::Renderer;
-
-            LightSource() = default;
-            explicit LightSource(const Engine* engine);
-            ~LightSource();
-
-            void update();
-
-            void set_position(const glm::vec3& position);
-            void set_color(const glm::vec3& color);
-            void set_intensity(float intensity);
-            void set_radius(float radius);
-            void set_active(bool active);
-
-        private:
-            SafeHandle<const Engine> engine_;
-            uint32_t light_index_ = 0;
-            rendering::LightUniforms light_uniforms_ = {};
-            bool settings_updated_ = false;
-            bool state_updated_ = false;
-            bool active_ = false;
-        };
-
-        Engine();
+        explicit Engine(const Config& config);
         ~Engine();
 
         Engine(const Engine&) = delete;
         Engine& operator=(const Engine&) = delete;
 
-        bool initialize(const Config& config) noexcept;
-        void update(float delta) noexcept;
-        void shutdown() noexcept;
+        void finalize() const;
+        void update(float delta);
 
-        [[nodiscard]] const logging::Logger* logger() const {
-            return logger_.get();
-        }
-
-        [[nodiscard]] const resources::ResourceManager* resource_manager() const {
-            return resource_manager_.get();
-        }
-
-        [[nodiscard]] const rendering::Renderer* renderer() const {
-            return renderer_.get();
-        }
+        [[nodiscard]] log::Logger* logger() const noexcept { return logger_.get(); }
+        [[nodiscard]] evt::Manager* events() const noexcept { return evt_.get(); }
+        [[nodiscard]] ecs::Manager* ecs() const noexcept { return ecs_.get(); }
+        [[nodiscard]] res::Manager* res() const noexcept { return res_.get(); }
+        [[nodiscard]] gfx::Renderer* renderer() const noexcept { return renderer_.get(); }
+        [[nodiscard]] scn::Manager* scn() const noexcept { return scn_.get(); }
+        [[nodiscard]] inp::Manager* input() const noexcept { return inp_.get(); }
 
     protected:
-        // Только для тестирования
-        void init_test_scene();
+        log::Logger::Ptr logger_;
+        inp::Manager::Ptr inp_;
+        evt::Manager::Ptr evt_;
+        ecs::Manager::Ptr ecs_;
+        res::Manager::Ptr res_;
+        scn::Manager::Ptr scn_;
+        gfx::Renderer::Ptr renderer_;
 
-    private:
-        logging::Logger::Ptr logger_;
-        resources::ResourceManager::Ptr resource_manager_;
-        rendering::Renderer::Ptr renderer_;
-
-        // Только для тестирования
-        std::vector<TestNode> test_scene_nodes_;
-        std::vector<LightSource> test_light_sources_;
-        rendering::CameraUniforms camera_uniforms_;
+        gfx::System::Ptr gfx_system_;
+        res::System::Ptr res_system_;
+        scn::System::Ptr scn_system_;
     };
 }
