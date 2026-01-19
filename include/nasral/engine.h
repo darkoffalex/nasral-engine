@@ -6,6 +6,7 @@
 #include <nasral/res/manager.h>
 #include <nasral/gfx/renderer.h>
 #include <nasral/scn/manager.h>
+#include <nasral/inp/manager.h>
 
 #include <nasral/res/system.h>
 #include <nasral/gfx/system.h>
@@ -33,9 +34,11 @@ namespace nasral
         [[nodiscard]] res::Manager* res() const noexcept { return res_.get(); }
         [[nodiscard]] gfx::Renderer* renderer() const noexcept { return renderer_.get(); }
         [[nodiscard]] scn::Manager* scn() const noexcept { return scn_.get(); }
+        [[nodiscard]] inp::Manager* input() const noexcept { return inp_.get(); }
 
     protected:
         log::Logger::Ptr logger_;
+        inp::Manager::Ptr inp_;
         evt::Manager::Ptr evt_;
         ecs::Manager::Ptr ecs_;
         res::Manager::Ptr res_;

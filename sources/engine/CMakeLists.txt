@@ -10,6 +10,10 @@ add_library(Engine OBJECT
         # События
         evt/manager.cpp
 
+        # Ввод
+        inp/manager.cpp
+        inp/provider.cpp
+
         # ECS
         ecs/archetype.cpp
         ecs/manager.cpp

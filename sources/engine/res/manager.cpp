@@ -265,7 +265,7 @@ namespace nasral::res
                 request(id.value(), [this](IResource* res){
                     if (res->status_ == Status::eError){return;}
                     assert(res->status_ == Status::eLoaded);
-                    engine()->events()->send(evt::Type::eProjectResLoaded, evt::ArgPtr{res});
+                    engine()->events()->send(evt::Type::eProjectResLoaded, res);
                 });
             }
         }
@@ -289,7 +289,8 @@ namespace nasral::res
         if (!id.has_value()){
             id = find(kBuiltinProjectFile.data());
             if (id.has_value() && id.value() != kInvalidResourceId){
-                engine()->events()->send(evt::Type::eProjectResReleasing, evt::ArgPtr{get(id.value())});
+                auto* res_ptr = get(id.value());
+                engine()->events()->send(evt::Type::eProjectResReleasing, res_ptr);
                 release(id.value());
             }
         }

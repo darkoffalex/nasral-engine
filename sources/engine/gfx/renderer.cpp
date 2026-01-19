@@ -1523,7 +1523,7 @@ namespace nasral::gfx
      */
     void Renderer::on_project_loaded(const evt::Arg& arg) const
     {
-        auto* r_ptr = static_cast<res::IResource*>(*std::get_if<evt::ArgPtr>(&arg));
+        auto* r_ptr = evt::from_arg<res::IResource*>(arg).value_or(nullptr);
         if (const auto* proj = dynamic_cast<res::Project*>(r_ptr))
         {
             // Пройтись по списку материалов

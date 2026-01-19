@@ -102,6 +102,18 @@ namespace nasral::res
                     std::move(materials),
                     // Путь к изначальной сцене
                     kBuiltinSceneDefault.data(),
+                    // Настройки управления (действия)
+                    {
+                        {"forward", {inp::KeyCode::eW}},
+                        {"backward", {inp::KeyCode::eS}},
+                        {"left", {inp::KeyCode::eA}},
+                        {"right", {inp::KeyCode::eD}},
+                        {"up", {inp::KeyCode::eSpace}},
+                        {"down", {inp::KeyCode::eC}},
+                        {"exit", {inp::KeyCode::eEscape}}
+                    },
+                    // Чувствительность мыши
+                    1.0f
                 }};
             }
 

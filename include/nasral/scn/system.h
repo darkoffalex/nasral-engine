@@ -21,6 +21,7 @@ namespace nasral::scn
 
     private:
         void update_obj_transforms(float dt) const;
+        void update_camera_transform(float dt) const;
     };
 }
 

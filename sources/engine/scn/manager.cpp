@@ -150,7 +150,7 @@ namespace nasral::scn
     void Manager::on_project_loaded(const evt::Arg& arg) const
     {
         auto* ecs = engine()->ecs();
-        auto* r_ptr = static_cast<res::IResource*>(*std::get_if<evt::ArgPtr>(&arg));
+        auto* r_ptr = evt::from_arg<res::IResource*>(arg).value_or(nullptr);
         if (const auto* proj = dynamic_cast<res::Project*>(r_ptr))
         {
             // Если проект загружен - задать сцены по умолчанию и запросить его

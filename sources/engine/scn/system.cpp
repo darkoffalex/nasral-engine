@@ -1,6 +1,8 @@
 #include "pch.h"
 #include <nasral/scn/system.h>
 #include <nasral/ecs/view.h>
+#include <nasral/scn/manager.h>
+#include <nasral/scn/utils.h>
 #include <nasral/engine.h>
 
 namespace nasral::scn
@@ -17,6 +19,7 @@ namespace nasral::scn
     void System::update([[maybe_unused]] const float dt)
     {
         update_obj_transforms(dt);
+        update_camera_transform(dt);
     }
 
     void System::shutdown()
@@ -66,6 +69,52 @@ namespace nasral::scn
 
             spatial.rotation.y += dt * rot_speed;
             state.dirty = true;
+        }
+    }
+
+    void System::update_camera_transform([[maybe_unused]] const float dt) const
+    {
+        using Spatial = comp::Spatial;
+        using UboState = gfx::comp::UniformState;
+        using Cam = comp::Camera;
+
+        auto* ecs = engine()->ecs();
+        const auto* input = engine()->input();
+
+        for (auto [e, spatial, cam, state] : ecs->view<Spatial, Cam, UboState>())
+        {
+            if (state.dirty) continue;
+
+            auto movement = input->get_movement_vector(
+                inp::KeyCode::eA,
+                inp::KeyCode::eD,
+                inp::KeyCode::eW,
+                inp::KeyCode::eS,
+                inp::KeyCode::eSpace,
+                inp::KeyCode::eC);
+
+            if (input->is_mouse_btn_pressed(inp::MouseButton::eLeft))
+            {
+                constexpr float rot_speed = 0.1f;
+                spatial.rotation.y += input->mouse_delta().x * -rot_speed;
+                spatial.rotation.x += input->mouse_delta().y * -rot_speed;
+                state.dirty = true;
+            }
+
+            if (glm::length2(movement) > 0.0f)
+            {
+                constexpr float move_speed = 2.5f;
+
+                glm::vec3 oriented_movement = snc::calc_rot_movement(
+                    {movement.x, movement.z},
+                    spatial.rotation);
+
+                spatial.position += (oriented_movement + glm::vec3(0.0f, movement.y, 0.0f))
+                    * move_speed
+                    * dt;
+
+                state.dirty = true;
+            }
         }
     }
 }

@@ -13,18 +13,15 @@ namespace nasral::evt
         TOTAL
     };
 
-    using ArgPtr = void*;
-    union ArgNumeric { uint32_t u; int32_t i; float f; double d; };
-    using ArgString = std::string;
-    using ArgStringView = std::string_view;
-    using ArgUniqueId = core::UniqueId;
-
     using Arg = std::variant<
-        ArgPtr,
-        ArgNumeric,
-        ArgString,
-        ArgStringView,
-        ArgUniqueId
+        void*,
+        uint32_t,
+        int32_t,
+        float,
+        double,
+        std::string,
+        std::string_view,
+        core::UniqueId
     >;
 
     using Listener = std::function<void(const Arg&)>;

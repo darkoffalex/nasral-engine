@@ -160,9 +160,17 @@ namespace nasral::gfx
         {
             if (!state.dirty) continue;
 
+            // Матрица поворота камеры
+            glm::mat4 cam_rotation =
+                glm::rotate(glm::mat4(1.0f), glm::radians(spatial.rotation.y),glm::vec3(0.0f,1.0f,0.0f)) *
+                glm::rotate(glm::mat4(1.0f), glm::radians(spatial.rotation.x),glm::vec3(1.0f,0.0f,0.0f));
+
+            // Матрица смещения камеры
+            glm::mat4 cam_translate = glm::translate(glm::mat4(1.0f), spatial.position);
+
             uniforms::Camera uniforms = {};
             uniforms.position = glm::vec4(spatial.position, 1.0f);
-            uniforms.view = glm::translate(glm::mat4(1.0f), -glm::vec3(spatial.position));
+            uniforms.view = glm::inverse(cam_translate * cam_rotation);
             uniforms.projection = glm::perspective(
                     glm::radians(cam.fov),
                     engine()->renderer()->get_rendering_aspect(),

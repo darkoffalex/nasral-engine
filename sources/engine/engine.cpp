@@ -15,6 +15,9 @@ namespace nasral
             evt_ = std::make_unique<evt::Manager>(this);
             logger()->info("Event manager initialized.");
 
+            inp_ = std::make_unique<inp::Manager>(this, config.inp);
+            logger()->info("Input manager initialized.");
+
             ecs_ = std::make_unique<ecs::Manager>(this, config.ecs);
             logger()->info("ECS manager initialized.");
 
@@ -82,6 +85,9 @@ namespace nasral
         ecs_.reset();
         logger()->info("ECS manager destroyed.");
 
+        inp_.reset();
+        logger()->info("Input manager destroyed.");
+
         evt_.reset();
         logger()->info("Event manager destroyed.");
 
@@ -119,14 +125,6 @@ namespace nasral
 
     void Engine::update(const float delta)
     {
-        assert(ecs_ != nullptr);
-        assert(res_ != nullptr);
-        assert(renderer_ != nullptr);
-        assert(logger_ != nullptr);
-
-        assert(res_system_ != nullptr);
-        assert(gfx_system_ != nullptr);
-
         // Обновление систем ECS
         scn_system_->update(delta);
         res_system_->update(delta);
@@ -144,5 +142,8 @@ namespace nasral
         renderer_->cmd_bind_frame_descriptors();
         gfx_system_->render();
         renderer_->cmd_end_frame();
+
+        // Обновить ввод
+        inp_->update(delta);
     }
 }
