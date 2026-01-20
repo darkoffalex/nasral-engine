@@ -26,6 +26,7 @@ namespace nasral::gfx
         void update_material_textures() const;
         void update_objects_uniforms() const;
         void update_lights_uniforms() const;
+        void update_lights_states() const;
         void update_cam_uniforms() const;
     };
 }

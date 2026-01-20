@@ -50,6 +50,4 @@ namespace nasral::scn::comp
         glm::float32 quadratic = 0.1f;
         glm::vec4 color = glm::vec4(1.0f);
     };
-
-    struct Active : core::Component<Active> {};
 }

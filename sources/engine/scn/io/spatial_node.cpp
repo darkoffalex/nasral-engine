@@ -11,7 +11,7 @@ namespace nasral::scn::io
         , io_spatial_data(std::get<1>(data_tuple))
     {}
 
-    void SpatialNode::unpack_to([[maybe_unused]] const ecs::EntityId &entity_id, [[maybe_unused]] UnpackFlags flags) const
+    void SpatialNode::unpack_to([[maybe_unused]] const ecs::EntityId &entity_id, [[maybe_unused]] const UnpackFlags flags) const
     {
         if (!(flags & eUFSkipRootComp)){
             try_add_node_components(entity_id);

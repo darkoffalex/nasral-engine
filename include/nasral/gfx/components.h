@@ -67,4 +67,18 @@ namespace nasral::gfx::comp
      */
     struct DirtyTextures : core::Component<DirtyTextures>
     {};
+
+    /**
+     * @brief Тег - нужно активировать элемент (например, источник света)
+     * @details Для редких обновлений (источники света не меняют состояние часто)
+     */
+    struct Activate : core::Component<Activate>
+    {};
+
+    /**
+     * @brief Тег - нужно деактивировать элемент (например, источник света)
+     * @details Для редких обновлений (источники света не меняют состояние часто)
+     */
+    struct Deactivate : core::Component<Deactivate>
+    {};
 }

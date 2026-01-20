@@ -60,8 +60,9 @@ namespace nasral::scn
         using Spatial = comp::Spatial;
         using UboState = gfx::comp::UniformState;
         using Cam = comp::Camera;
+        using Light = comp::Light;
 
-        for (auto [e, spatial, state] : ecs->view<Spatial, UboState>(ecs::kMaskOf<Cam>))
+        for (auto [e, spatial, state] : ecs->view<Spatial, UboState>(ecs::kMaskOf<Cam, Light>))
         {
             if (state.dirty) continue;
 

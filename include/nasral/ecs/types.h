@@ -18,6 +18,8 @@ namespace nasral::ecs
         gfx::comp::UniformState,
         gfx::comp::DirtyUniform,
         gfx::comp::DirtyTextures,
+        gfx::comp::Activate,
+        gfx::comp::Deactivate,
 
         // Подсистема ресурсов
         res::comp::AssetId,

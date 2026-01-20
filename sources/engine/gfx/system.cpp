@@ -21,6 +21,7 @@ namespace nasral::gfx
         update_material_textures();
         update_objects_uniforms();
         update_lights_uniforms();
+        update_lights_states();
         update_cam_uniforms();
     }
 
@@ -123,8 +124,9 @@ namespace nasral::gfx
         using UboIdx = comp::UniformIndex;
         using State = comp::UniformState;
         using Cam = scn::comp::Camera;
+        using Light = scn::comp::Light;
 
-        for (auto [e, settings, ubo, state] : engine()->ecs()->view<Spatial, UboIdx, State>(ecs::kMaskOf<Cam>))
+        for (auto [e, settings, ubo, state] : engine()->ecs()->view<Spatial, UboIdx, State>(ecs::kMaskOf<Cam, Light>))
         {
             if (!state.dirty) continue;
 
@@ -146,7 +148,61 @@ namespace nasral::gfx
 
     void System::update_lights_uniforms() const
     {
-        // TODO: Implement
+        using Spatial = scn::comp::Spatial;
+        using Light = scn::comp::Light;
+        using UboIdx = comp::UniformIndex;
+        using State = comp::UniformState;
+
+        for (auto [e, spatial, light, ubo, state] : engine()->ecs()->view<Spatial, Light, UboIdx, State>())
+        {
+            if (!state.dirty) continue;
+
+            uniforms::LightSettings uniforms = {};
+            uniforms.type = static_cast<uint32_t>(light.type);
+            uniforms.position = glm::vec4(spatial.position, 1.0f);
+            uniforms.color = light.color;
+            uniforms.intensity = light.intensity;
+            uniforms.radius = light.radius;
+            uniforms.quadratic = light.quadratic;
+
+            engine()->renderer()->update_light_uniforms(uniforms, ubo.index);
+            state.dirty = false;
+        }
+    }
+
+    void System::update_lights_states() const
+    {
+        using Light = scn::comp::Light;
+        using UboIdx = comp::UniformIndex;
+        using Activate = comp::Activate;
+        using Deactivate = comp::Deactivate;
+
+        static std::vector<uint32_t> activate_lights;
+        static std::vector<uint32_t> deactivate_lights;
+        activate_lights.reserve(10);
+        deactivate_lights.reserve(10);
+
+        activate_lights.clear();
+        for (auto [e, light, ubo, a] : engine()->ecs()->view<Light, UboIdx, Activate>())
+        {
+            activate_lights.push_back(ubo.index);
+            engine()->ecs()->remove_component_deferred<Activate>(e);
+        }
+
+        deactivate_lights.clear();
+        for (auto [e, light, ubo, d] : engine()->ecs()->view<Light, UboIdx, Deactivate>())
+        {
+            deactivate_lights.push_back(ubo.index);
+            engine()->ecs()->remove_component_deferred<Deactivate>(e);
+        }
+
+        if (!activate_lights.empty()){
+            engine()->renderer()->update_light_states_unsafe(activate_lights, true);
+        }
+
+        if (!deactivate_lights.empty()){
+            engine()->renderer()->update_light_states_unsafe(deactivate_lights, false);
+        }
     }
 
     void System::update_cam_uniforms() const
