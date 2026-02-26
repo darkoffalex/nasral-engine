@@ -11,7 +11,7 @@ namespace nasral::res
     {}
 
     Scene::~Scene(){
-        nodes_.clear();
+        scene_root_.reset();
         RES_LOG_DESTRUCTION();
     }
 
@@ -23,7 +23,7 @@ namespace nasral::res
 
         try
         {
-            const auto data = loader_->load(path);
+            auto data = loader_->load(path);
             if (!data.has_value()){
                 status_ = Status::eError;
                 error_ = loader_->error();
@@ -31,7 +31,7 @@ namespace nasral::res
                 return;
             }
 
-            nodes_ = std::move(data.value().nodes);
+            scene_root_ = std::move(data.value().scene_root);
         }
         catch (const std::exception& e){
             status_ = Status::eError;

@@ -4,6 +4,7 @@ add_executable(Sandbox
         main.cpp
         utils/fps_counter.hpp
         utils/surface_provider.hpp
+        utils/input_provider.hpp
 )
 add_default_configurations(Sandbox sandbox)
 

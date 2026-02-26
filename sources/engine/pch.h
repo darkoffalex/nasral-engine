@@ -30,7 +30,9 @@
 #include <magic_enum/magic_enum.hpp>
 
 // Математика
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtx/norm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 // Vulkan

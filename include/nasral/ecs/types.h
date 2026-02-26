@@ -4,6 +4,7 @@
 #include <nasral/ecs/utils.h>
 #include <nasral/gfx/components.h>
 #include <nasral/res/components.h>
+#include <nasral/scn/components.h>
 
 namespace nasral::ecs
 {
@@ -12,8 +13,13 @@ namespace nasral::ecs
         // Подсистема рендеринга
         gfx::comp::MaterialHandles,
         gfx::comp::MaterialSettings,
-        gfx::comp::MaterialDirtySettings,
-        gfx::comp::MaterialDirtyTextures,
+        gfx::comp::MeshHandles,
+        gfx::comp::UniformIndex,
+        gfx::comp::UniformState,
+        gfx::comp::DirtyUniform,
+        gfx::comp::DirtyTextures,
+        gfx::comp::Activate,
+        gfx::comp::Deactivate,
 
         // Подсистема ресурсов
         res::comp::AssetId,
@@ -22,7 +28,16 @@ namespace nasral::ecs
         res::comp::Request,
         res::comp::Release,
         res::comp::Error,
-        res::comp::PendingDelete
+        res::comp::Loaded,
+        res::comp::PendingDelete,
+
+        // Сцена
+        scn::comp::Node,
+        scn::comp::NodeChildren,
+        scn::comp::Spatial,
+        scn::comp::Camera,
+        scn::comp::Mesh,
+        scn::comp::Light
     >;
 
     // Битовая маска компонентов (размер зависит от кол-ва возможных типов компонентов)

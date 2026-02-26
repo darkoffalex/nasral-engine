@@ -7,6 +7,9 @@ namespace nasral::res
     class ShaderSpvLoader final : public Loader<Shader::Data>
     {
     public:
+        explicit ShaderSpvLoader(Engine* const engine) : Loader(engine)
+        {}
+
         std::optional<Shader::Data> load(const std::string_view& path) override{
             std::ifstream file{path.data(), std::ios::binary | std::ios::ate};
 

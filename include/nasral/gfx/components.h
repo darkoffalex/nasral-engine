@@ -23,20 +23,62 @@ namespace nasral::gfx::comp
     struct MaterialSettings : core::Component<MaterialSettings>
     {
         MaterialType type = MaterialType::eDummy;
-        uint32_t index = 0;
         uniforms::Material uniforms = {};
         core::EnumArray<TextureType, TextureSamplerType> samplers;
     };
 
     /**
-     * @brief Тег - сигнализирует о том, что текстуры изменились (нужно обновить дескрипторы)
+     * @brief Компонент хендлов меша
+     * @details Содержит хендлы геометрических буферов меша и кол-во индексов
      */
-    struct MaterialDirtyTextures : core::Component<MaterialDirtyTextures>
+    struct MeshHandles : core::Component<MeshHandles>
+    {
+        handles::Mesh mesh;
+    };
+
+    /**
+     * @brief Компонент индекса
+     * @details Содержит индекс элемента в буфере UBO/SSBO
+     */
+    struct UniformIndex : core::Component<UniformIndex>
+    {
+        uint32_t index = 0;
+    };
+
+    /**
+     * @brief Компонент состояния данных для UBO/SSBO
+     * @details Содержит флаг, показывающий необходимость обновления (для частых обновлений)
+     */
+    struct UniformState : core::Component<UniformState>
+    {
+        bool dirty = false;
+    };
+
+    /**
+     * @brief Тег - нужно обновить UBO/SSBO
+     * @details Для редких обновлений (статичные объекты сцены, материалы и прочее)
+     */
+    struct DirtyUniform : core::Component<DirtyUniform>
     {};
 
     /**
-     * @brief Тег - сигнализирует о том, что настройки изменились (нужно обновить SSBO)
+     * @brief Тег - нужно обновить дескрипторы текстур
+     * @details Для редких обновлений (материалы)
      */
-    struct MaterialDirtySettings : core::Component<MaterialDirtySettings>
+    struct DirtyTextures : core::Component<DirtyTextures>
+    {};
+
+    /**
+     * @brief Тег - нужно активировать элемент (например, источник света)
+     * @details Для редких обновлений (источники света не меняют состояние часто)
+     */
+    struct Activate : core::Component<Activate>
+    {};
+
+    /**
+     * @brief Тег - нужно деактивировать элемент (например, источник света)
+     * @details Для редких обновлений (источники света не меняют состояние часто)
+     */
+    struct Deactivate : core::Component<Deactivate>
     {};
 }

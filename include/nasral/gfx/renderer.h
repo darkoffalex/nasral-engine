@@ -7,12 +7,12 @@
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/uniform_layout.hpp>
 #include <nasral/gfx/types.h>
-#include <nasral/gfx/types_io.h>
 #include <nasral/evt/types.h>
 #include <nasral/core/types.h>
 #include <nasral/core/subsystem.h>
 #include <nasral/core/index_pool.h>
 #include <nasral/log/loggable.h>
+#include <nasral/ecs/entity.h>
 
 namespace nasral::gfx
 {
@@ -127,6 +127,8 @@ namespace nasral::gfx
             const char* msg,
             void* user_data);
 
+        [[nodiscard]] std::optional<ecs::EntityId> find_material_entity(const core::UniqueId& uid) const;
+
     private:
         void init_vk_instance();
         void init_vk_loader();
@@ -143,10 +145,8 @@ namespace nasral::gfx
         void init_vk_synchronization();
         void refresh_vk_surface();
 
-        void on_project_loaded(const evt::Arg& arg);
+        void on_project_loaded(const evt::Arg& arg) const;
         void on_project_releasing(const evt::Arg& arg);
-        void on_register_material(const io::Material& m);
-        void on_unregister_material(const core::UniqueId& id);
 
     protected:
         // Состояние

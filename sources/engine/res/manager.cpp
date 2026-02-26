@@ -265,7 +265,7 @@ namespace nasral::res
                 request(id.value(), [this](IResource* res){
                     if (res->status_ == Status::eError){return;}
                     assert(res->status_ == Status::eLoaded);
-                    engine()->events()->send(evt::Type::eProjectResLoaded, evt::ArgPtr{res});
+                    engine()->events()->send(evt::Type::eProjectResLoaded, res);
                 });
             }
         }
@@ -289,7 +289,8 @@ namespace nasral::res
         if (!id.has_value()){
             id = find(kBuiltinProjectFile.data());
             if (id.has_value() && id.value() != kInvalidResourceId){
-                engine()->events()->send(evt::Type::eProjectResReleasing, evt::ArgPtr{get(id.value())});
+                auto* res_ptr = get(id.value());
+                engine()->events()->send(evt::Type::eProjectResReleasing, res_ptr);
                 release(id.value());
             }
         }
@@ -328,7 +329,7 @@ namespace nasral::res
             return path;
         }
 
-        if (full && path.find(":v") != std::string::npos){
+        if (path.find(":v") != std::string::npos){
             path = path.substr(0, path.find(":v"));
         }
 
@@ -420,44 +421,45 @@ namespace nasral::res
      * @brief Шаблонный фабричный метод создания загрузчика для ресурса
      * @tparam T Тип ресурса
      * @param slot Ссылка на слот в списке слотов ресурсов
+     * @param engine Константный указатель на корневой объект (DI)
      * @return Указатель (unique) на загрузчика
      */
     template<typename T>
-    typename Loader<typename T::Data>::Ptr make_res_loader(const Manager::Slot& slot)
+    typename Loader<typename T::Data>::Ptr make_res_loader(const Manager::Slot& slot, Engine* const engine)
     {
         using Ret = typename Loader<typename T::Data>::Ptr;
 
         if constexpr (std::is_same_v<T, Texture>){
             assert(slot.info.type == Type::eTexture);
             return slot.info.path.is_builtin()
-                ? Ret{std::make_unique<TextureBuiltinLoader>()}
-                : Ret{std::make_unique<TextureStbLoader>(slot.loading.params)};
+                ? Ret{std::make_unique<TextureBuiltinLoader>(engine)}
+                : Ret{std::make_unique<TextureStbLoader>(engine, slot.loading.params)};
         }
         else if constexpr (std::is_same_v<T, Mesh>){
             assert(slot.info.type == Type::eMesh);
             return slot.info.path.is_builtin()
-                ? Ret{std::make_unique<MeshBuiltinLoader>()}
-                : Ret{std::make_unique<MeshAssimpLoader>(slot.loading.params)};
+                ? Ret{std::make_unique<MeshBuiltinLoader>(engine)}
+                : Ret{std::make_unique<MeshAssimpLoader>(engine, slot.loading.params)};
         }
         else if constexpr (std::is_same_v<T, Shader>){
             assert(slot.info.type == Type::eShader);
-            return Ret{std::make_unique<ShaderSpvLoader>()};
+            return Ret{std::make_unique<ShaderSpvLoader>(engine)};
         }
         else if constexpr (std::is_same_v<T, Material>){
             assert(slot.info.type == Type::eMaterial);
-            return Ret{std::make_unique<MaterialXmlLoader>()};
+            return Ret{std::make_unique<MaterialXmlLoader>(engine)};
         }
         else if constexpr (std::is_same_v<T, Project>){
             assert(slot.info.type == Type::eProject);
             return slot.info.path.is_builtin()
-                ? Ret{std::make_unique<ProjectBuiltinLoader>()}
-                : Ret{std::make_unique<ProjectXmlLoader>()};
+                ? Ret{std::make_unique<ProjectBuiltinLoader>(engine)}
+                : Ret{std::make_unique<ProjectXmlLoader>(engine)};
         }
         else if constexpr (std::is_same_v<T, Scene>){
             assert(slot.info.type == Type::eScene);
             return slot.info.path.is_builtin()
-                ? Ret{std::make_unique<SceneBuiltinLoader>()}
-                : Ret{std::make_unique<SceneXmlLoader>()};
+                ? Ret{std::make_unique<SceneBuiltinLoader>(engine)}
+                : Ret{std::make_unique<SceneXmlLoader>(engine)};
         }
 
         assert(false && "Unknown resource type");
@@ -487,42 +489,42 @@ namespace nasral::res
                 {
                     auto id = find(slot.info.path.view());
                     assert(id.has_value());
-                    res = std::make_unique<Shader>(this, id.value(), make_res_loader<Shader>(slot));
+                    res = std::make_unique<Shader>(this, id.value(), make_res_loader<Shader>(slot, engine()));
                     break;
                 }
             case Type::eTexture:
                 {
                     auto id = find(slot.info.path.view());
                     assert(id.has_value());
-                    res = std::make_unique<Texture>(this, id.value(), make_res_loader<Texture>(slot));
+                    res = std::make_unique<Texture>(this, id.value(), make_res_loader<Texture>(slot, engine()));
                     break;
                 }
             case Type::eMesh:
                 {
                     auto id = find(slot.info.path.view());
                     assert(id.has_value());
-                    res = std::make_unique<Mesh>(this, id.value(), make_res_loader<Mesh>(slot));
+                    res = std::make_unique<Mesh>(this, id.value(), make_res_loader<Mesh>(slot, engine()));
                     break;
                 }
             case Type::eMaterial:
                 {
                     auto id = find(slot.info.path.view());
                     assert(id.has_value());
-                    res = std::make_unique<Material>(this, id.value(), make_res_loader<Material>(slot));
+                    res = std::make_unique<Material>(this, id.value(), make_res_loader<Material>(slot, engine()));
                     break;
                 }
             case Type::eProject:
                 {
                     auto id = find(slot.info.path.view());
                     assert(id.has_value());
-                    res = std::make_unique<Project>(this, id.value(), make_res_loader<Project>(slot));
+                    res = std::make_unique<Project>(this, id.value(), make_res_loader<Project>(slot, engine()));
                     break;
                 }
             case Type::eScene:
                 {
                     auto id = find(slot.info.path.view());
                     assert(id.has_value());
-                    res = std::make_unique<Scene>(this, id.value(), make_res_loader<Scene>(slot));
+                    res = std::make_unique<Scene>(this, id.value(), make_res_loader<Scene>(slot, engine()));
                     break;
                 }
             default:

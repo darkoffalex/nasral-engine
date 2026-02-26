@@ -6,6 +6,9 @@ namespace nasral::res
     class MeshBuiltinLoader final : public Loader<Mesh::Data>
     {
     public:
+        explicit MeshBuiltinLoader(Engine* const engine) : Loader(engine)
+        {}
+
         std::optional<Mesh::Data> load(const std::string_view& path) override
         {
             // Квадрат

@@ -9,10 +9,13 @@ namespace nasral::res
         : IResource(Type::eProject, id, manager)
         , loader_(std::move(loader))
         , initial_scene_(kInvalidResourceId)
+        , action_bindings_({})
+        , sensitivity_(0.0f)
     {}
 
     Project::~Project(){
         materials_.clear();
+        action_bindings_.clear();
         RES_LOG_DESTRUCTION();
     }
 
@@ -33,6 +36,8 @@ namespace nasral::res
             }
 
             materials_ = std::move(data.value().materials);
+            action_bindings_ = std::move(data.value().action_bindings);
+            sensitivity_ = data.value().sensitivity;
 
             if (!data.value().initial_scene_path.empty()){
                 const auto rid = manager()->find(data.value().initial_scene_path);

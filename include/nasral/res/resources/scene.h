@@ -1,9 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <nasral/res/resource.h>
 #include <nasral/res/loader.h>
-#include <nasral/scn/types_io.h>
+#include <nasral/scn/io/base_node.h>
 #include <nasral/log/loggable.h>
 
 namespace nasral::res
@@ -16,7 +15,7 @@ namespace nasral::res
 
         struct Data
         {
-            std::vector<scn::io::Node> nodes;
+            scn::io::Node::Ptr scene_root;
         };
 
         Scene(Manager* manager, ResourceId id, Loader<Data>::Ptr loader);
@@ -25,10 +24,12 @@ namespace nasral::res
         Scene(const Scene&) = delete;
         Scene& operator=(const Scene&) = delete;
 
+        [[nodiscard]] const scn::io::Node& scene_root() const {return *scene_root_;}
+
         void load() noexcept override;
 
     protected:
         Loader<Data>::Ptr loader_;
-        std::vector<scn::io::Node> nodes_;
+        scn::io::Node::Ptr scene_root_;
     };
 }

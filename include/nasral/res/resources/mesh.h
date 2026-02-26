@@ -32,10 +32,11 @@ namespace nasral::res
         [[nodiscard]] uint32_t vertex_count() const noexcept { return vertex_count_; }
         [[nodiscard]] uint32_t index_count() const noexcept { return index_count_; }
 
-        [[nodiscard]] gfx::handles::Mesh handles() const noexcept{
+        [[nodiscard]] gfx::handles::Mesh render_handles() const noexcept{
             return {
                 vk_vertex_buffer(),
-                vk_index_buffer()
+                vk_index_buffer(),
+                index_count()
             };
         }
 

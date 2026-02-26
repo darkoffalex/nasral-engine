@@ -24,6 +24,19 @@ namespace nasral::gfx
         logger->warn(msg_str);
         return VK_FALSE;
     }
+
+    std::optional<ecs::EntityId> Renderer::find_material_entity(const core::UniqueId& uid) const
+    {
+        using Id = res::comp::AssetId;
+        using MatDesc = res::comp::Descriptor;
+        using TexDesc = res::comp::DescriptorList<TextureType>;
+
+        for (auto [e, id, md, td] : engine()->ecs()->view<Id, MatDesc, TexDesc>()){
+            if (id.uid == uid) return e;
+        }
+
+        return std::nullopt;
+    }
 }
 
 namespace nasral::gfx
@@ -1019,14 +1032,21 @@ namespace nasral::gfx
 
         // Создать необходимые примитивы синхронизации для каждого активного кадра
         const auto& ld = vk_device_->logical_device();
+
+        // Per-frame синхронизация
         for (size_t i = 0; i < config().max_frames_in_flight; ++i)
         {
             // Семафор, который будет ожидаться конвейером перед выполнением команд рендеринга
             vk_render_available_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
-            // Семафор, который будет сигнализировать о готовности к показу изображения (для команд показа)
-            vk_render_finished_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
             // Барьеры, которые показывают, что буфер был выполнен и готов к использованию
             vk_frame_fence_.emplace_back(ld.createFenceUnique(vk::FenceCreateInfo{vk::FenceCreateFlagBits::eSignaled}));
+        }
+
+        // Per-swap-chain-image синхронизация
+        for (size_t i = 0; i < config().swap_chain_images; ++i)
+        {
+            // Семафор, который будет сигнализировать о готовности к показу изображения (для команд показа)
+            vk_render_finished_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
         }
     }
 
@@ -1102,11 +1122,6 @@ namespace nasral::gfx
         // Текущий индекс кадра (от 0 включительно до config_.max_frames_in_flight)
         const auto frame_index = get_frame_index();
 
-        // Размеры области рендеринга
-        const auto& extent = vk_framebuffers_[frame_index]->extent();
-        const auto& width = extent.width;
-        const auto& height = extent.height;
-
         // Описываем очистку вложений кадрового буфера (цвет, глубина/трафарет)
         std::array<vk::ClearValue, 2> clear_values{};
 
@@ -1145,6 +1160,11 @@ namespace nasral::gfx
         // Если изображение было получено
         if (result == vk::Result::eSuccess)
         {
+            // Размеры области рендеринга
+            const auto& extent = vk_framebuffers_[available_image_index_]->extent();
+            const auto& width = extent.width;
+            const auto& height = extent.height;
+
             // Получить буфер кадра и команд
             auto& cmd_buffer = vk_command_buffers_[frame_index];
             auto& frame_buffer = vk_framebuffers_[available_image_index_]->vk_framebuffer();
@@ -1197,7 +1217,7 @@ namespace nasral::gfx
 
         // Семафоры, сигнализирующие готовность к показу
         std::array<vk::Semaphore, 1> signal_semaphores{
-            vk_render_finished_semaphore_[frame_index].get()
+            vk_render_finished_semaphore_[available_image_index_].get()
         };
 
         // Стадии, на которых конвейер будет ждать wait_semaphores
@@ -1232,6 +1252,7 @@ namespace nasral::gfx
             }
         }
         catch(const ::vk::OutOfDateKHRError&){
+            frame_in_progress_ = false;
             request_surface_refresh();
             return;
         }
@@ -1249,8 +1270,10 @@ namespace nasral::gfx
         if (!is_active_) return;
 
         // Если кадр не был начат - выйти
-        assert(frame_in_progress_ == true);
-        if (!frame_in_progress_) return;
+        if (!frame_in_progress_) {
+            assert(false && "Frame not started.");
+            return;
+        }
 
         // Текущий индекс кадра (от 0 включительно до config_.max_frames_in_flight)
         const auto frame_index = get_frame_index();
@@ -1315,8 +1338,10 @@ namespace nasral::gfx
         if (!is_active_) return;
 
         // Если кадр не был начат - выйти
-        assert(frame_in_progress_ == true);
-        if (!frame_in_progress_) return;
+        if (!frame_in_progress_) {
+            assert(false && "Frame not started.");
+            return;
+        }
 
         // Получить буфер команд
         auto& cmd_buffer = vk_command_buffers_[get_frame_index()];
@@ -1343,8 +1368,10 @@ namespace nasral::gfx
         if (!is_active_) return;
 
         // Если кадр не был начат - выйти
-        assert(frame_in_progress_ == true);
-        if (!frame_in_progress_) return;
+        if (!frame_in_progress_) {
+            assert(false && "Frame not started.");
+            return;
+        }
 
         // Получить буфер команд
         auto& cmd_buffer = vk_command_buffers_[get_frame_index()];
@@ -1494,13 +1521,31 @@ namespace nasral::gfx
      * @brief Обработка события загрузки файла проекта
      * @param arg Аргумент события
      */
-    void Renderer::on_project_loaded(const evt::Arg& arg)
+    void Renderer::on_project_loaded(const evt::Arg& arg) const
     {
-        auto* r_ptr = static_cast<res::IResource*>(*std::get_if<evt::ArgPtr>(&arg));
-        if (const auto* proj = dynamic_cast<res::Project*>(r_ptr)){
+        auto* r_ptr = evt::from_arg<res::IResource*>(arg).value_or(nullptr);
+        if (const auto* proj = dynamic_cast<res::Project*>(r_ptr))
+        {
+            // Пройтись по списку материалов
             assert(proj->status() == res::Status::eLoaded);
-            for (auto& m_io : proj->materials()){
-                on_register_material(m_io);
+            for (const auto& m_io : proj->materials())
+            {
+                // Проверить доступность ресурса
+                auto& io_data = m_io->io_material_data;
+                if (!engine()->res()->find(io_data.material_path).has_value()){
+                    log_error("Material resource not found in list: " + io_data.material_path);
+                    return;
+                }
+
+                // Создать Entity для экземпляра материала
+                const auto m_entity = engine()->ecs()->spawn();
+
+                // Создать необходимые компоненты для entity
+                m_io->unpack_to(m_entity, core::IOStruct::eUFStandard);
+
+                // Запросить ресурсы материала
+                engine()->ecs()->add_component<res::comp::Request>(m_entity);
+                log_info("Material instance registered [" + io_data.id.to_string() + "|" + io_data.material_path + "]");
             }
         }
     }
@@ -1509,99 +1554,25 @@ namespace nasral::gfx
      * @brief Обработка события выгрузки проекта
      * @param arg Аргумент события
      */
-    void Renderer::on_project_releasing(const evt::Arg& arg)
+    void Renderer::on_project_releasing([[maybe_unused]] const evt::Arg& arg)
     {
-        auto* r_ptr = static_cast<res::IResource*>(*std::get_if<evt::ArgPtr>(&arg));
-        if (const auto* proj = dynamic_cast<res::Project*>(r_ptr)){
-            assert(proj->status() == res::Status::eLoaded);
-            for (auto& m_io : proj->materials()){
-                on_unregister_material(m_io.id);
-            }
-        }
-    }
-
-    /**
-     * @brief Создает entity материала на основании IO структуры
-     * @details На данную сущность затем могут ссылаться другие сущности (сущности сцены)
-     * @param m IO структура (данные из файла конфигурации проекта)
-     */
-    void Renderer::on_register_material(const io::Material& m)
-    {
-        // Найти ID ресурса материала
-        const auto m_res_id = engine()->res()->find(m.material_path);
-        if (!m_res_id.has_value()){
-            log_error("Material resource not found in list: " + m.material_path);
-            return;
-        }
-
-        // Создать Entity для экземпляра материала
-        auto* ecs = engine()->ecs();
-        const auto m_entity = engine()->ecs()->spawn();
-
-        // Добавить необходимые компоненты (дескрипторы ресурсов, настройки, dirty-теги для обновления)
-        ecs->add_component<res::comp::AssetId>(m_entity);
-        ecs->add_component<res::comp::Descriptor>(m_entity);
-        ecs->add_component<res::comp::DescriptorList<TextureType>>(m_entity);
-        ecs->add_component<comp::MaterialSettings>(m_entity);
-        ecs->add_component<comp::MaterialDirtySettings>(m_entity);
-        ecs->add_component<comp::MaterialDirtyTextures>(m_entity);
-
-        // Задать ID и дескрипторы ресурсов
-        auto& m_uid  = engine()->ecs()->get_component<res::comp::AssetId>(m_entity);
-        auto& m_desc = engine()->ecs()->get_component<res::comp::Descriptor>(m_entity);
-        auto& t_desc = engine()->ecs()->get_component<res::comp::DescriptorList<TextureType>>(m_entity);
-
-        m_uid.uid = m.id;
-        m_desc.res_id = m_res_id.value();
-        for (const TextureType tt : magic_enum::enum_values<TextureType>()){
-            t_desc.res_ids[tt] = res::kInvalidResourceId;
-            auto& tex_path = m.texture_paths[tt];
-            if (!tex_path.empty()){
-                auto tex_res_id = engine()->res()->find(tex_path);
-                if (!tex_res_id.has_value()){
-                    log_error("Texture resource not found in list: " + tex_path);
-                    continue;
-                }
-                t_desc.res_ids[tt] = tex_res_id.value();
-            }
-        }
-
-        // Задать параметры материала
-        auto& m_settings = ecs->get_component<comp::MaterialSettings>(m_entity);
-        m_settings.type = m.type;
-        m_settings.index = material_ids().acquire(); // Внимание! Выделение ID материала (нужно затем освободить)
-        m_settings.uniforms = m.material_settings;
-        m_settings.samplers = m.texture_samplers;
-
-        // Требуется запрос ресурса
-        // Внимание! Это сделает материал загруженным изначально, в перспективе это может быть лишним.
-        ecs->add_component<res::comp::Request>(m_entity);
-        log_info("Material instance registered [" + m.id.to_string() + "|" + m.material_path + "]");
-    }
-
-    /**
-     * @brief Удалять entity материала по уникальному и постоянному UID
-     * @param id Уникальный ID сущности/ассета (сохраняется с данными в файл, читается из него)
-     */
-    void Renderer::on_unregister_material(const core::UniqueId& id)
-    {
-        using Id = res::comp::AssetId;
         using MatDesc = res::comp::Descriptor;
         using TexDesc = res::comp::DescriptorList<TextureType>;
-        using MatSettings = comp::MaterialSettings;
-        using MatHandles = comp::MaterialHandles;
+        using Loaded = res::comp::Loaded;
+        using UboIndex = comp::UniformIndex;
+        using Uid = res::comp::AssetId;
 
         auto* ecs = engine()->ecs();
         auto* res = engine()->res();
 
-        // Для уже загруженных материалов (хендлы в наличии)
-        for (auto [e, uid, md, td, s, h] : ecs->view<Id, MatDesc, TexDesc, MatSettings, MatHandles>())
+        for (auto [e, d, td, uid, l, idx] : ecs->view<MatDesc, TexDesc, Uid, Loaded, UboIndex>())
         {
-            // Выполнять только для нужного UID
-            if (uid.uid != id) continue;
+            // Освободить ресурс материала
+            if (d.res_id != res::kInvalidResourceId){
+                res->release(d.res_id);
+            }
 
-            // Освободить ресурсы
-            res->release(md.res_id);
+            // Освободить ресурс текстуры
             for (const TextureType tt : magic_enum::enum_values<TextureType>()){
                 if (td.res_ids[tt] != res::kInvalidResourceId){
                     res->release(td.res_ids[tt]);
@@ -1609,22 +1580,10 @@ namespace nasral::gfx
             }
 
             // Вернуть индекс материала в пул
-            material_ids().release(s.index);
+            material_ids().release(idx.index);
 
             // Удалить entity
-            ecs->destroy_deferred(e, [this, id]{
-                log_info("Material instance unregistered [" + id.to_string() + "]");
-            });
-        }
-
-        // Для еще не загруженных материалов (без хендлов)
-        for (auto [e, uid, md, td, s] : ecs->view<Id, MatDesc, TexDesc, MatSettings>())
-        {
-            // Выполнять только для нужного UID
-            if (uid.uid != id) continue;
-
-            // Удалить entity
-            ecs->destroy_deferred(e, [this, id]{
+            ecs->destroy_deferred(e, [this, id = uid.uid]{
                 log_info("Material instance unregistered [" + id.to_string() + "]");
             });
         }

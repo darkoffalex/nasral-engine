@@ -10,4 +10,18 @@ namespace nasral::evt
             (obj->*method)(arg);
         };
     }
+
+    template <typename T>
+    std::optional<T> from_arg(const Arg& arg) {
+        if constexpr (std::is_pointer_v<T>){
+            if (auto* vptr = std::get_if<void*>(&arg)){
+                return {static_cast<T>(*vptr)};
+            }
+        }else{
+            if (auto* ptr = std::get_if<T>(&arg)){
+                return {*ptr};
+            }
+        }
+        return std::nullopt;
+    }
 }

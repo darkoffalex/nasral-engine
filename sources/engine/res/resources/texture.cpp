@@ -95,8 +95,8 @@ namespace nasral::res
                 , vk::MemoryPropertyFlagBits::eDeviceLocal
                 , vk::ImageLayout::ePreinitialized
                 , vk::SampleCountFlagBits::e1
-                , 0   // Автоматически создать мип-уровни
-                , 1); // Кол-вл слоев (1 слой - обычная текстура)
+                , lp && lp->generate_mipmaps ? 0 : 1  // Автоматически создать мип-уровни если нужно (или 1, если нет)
+                , 1);                                 // Кол-вл слоев (1 слой - обычная текстура)
 
             // Копировать данные (загруженные пиксели) в промежуточное изображение
             auto* mem = static_cast<uint8_t*>(staging_image->map(vk::ImageAspectFlagBits::eColor));

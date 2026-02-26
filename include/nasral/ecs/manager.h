@@ -98,6 +98,13 @@ namespace nasral::ecs
             return slot.archetype->get_component<CT>(slot.index_in_archetype);
         }
 
+        template<typename CT>
+        CT& get_or_add_component(const EntityId& entity_id){
+            if (has_component<CT>(entity_id)){ return get_component<CT>(entity_id); }
+            add_component<CT>(entity_id);
+            return get_component<CT>(entity_id);
+        }
+
         template<typename... CTs>
         std::tuple<CTs&...> get_components(const EntityId& entity_id){
             return std::tie(get_component<CTs>(entity_id)...);
@@ -116,7 +123,7 @@ namespace nasral::ecs
         }
 
         template<typename... CTs>
-        View<CTs...> view();
+        View<CTs...> view(const ComponentMask& exclusion = {});
 
     private:
         template <class T, class V>

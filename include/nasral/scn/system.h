@@ -18,6 +18,10 @@ namespace nasral::scn
         void init();
         void update(float dt);
         void shutdown();
+
+    private:
+        void update_obj_transforms(float dt) const;
+        void update_camera_transform(float dt) const;
     };
 }
 
