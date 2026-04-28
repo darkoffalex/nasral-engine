@@ -1,6 +1,5 @@
 #include "pch.h"
 #include <nasral/log/logger.h>
-#include <nasral/engine.h>
 
 namespace nasral::log
 {
@@ -22,7 +21,7 @@ namespace nasral::log
         }
     }
 
-    void Logger::log_unsafe(const Level level, const std::string& message)
+    void Logger::log_unsafe(Level level, const std::string& message)
     {
         // Если требуемый уровень логирования отключен - выйти
         if ((config().level & level) != level){
@@ -62,25 +61,5 @@ namespace nasral::log
     void Logger::log(const Level level, const std::string& message){
         std::lock_guard lock(mutex_);
         log_unsafe(level, message);
-    }
-
-    void Logger::debug(const std::string& message){
-        log(Level::eDebug, message);
-    }
-
-    void Logger::info(const std::string& message){
-        log(Level::eInfo, message);
-    }
-
-    void Logger::warn(const std::string& message){
-        log(Level::eWarning, message);
-    }
-
-    void Logger::error(const std::string& message){
-        log(Level::eError, message);
-    }
-
-    void Logger::fatal(const std::string& message){
-        log(Level::eFatal, message);
     }
 }

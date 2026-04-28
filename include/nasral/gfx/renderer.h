@@ -1,34 +1,31 @@
 #pragma once
 
-#include <atomic>
-#include <vector>
-#include <vulkan/vulkan.hpp>
-#include <vulkan/utils/buffer.hpp>
+#include <nasral/common/subsystem.h>
+#include <nasral/common/index_pool.h>
+#include <nasral/log/loggable.h>
+#include <nasral/gfx/types.h>
+#include <nasral/evt/objects/listener.h>
+
+#include <vulkan/utils/device.hpp>
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/uniform_layout.hpp>
-#include <nasral/gfx/types.h>
-#include <nasral/evt/types.h>
-#include <nasral/core/types.h>
-#include <nasral/core/subsystem.h>
-#include <nasral/core/index_pool.h>
-#include <nasral/log/loggable.h>
-#include <nasral/ecs/entity.h>
+#include <vulkan/utils/buffer.hpp>
 
 namespace nasral::gfx
 {
-    class Renderer final : public core::Subsystem<Config>, public log::Loggable<Renderer>
+    class Renderer final : public Subsystem<Renderer, Config>, public log::Loggable<Renderer>
     {
     public:
         typedef std::unique_ptr<Renderer> Ptr;
 
-        enum class CommandGroup : size_t
+        enum class CmdGroupType
         {
             eGraphicsAndPresent = 0,
             eTransfer,
             TOTAL
         };
 
-        Renderer(Engine* engine, const Config& config);
+        explicit Renderer(Engine* e, const Config& config);
         ~Renderer();
 
         Renderer(const Renderer&) = delete;
@@ -36,9 +33,9 @@ namespace nasral::gfx
 
         void cmd_begin_frame();
         void cmd_end_frame();
-        void cmd_bind_material(const handles::Material& handles, uint32_t index);
-        void cmd_bind_frame_descriptors();
-        void cmd_draw_mesh(const handles::Mesh& handles, uint32_t index);
+        void cmd_bind_material(const handles::Material& handles, uint32_t uniform_idx);
+        void cmd_bind_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
+        void cmd_draw_geometry(uint32_t index_offset, uint32_t index_count);
         void cmd_wait_for_frame() const;
 
         void request_surface_refresh();
@@ -52,70 +49,25 @@ namespace nasral::gfx
         void update_light_states_unsafe(const std::vector<uint32_t>& ids, bool active);
         void update_light_states(const std::vector<uint32_t>& ids, bool active);
 
-        [[nodiscard]] bool is_active() const noexcept{
-            return is_active_;
-        }
+        void finalize();
 
-        [[nodiscard]] size_t current_frame() const noexcept{
-            return current_frame_;
-        }
+        [[nodiscard]] auto is_active() const noexcept{ return is_active_; }
+        [[nodiscard]] auto frames() const noexcept{ return frame_count_; }
+        [[nodiscard]] auto frame() const noexcept{ return frame_index_; }
+        [[nodiscard]] const auto& vk_instance() const noexcept{ return *vk_instance_; }
+        [[nodiscard]] const auto& vk_device() const noexcept{ return *vk_device_; }
+        [[nodiscard]] const auto& vk_render_pass() const noexcept{ return *vk_render_pass_; }
+        [[nodiscard]] const auto& vk_surface() const noexcept{ return *vk_surface_; }
+        [[nodiscard]] const auto& vk_framebuffer(const size_t index) const noexcept{ return *vk_framebuffers_[index]; }
+        [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{ return *vk_texture_samplers_[type]; }
+        [[nodiscard]] const auto& vk_uniform_layout(const UniformLayoutType& type) const noexcept{ return *vk_uniform_layouts_[type]; }
+        [[nodiscard]] auto& object_ubo_ids(){ return object_ubo_ids_; }
+        [[nodiscard]] auto& material_ubo_ids(){ return material_ubo_ids_; }
+        [[nodiscard]] auto& light_ubo_ids(){ return light_ubo_ids_; }
 
-        [[nodiscard]] const vk::Instance& vk_instance() const noexcept{
-            return *vk_instance_;
-        }
-
-        [[nodiscard]] vk::utils::Device& vk_device() const noexcept{
-            return *vk_device_;
-        }
-
-        [[nodiscard]] const vk::utils::Device::Ptr& vk_device_ptr() const noexcept{
-            return vk_device_;
-        }
-
-        [[nodiscard]] const vk::RenderPass& vk_render_pass() const noexcept{
-            return *vk_render_pass_;
-        }
-
-        [[nodiscard]] const vk::SurfaceKHR& vk_surface() const noexcept{
-            return *vk_surface_;
-        }
-
-        [[nodiscard]] const vk::utils::Framebuffer& vk_framebuffer(const size_t index) const noexcept{
-            return *vk_framebuffers_[index];
-        }
-
-        [[nodiscard]] const vk::Sampler& vk_texture_sampler(const TextureSamplerType& type) const noexcept{
-            return *vk_texture_samplers_[type];
-        }
-
-        [[nodiscard]] const vk::utils::UniformLayout& vk_uniform_layout(const UniformLayoutType& type) const noexcept{
-            return *vk_uniform_layouts_[type];
-        }
-
-        [[nodiscard]] const vk::Extent2D& get_rendering_resolution() const noexcept{
-            return vk_framebuffers_[0]->extent();
-        }
-
-        [[nodiscard]] float get_rendering_aspect() const noexcept{
-            const auto& extent = get_rendering_resolution();
-            return static_cast<float>(extent.width) / static_cast<float>(extent.height);
-        }
-
-        [[nodiscard]] size_t get_frame_index() const noexcept{
-            return current_frame_ % static_cast<size_t>(config().max_frames_in_flight);
-        }
-
-        [[nodiscard]] core::IndexPool<>& object_ids(){
-            return object_ids_;
-        }
-
-        [[nodiscard]] core::IndexPool<>& material_ids(){
-            return material_ids_;
-        }
-
-        [[nodiscard]] core::IndexPool<>& light_ids(){
-            return light_ids_;
-        }
+        [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
+        [[nodiscard]] float rendering_aspect() const noexcept;
+        [[nodiscard]] bool ready_for_commands() const noexcept;
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
             vk::Flags<vk::DebugReportFlagBitsEXT> flags,
@@ -127,9 +79,7 @@ namespace nasral::gfx
             const char* msg,
             void* user_data);
 
-        [[nodiscard]] std::optional<ecs::EntityId> find_material_entity(const core::UniqueId& uid) const;
-
-    private:
+    protected:
         void init_vk_instance();
         void init_vk_loader();
         void init_vk_debug_callback();
@@ -145,18 +95,11 @@ namespace nasral::gfx
         void init_vk_synchronization();
         void refresh_vk_surface();
 
-        void on_project_loaded(const evt::Arg& arg) const;
-        void on_project_releasing(const evt::Arg& arg);
-
-    protected:
+    private:
         // Состояние
         bool is_active_;
         bool frame_in_progress_;
-        std::atomic<bool> surface_refresh_requested_;
-
-        // События
-        evt::ListenerHandle evt_h_proj_load_;
-        evt::ListenerHandle evt_h_proj_release_;
+        std::atomic<bool> surface_refresh_needed_;
 
         // Основные сущности Vulkan (включая кастомные RAII обертки)
         vk::UniqueInstance vk_instance_;
@@ -169,10 +112,10 @@ namespace nasral::gfx
         std::vector<vk::utils::Framebuffer::Ptr> vk_framebuffers_;
 
         // Макеты конвейеров (для растеризации, пост-процессинга и прочего)
-        core::EnumArray<UniformLayoutType, vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
+        EnumArray<UniformLayoutType, vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
 
         // Семплеры текстур
-        core::EnumArray<TextureSamplerType, vk::UniqueSampler> vk_texture_samplers_;
+        EnumArray<TextureSamplerType, vk::UniqueSampler> vk_texture_samplers_;
 
         // Дескрипторные наборы (камера, трансформации и материалы объектов, текстуры объектов)
         vk::UniqueDescriptorSet vk_dset_view_;
@@ -190,7 +133,8 @@ namespace nasral::gfx
         vk::utils::Buffer::Ptr vk_ubo_light_indices_;
 
         // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
-        size_t current_frame_;
+        size_t frame_count_;
+        size_t frame_index_;
         uint32_t available_image_index_;
         std::vector<vk::UniqueCommandBuffer> vk_command_buffers_;
         std::vector<vk::UniqueSemaphore> vk_render_available_semaphore_;
@@ -198,9 +142,9 @@ namespace nasral::gfx
         std::vector<vk::UniqueFence> vk_frame_fence_;
 
         // Индексы и пулы индексов
-        core::IndexPool<> object_ids_;
-        core::IndexPool<> material_ids_;
-        core::IndexPool<> light_ids_;
+        IndexPool<> object_ubo_ids_;
+        IndexPool<> material_ubo_ids_;
+        IndexPool<> light_ubo_ids_;
 
         // Активные источники света (их индексы)
         std::vector<uint32_t> light_active_ids_;

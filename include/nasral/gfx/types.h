@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-#include <vector>
 #include <memory>
 #include <variant>
 #include <glm/glm.hpp>
@@ -15,7 +13,7 @@ namespace nasral::gfx
 
     constexpr uint32_t kMaxCameras = 1;
     constexpr uint32_t kMaxObjects = 1024;
-    constexpr uint32_t kMaxMaterials = 100;
+    constexpr uint32_t kMaxMaterials = 128;
     constexpr uint32_t kMaxLights = 64;
 
     struct Vertex
@@ -29,7 +27,7 @@ namespace nasral::gfx
     enum class UniformLayoutType : uint32_t
     {
         eDummy = 0,
-        eBasicRasterization,
+        eRasterization,
         ePostProcessing,
         TOTAL
     };
@@ -49,29 +47,30 @@ namespace nasral::gfx
     {
         eAlbedoColor = 0,
         eNormal,
-        eRoughnessOrSpecular,
+        eRoughOrSpec,
         eHeight,
-        eMetallicOrReflection,
-        eAmbientOcclusion,
+        eMetalOrReflect,
+        eAO,
         eEmission,
         TOTAL
     };
 
-    enum class MaterialType : uint32_t
+    enum class MaterialBaseType : uint32_t
     {
         eDummy = 0,
-        eVertexColored,
+        eColored,
         eTextured,
         ePhong,
-        ePbr,
+        ePBR,
         TOTAL
     };
 
     enum class LightType : uint32_t
     {
         ePointLight = 0,
-        eDirectionalLight,
         eSpotLight,
+        eDirectionalLight,
+        eAreaLight,
         TOTAL
     };
 
@@ -170,6 +169,13 @@ namespace nasral::gfx
         static_assert(sizeof(Camera) % 16 == 0, "Camera size must be multiple of 16 bytes");
     }
 
+    struct TextureBindingInfo
+    {
+        TextureType type = TextureType::eAlbedoColor;
+        TextureSamplerType sampler_type = TextureSamplerType::eNearest;
+        handles::Texture texture = {};
+    };
+
     struct Config
     {
         std::string app_name;                                               // Имя приложения (для драйвера Vulkan)
@@ -185,12 +191,5 @@ namespace nasral::gfx
         bool enable_validation_layers = false;                              // Использовать слои валидации
         uint32_t max_frames_in_flight = 2;                                  // Кол-во единовременно обрабатываемых кадров
         uint32_t swap_chain_images = 3;                                     // Кол-во изображений в цепочке свопинга
-    };
-
-    struct TextureBindingInfo
-    {
-        TextureType type = TextureType::eAlbedoColor;
-        TextureSamplerType sampler_type = TextureSamplerType::eNearest;
-        handles::Texture texture = {};
     };
 }

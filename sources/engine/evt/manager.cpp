@@ -10,41 +10,40 @@ namespace nasral::evt
         }
     }
 
-    Manager::~Manager()
-    = default;
+    Manager::~Manager() = default;
 
-    ListenerHandle Manager::register_l_unsafe(const Type type, Listener listener)
+    ListenerHandle Manager::register_listener_unsafe(const Type type, ListenerCallback callback)
     {
         auto& v = listeners_[type];
-        v.emplace_back(std::move(listener));
+        v.emplace_back(std::move(callback));
         return v.size() - 1;
     }
 
-    ListenerHandle Manager::register_l(const Type type, Listener listener)
+    ListenerHandle Manager::register_listener(const Type type, ListenerCallback callback)
     {
         std::unique_lock lock(mtx_);
-        return register_l_unsafe(type, std::move(listener));
+        return register_listener_unsafe(type, std::move(callback));
     }
 
-    void Manager::unregister_l_unsafe(const Type type, const ListenerHandle listener)
+    void Manager::unregister_listener_unsafe(const Type type, const ListenerHandle handle)
     {
         auto& v = listeners_[type];
-        if (listener >= v.size()) { return; }
-        v[listener] = std::move(v.back());
+        if (handle >= v.size()) { return; }
+        v[handle] = std::move(v.back());
         v.pop_back();
     }
 
-    void Manager::unregister_l(const Type type, const ListenerHandle listener)
+    void Manager::unregister_listener(const Type type, const ListenerHandle listener)
     {
         std::unique_lock lock(mtx_);
-        unregister_l_unsafe(type, listener);
+        unregister_listener_unsafe(type, listener);
     }
 
     void Manager::send_unsafe(const Type type, const Arg& arg)
     {
         const auto& v = listeners_[type];
-        for (auto& listener : v){
-            listener(arg);
+        for (auto& l : v){
+            l(arg);
         }
     }
 
@@ -54,27 +53,17 @@ namespace nasral::evt
         send_unsafe(type, arg);
     }
 
-    void Manager::send_deferred(const Type type, const Arg& arg, const bool safe)
+    void Manager::send_deferred(Type type, const Arg& arg, bool safe)
     {
-        deferred_actions_.emplace_back(
-            [type, safe, arg = Arg(arg)](Manager& m) mutable{
-                safe ? m.send(type, arg) : m.send_unsafe(type, arg);
-            });
+        defer([type, safe, arg = Arg(arg)](Manager& m) mutable{
+            safe ? m.send(type, arg) : m.send_unsafe(type, arg);
+        });
     }
 
-    void Manager::send_deferred(Type type, Arg&& arg, const bool safe)
+    void Manager::send_deferred(Type type, Arg&& arg, bool safe)
     {
-        deferred_actions_.emplace_back(
-            [type, safe, arg = Arg(std::forward<Arg>(arg))](Manager& m) mutable{
-                safe ? m.send(type, arg) : m.send_unsafe(type, arg);
-            });
-    }
-
-    void Manager::apply_deferred_actions()
-    {
-        for (auto& deferred_action : deferred_actions_){
-            deferred_action(*this);
-        }
-        deferred_actions_.clear();
+        defer([type, safe, arg = Arg(std::forward<Arg>(arg))](Manager& m) mutable{
+            safe ? m.send(type, arg) : m.send_unsafe(type, arg);
+        });
     }
 }

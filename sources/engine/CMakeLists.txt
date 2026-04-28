@@ -9,39 +9,42 @@ add_library(Engine OBJECT
 
         # События
         evt/manager.cpp
-
-        # Ввод
-        inp/manager.cpp
-        inp/provider.cpp
-
-        # ECS
+        evt/objects/listener.cpp
+#
+#        # Ввод
+#        inp/manager.cpp
+#        inp/provider.cpp
+#
+#        # ECS
         ecs/archetype.cpp
         ecs/manager.cpp
-
+#
         # Ресурсы
         res/manager.cpp
-        res/system.cpp
-        res/resources/file.cpp
-        res/resources/shader.cpp
-        res/resources/texture.cpp
-        res/resources/mesh.cpp
-        res/resources/material.cpp
-        res/resources/project.cpp
-        res/resources/scene.cpp
-
-        # Рендеринг
+        res/objects/resource.cpp
+#        res/system.cpp
+        res/objects/file.cpp
+#        res/resources/shader.cpp
+#        res/resources/texture.cpp
+#        res/resources/mesh.cpp
+#        res/resources/material.cpp
+#        res/resources/project.cpp
+#        res/resources/scene.cpp
+#
+#        # Рендеринг
         gfx/renderer.cpp
-        gfx/system.cpp
-        gfx/io/material.cpp
-
-        # Сцена
-        scn/manager.cpp
-        scn/system.cpp
-        scn/io/base_node.cpp
-        scn/io/spatial_node.cpp
-        scn/io/camera_node.cpp
-        scn/io/light_node.cpp
-        scn/io/mesh_node.cpp
+        gfx/renderer_init.cpp
+#        gfx/system.cpp
+#        gfx/io/material.cpp
+#
+#        # Сцена
+#        scn/manager.cpp
+#        scn/system.cpp
+#        scn/io/base_node.cpp
+#        scn/io/spatial_node.cpp
+#        scn/io/camera_node.cpp
+#        scn/io/light_node.cpp
+#        scn/io/mesh_node.cpp
 )
 add_default_configurations(Engine demo_app)
 

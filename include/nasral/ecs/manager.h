@@ -1,6 +1,5 @@
 #pragma once
-
-#include <nasral/core/subsystem.h>
+#include <nasral/common/subsystem.h>
 #include <nasral/ecs/archetype.h>
 
 namespace nasral::ecs
@@ -8,7 +7,7 @@ namespace nasral::ecs
     template<typename... CTs>
     class View;
 
-    class Manager final : public core::Subsystem<Config>
+    class Manager final : public Subsystem<Manager, Config>
     {
     public:
         typedef std::unique_ptr<Manager> Ptr;
@@ -20,130 +19,102 @@ namespace nasral::ecs
             EntityId id = {};
             Archetype* archetype = nullptr;
             ComponentMask mask = {};
-            size_t index_in_archetype = 0;
-            bool is_alive = true;
+            size_t index_in_arch = 0;
         };
 
-        Manager(Engine* engine, const Config& config);
+        explicit Manager(Engine* e, const Config& config);
+
+        Manager(const Manager&) = delete;
+        Manager& operator=(const Manager&) = delete;
 
         [[nodiscard]] EntityId spawn();
-        bool destroy(const EntityId& entity_id);
-        void destroy_deferred(const EntityId& entity_id, std::function<void()> on_destroy = nullptr);
-        void apply_deferred_actions();
 
-        template <class T>
-        void add_component(const EntityId& entity_id) {
-            add_component_impl<T>(entity_id, T{});
-        }
+        void destroy(const EntityId& entity);
+        void destroy_immediate(const EntityId& entity);
 
-        template <class T>
-        void add_component(const EntityId& entity_id, const T& component) {
-            add_component_impl<T>(entity_id, component);
-        }
-
-        template <class T>
-        void add_component(const EntityId& entity_id, T&& component) {
-            add_component_impl<T>(entity_id, std::forward<T>(component));
-        }
-
-        template <class T>
-        void add_component_deferred(const EntityId& entity_id) {
-            add_component_deferred<T>(entity_id, T{});
-        }
-
-        template <class T>
-        void add_component_deferred(const EntityId& entity_id, const T& component) {
-            using U = std::decay_t<T>;
-            deferred_actions_.emplace_back(
-                [entity_id, comp = U(component)](Manager& m) mutable {
-                    m.add_component<U>(entity_id, std::move(comp));
-                }
-            );
-        }
-
-        template <class T>
-        void add_component_deferred(const EntityId& entity_id, T&& component) {
-            using U = std::decay_t<T>;
-            deferred_actions_.emplace_back(
-                [entity_id, comp = U(std::forward<T>(component))](Manager& m) mutable {
-                    m.add_component<U>(entity_id, std::move(comp));
-                }
-            );
-        }
-
-        template<typename CT>
-        void remove_component(const EntityId& entity_id){
-            auto& slot = entities_[entity_id.index];
-            slot.mask.reset(kComponentId<CT>);
-            auto* archetype = find_or_create_archetype(slot.mask);
-            assign_archetype(slot, archetype);
-        }
-
-        template<typename CT>
-        void remove_component_deferred(const EntityId& entity_id){
-            deferred_actions_.emplace_back([entity_id](Manager& m){
-                m.remove_component<CT>(entity_id);
+        template<typename... CTs>
+        void add_components(const EntityId& entity, CTs&&... components){
+            using ComponentsTuple = std::tuple<std::decay_t<CTs>...>;
+            defer([
+                entity,
+                comps = ComponentsTuple(std::forward<CTs>(components)...)
+            ](Manager& m) mutable {
+                std::apply(
+                    [&m, &entity](auto&&... unpacked){
+                        m.add_components_impl(entity, std::forward<decltype(unpacked)>(unpacked)...);
+                    },
+                    std::move(comps)
+                );
             });
         }
 
-        template<typename CT>
-        [[nodiscard]] bool has_component(const EntityId& entity_id) const{
-            const auto& slot = entities_[entity_id.index];
-            return slot.mask.test(kComponentId<CT>);
-        }
-
-        template<typename CT>
-        CT& get_component(const EntityId& entity_id){
-            const auto& slot = entities_[entity_id.index];
-            return slot.archetype->get_component<CT>(slot.index_in_archetype);
-        }
-
-        template<typename CT>
-        CT& get_or_add_component(const EntityId& entity_id){
-            if (has_component<CT>(entity_id)){ return get_component<CT>(entity_id); }
-            add_component<CT>(entity_id);
-            return get_component<CT>(entity_id);
+        template<typename... CTs>
+        void add_components_immediate(const EntityId& entity, CTs&&... components){
+            add_components_impl(entity, std::forward<CTs>(components)...);
         }
 
         template<typename... CTs>
-        std::tuple<CTs&...> get_components(const EntityId& entity_id){
-            return std::tie(get_component<CTs>(entity_id)...);
+        void remove_components(const EntityId& entity){
+            defer([entity](Manager& m){
+                m.remove_components_impl<CTs...>(entity);
+            });
         }
 
-        [[nodiscard]] bool is_alive(const EntityId& entity_id) const noexcept{
-            if (entity_id.index >= entities_.size()){ return false;}
-            return entities_[entity_id.index].is_alive;
+        template<typename... CTs>
+        void remove_components_immediate(const EntityId& entity){
+            remove_components_impl<CTs...>(entity);
         }
 
-        [[nodiscard]] bool is_valid(const EntityId& entity_id) const noexcept{
-            if (entity_id.index >= entities_.size()){ return false;}
-            return entities_[entity_id.index].is_alive
-                && entities_[entity_id.index].archetype != nullptr
-                && entities_[entity_id.index].id == entity_id;
+        template<typename... CTs>
+        [[nodiscard]] bool has_components(const EntityId& entity) const noexcept{
+            return entities_[entity.index].mask.test(kComponentId<std::decay_t<CTs>>...);
+        }
+
+        template<typename CT>
+        CT& get_component(const EntityId& entity) const noexcept{
+            const auto& slot = entities_[entity.index];
+            return slot.archetype->component<CT>(slot.index_in_arch);
+        }
+
+        template<typename... CTs>
+        std::tuple<CTs&...> get_components(const EntityId& entity) const noexcept{
+            const auto& slot = entities_[entity.index];
+            return slot.archetype->components<CTs...>(slot.index_in_arch);
+        }
+
+        [[nodiscard]] bool is_valid(const EntityId& entity) const noexcept{
+            if (entity.index >= entities_.size()){ return false;}
+            return entities_[entity.index].archetype != nullptr
+                && entities_[entity.index].id == entity;
         }
 
         template<typename... CTs>
         View<CTs...> view(const ComponentMask& exclusion = {});
 
     private:
-        template <class T, class V>
-        void add_component_impl(const EntityId& entity_id, V&& value){
-            auto& slot = entities_[entity_id.index];
-            slot.mask.set(kComponentId<T>);
-            auto* archetype = find_or_create_archetype(slot.mask);
+        template<typename... CTs>
+        void add_components_impl(const EntityId& entity, CTs&&... components){
+            auto& slot = entities_[entity.index];
+            (slot.mask.set(kComponentId<std::decay_t<CTs>>), ...);
+            auto* archetype = ensure_archetype(slot.mask);
             assign_archetype(slot, archetype);
-            archetype->get_component<T>(slot.index_in_archetype) = std::forward<V>(value);
+            ((archetype->component<std::decay_t<CTs>>(slot.index_in_arch) = std::forward<CTs>(components)), ...);
         }
 
-        [[nodiscard]] Archetype* find_or_create_archetype(const ComponentMask& mask);
+        template<typename... CTs>
+        void remove_components_impl(const EntityId& entity){
+            auto& slot = entities_[entity.index];
+            (slot.mask.reset(kComponentId<std::decay_t<CTs>>), ...);
+            auto* archetype = ensure_archetype(slot.mask);
+            assign_archetype(slot, archetype);
+        }
+
+        Archetype* ensure_archetype(const ComponentMask& mask);
         void assign_archetype(EntitySlot& slot, Archetype* archetype);
 
     protected:
-        typedef std::function<void(Manager&)> DeferredAction;
-
         std::vector<EntitySlot> entities_;
         std::vector<size_t> free_slots_;
         std::vector<Archetype::Ptr> archetypes_;
-        std::vector<DeferredAction> deferred_actions_;
     };
 }
