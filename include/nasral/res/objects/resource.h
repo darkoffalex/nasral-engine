@@ -23,7 +23,7 @@ namespace nasral::res
                 : SubsystemObject(manager)
                 , params_(params)
             {
-                static_assert(std::is_trivially_constructible_v<Data>, "Data must be trivially constructible");
+                static_assert(std::is_default_constructible_v<Data>, "Data must be default constructible");
                 static_assert(std::is_move_assignable_v<Data>, "Data must be move assignable");
             }
             virtual ~Loader() = default;

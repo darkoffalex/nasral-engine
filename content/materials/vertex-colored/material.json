@@ -1,0 +1,17 @@
+{
+  "base_type" : "eVertexColored",
+  "shaders" : [
+    {
+      "stage" : "vertex",
+      "path" : "materials/vertex-colored/shader.vert.spv"
+    },
+    {
+      "stage" : "fragment",
+      "path" : "materials/vertex-colored/shader.frag.spv"
+    }
+  ],
+  "settings" : {
+    "PolygonMode" : "Line",
+    "LineWidth" : 1
+  }
+}

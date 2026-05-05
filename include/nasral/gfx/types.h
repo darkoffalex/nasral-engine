@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <memory>
 #include <variant>
 #include <glm/glm.hpp>
@@ -174,6 +175,14 @@ namespace nasral::gfx
         TextureType type = TextureType::eAlbedoColor;
         TextureSamplerType sampler_type = TextureSamplerType::eNearest;
         handles::Texture texture = {};
+    };
+
+    struct MaterialDesc
+    {
+        MaterialBaseType base_type = MaterialBaseType::eDummy;
+        std::map<vk::ShaderStageFlagBits, std::string> shaders = {};
+        vk::PolygonMode polygon_mode = vk::PolygonMode::eFill;
+        float line_width = 1.0f;
     };
 
     struct Config

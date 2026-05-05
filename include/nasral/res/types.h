@@ -47,7 +47,7 @@ namespace nasral::res
         eMesh,
         eShader,
         eMaterial,
-        eProject,
+        eProjectFile,
         eScene,
         TOTAL
     };

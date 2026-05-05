@@ -1,0 +1,13 @@
+{
+  "base_type" : "eDummy",
+  "shaders" : [
+    {
+      "stage" : "vertex",
+      "path" : "materials/dummy/shader.vert.spv"
+    },
+    {
+      "stage" : "fragment",
+      "path" : "materials/dummy/shader.frag.spv"
+    }
+  ]
+}

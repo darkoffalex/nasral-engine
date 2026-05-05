@@ -5,5 +5,18 @@
   "materials": [
   ],
 
+  "input" : {
+    "mouse_sensitivity": 0.1,
+    "key_bindings": [
+      {"action": "forward", "keys": ["key:eW"]},
+      {"action": "backward", "keys": ["key:eS"]},
+      {"action": "left", "keys": ["key:eA"]},
+      {"action": "right", "keys": ["key:dA"]},
+      {"action": "up", "keys": ["key:eSpace"]},
+      {"action": "down", "keys": ["key:eC"]},
+      {"action": "exit", "keys": ["key:eEscape"]}
+    ]
+  },
+
   "initial_scene": ""
 }
