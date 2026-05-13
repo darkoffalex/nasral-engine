@@ -1,13 +1,14 @@
 #pragma once
 #include <nasral/common/subsystem.h>
 #include <nasral/ecs/archetype.h>
+#include <nasral/log/loggable.h>
 
 namespace nasral::ecs
 {
     template<typename... CTs>
     class View;
 
-    class Manager final : public Subsystem<Manager, Config>
+    class Manager final : public Subsystem<Manager, Config>, public log::Loggable<Manager>
     {
     public:
         typedef std::unique_ptr<Manager> Ptr;
@@ -23,9 +24,13 @@ namespace nasral::ecs
         };
 
         explicit Manager(Engine* e, const Config& config);
+        ~Manager();
 
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
+
+        void init();
+        void finalize();
 
         [[nodiscard]] EntityId spawn();
 
@@ -89,7 +94,9 @@ namespace nasral::ecs
         }
 
         template<typename... CTs>
-        View<CTs...> view(const ComponentMask& exclusion = {});
+        View<CTs...> view(const ComponentMask& exclusion = {}){
+            return View<CTs...>(this, exclusion);
+        }
 
     private:
         template<typename... CTs>
@@ -118,3 +125,5 @@ namespace nasral::ecs
         std::vector<Archetype::Ptr> archetypes_;
     };
 }
+
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(ecs::Manager)

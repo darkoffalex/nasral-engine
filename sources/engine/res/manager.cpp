@@ -1,39 +1,18 @@
 #include "pch.h"
 #include <nasral/res/manager.h>
+#include <nasral/res/objects/file.h>
+#include <nasral/res/objects/project.h>
 #include <nasral/engine.h>
+
+#include "res/loaders/project/json.hpp"
+#include "res/loaders/project/builtin.hpp"
 
 namespace nasral::res
 {
     Manager::Manager(Engine* e, const Config& config)
         : Subsystem(e, config)
         , free_slots_(kMaxResourceCount)
-    {
-        // Информация о каталогах
-        const std::string cwd = std::filesystem::current_path().string();
-        log_info("Initializing resource manager...");
-        log_info("Current working directory: " + cwd);
-        log_info("Content directory: " + config.content_dir + "");
-
-        // Доступность каталога контента
-        if (!config.content_dir.empty() && !std::filesystem::exists(config.content_dir)){
-            throw std::runtime_error("Content directory does not exist");
-        }
-
-        // Зарезервировать память
-        active_slots_.reserve(kMaxResourceCount);
-
-        // Добавить встроенные по умолчанию ресурсы
-        add_builtins();
-        
-        // Добавить ресурсы инициализации, если есть (из конфига)
-        for (const auto& desc : config.initial_resources){
-            add(desc);
-        }
-
-        // Запросить обязательные ресурсы (подразумевается, что они добавлены)
-        // Такие ресурсы должны быть доступны в любой момент времени
-        request_mandatory();
-    }
+    {}
 
     Manager::~Manager() = default;
 
@@ -122,7 +101,7 @@ namespace nasral::res
         // Попытаться найти ресурс файла проекта в initial ресурсах
         std::optional<ResourceId> id = std::nullopt;
         for (auto& [type, path, params] : config().initial_resources){
-            if (type == Type::eProject){
+            if (type == Type::eProjectFile){
                 id = find(path);
                 if (!id.has_value()){
                     log_warn("Can't find project file resource in the list (\"" + path + "\")");
@@ -190,6 +169,37 @@ namespace nasral::res
 
     /* S U B S Y S T E M */
 
+    void Manager::init()
+    {
+        // Информация о каталогах
+        const std::string cwd = std::filesystem::current_path().string();
+        log_info("Initializing resource manager...");
+        log_info("Current working directory: " + cwd);
+        log_info("Content directory: " + config().content_dir + "");
+
+        // Доступность каталога контента
+        if (!config().content_dir.empty() && !std::filesystem::exists(config().content_dir)){
+            throw std::runtime_error("Content directory does not exist");
+        }
+
+        // Зарезервировать память
+        active_slots_.reserve(kMaxResourceCount);
+
+        // Добавить встроенные по умолчанию ресурсы
+        add_builtins();
+
+        // Добавить ресурсы инициализации, если есть (из конфига)
+        for (const auto& desc : config().initial_resources){
+            add(desc);
+        }
+
+        // Запросить обязательные ресурсы (подразумевается, что они добавлены)
+        // Такие ресурсы должны быть доступны в любой момент времени
+        request_mandatory();
+
+        log_info("Resource manager initialized.");
+    }
+
     void Manager::update([[maybe_unused]] float delta)
     {
         for (const size_t index : active_slots_){
@@ -218,6 +228,8 @@ namespace nasral::res
                 process_slot_releases(slot);
             }
         }
+
+        log_info("Resource manager finalized");
     }
 
     void Manager::process_slot_callbacks(Slot& slot)
@@ -285,6 +297,34 @@ namespace nasral::res
         }
     }
 
+    /**
+     * @brief Шаблонный фабричный метод создания загрузчика для ресурса
+     * @tparam T Тип ресурса
+     * @param slot Ссылка на слот в списке слотов ресурсов
+     * @param manager Константный указатель на объект подсистемы (DI)
+     * @return Указатель (unique) на загрузчика
+     */
+    template<typename T>
+    typename Resource::Loader<typename T::Data>::Ptr make_res_loader(const Manager::Slot& slot, Manager* manager)
+    {
+        using Ret = typename Resource::Loader<typename T::Data>::Ptr;
+
+        if constexpr (std::is_same_v<T, ProjectFile>){
+            assert(slot.info.type == Type::eProjectFile);
+            return slot.info.path.is_builtin()
+                ? Ret{std::make_unique<ProjectFileBuiltinLoader>(manager)}
+                : Ret{std::make_unique<ProjectFileJsonLoader>(manager)};
+        }
+
+        assert(false && "Unsupported resource type");
+        return Ret{nullptr};
+    }
+
+    /**
+     * @brief Фабричный метод создания нужного ресурса
+     * @param slot Ссылка на слот в списке слотов ресурсов
+     * @return Указатель (unique) на ресурс
+     */
     Resource::Ptr Manager::make_resource(const Slot& slot)
     {
         std::unique_ptr<Resource> res = nullptr;
@@ -295,6 +335,16 @@ namespace nasral::res
             {
             case Type::eFile:
                 {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value());
+                    res = std::make_unique<File>(this, id.value());
+                    break;
+                }
+            case Type::eProjectFile:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value());
+                    res = std::make_unique<ProjectFile>(this, id.value(), make_res_loader<ProjectFile>(slot, this));
                     break;
                 }
             default:
@@ -333,7 +383,7 @@ namespace nasral::res
         add({Type::eMesh, kBuiltinMeshQuad.data(), std::nullopt});
         add({Type::eMesh, kBuiltinMeshCube.data(), std::nullopt});
         add({Type::eMesh, kBuiltinMeshSphere.data(), std::nullopt});
-        add({Type::eProject, kBuiltinProjectFile.data(), std::nullopt});
+        add({Type::eProjectFile, kBuiltinProjectFile.data(), std::nullopt});
         add({Type::eScene, kBuiltinSceneDefault.data(), std::nullopt});
     }
 
@@ -341,13 +391,13 @@ namespace nasral::res
     {
         // 1. Запросить встроенные ресурсы
         static std::vector<std::string> paths = {
-            kBuiltinTexWhitePixel.data(),
-            kBuiltinTexBlackPixel.data(),
-            kBuiltinTexNormPixel.data(),
-            kBuiltinCheckerboard.data(),
-            kBuiltinMeshQuad.data(),
-            kBuiltinMeshCube.data(),
-            kBuiltinMeshSphere.data()
+            // kBuiltinTexWhitePixel.data(),
+            // kBuiltinTexBlackPixel.data(),
+            // kBuiltinTexNormPixel.data(),
+            // kBuiltinCheckerboard.data(),
+            // kBuiltinMeshQuad.data(),
+            // kBuiltinMeshCube.data(),
+            // kBuiltinMeshSphere.data()
         };
 
         for (const auto& path : paths){
@@ -375,13 +425,13 @@ namespace nasral::res
     {
         // 1. Освободить встроенные ресурсы
         static std::vector<std::string> paths = {
-            kBuiltinTexWhitePixel.data(),
-            kBuiltinTexBlackPixel.data(),
-            kBuiltinTexNormPixel.data(),
-            kBuiltinCheckerboard.data(),
-            kBuiltinMeshQuad.data(),
-            kBuiltinMeshCube.data(),
-            kBuiltinMeshSphere.data()
+            // kBuiltinTexWhitePixel.data(),
+            // kBuiltinTexBlackPixel.data(),
+            // kBuiltinTexNormPixel.data(),
+            // kBuiltinCheckerboard.data(),
+            // kBuiltinMeshQuad.data(),
+            // kBuiltinMeshCube.data(),
+            // kBuiltinMeshSphere.data()
         };
 
         for (const auto& path : paths){

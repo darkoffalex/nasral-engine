@@ -19,11 +19,15 @@ add_library(Engine OBJECT
         ecs/archetype.cpp
         ecs/manager.cpp
 #
+        # Среда выполнения
+        run/manager.cpp
+
         # Ресурсы
         res/manager.cpp
         res/objects/resource.cpp
 #        res/system.cpp
         res/objects/file.cpp
+        res/objects/project.cpp
 #        res/resources/shader.cpp
 #        res/resources/texture.cpp
 #        res/resources/mesh.cpp

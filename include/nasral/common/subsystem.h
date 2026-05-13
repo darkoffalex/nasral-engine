@@ -1,5 +1,6 @@
 #pragma once
-#include "types.h"
+#include <nasral/common/utils.h>
+#include <nlohmann/detail/meta/detected.hpp>
 
 namespace nasral
 {
@@ -22,12 +23,30 @@ namespace nasral
         , config_(config)
         {}
 
+        DECLARE_DETECTOR(init)
+        DECLARE_DETECTOR(update)
+        DECLARE_DETECTOR(finalize)
+
         [[nodiscard]] Engine* engine() const { return engine_; }
         [[nodiscard]] const Config& config() const { return config_; }
 
-        DECL_SFINAE_METHOD_NO_ARGS(init)
-        DECL_SFINAE_METHOD_FLOAT_ARG(update, delta)
-        DECL_SFINAE_METHOD_NO_ARGS(finalize)
+        void init(){
+            if constexpr(nlohmann::detail::is_detected<has_init_t, Derived>::value){
+                static_cast<Derived*>(this)->init();
+            }
+        }
+
+        void update(float delta){
+            if constexpr (nlohmann::detail::is_detected<has_update_t, Derived, float>::value){
+                static_cast<Derived*>(this)->update(delta);
+            }
+        }
+
+        void finalize(){
+            if constexpr (nlohmann::detail::is_detected<has_finalize_t, Derived>::value){
+                static_cast<Derived*>(this)->finalize();
+            }
+        }
 
         void apply_deferred() {
             for (auto& action : deferred_actions_) {
@@ -67,11 +86,29 @@ namespace nasral
         : engine_(engine)
         {}
 
+        DECLARE_DETECTOR(init)
+        DECLARE_DETECTOR(update)
+        DECLARE_DETECTOR(finalize)
+
         [[nodiscard]] Engine* engine() const { return engine_; }
 
-        DECL_SFINAE_METHOD_NO_ARGS(init)
-        DECL_SFINAE_METHOD_FLOAT_ARG(update, delta)
-        DECL_SFINAE_METHOD_NO_ARGS(finalize)
+        void init(){
+            if constexpr(nlohmann::detail::is_detected<has_init_t, Derived>::value){
+                static_cast<Derived*>(this)->init();
+            }
+        }
+
+        void update(float delta){
+            if constexpr (nlohmann::detail::is_detected<has_update_t, Derived, float>::value){
+                static_cast<Derived*>(this)->update(delta);
+            }
+        }
+
+        void finalize(){
+            if constexpr (nlohmann::detail::is_detected<has_finalize_t, Derived>::value){
+                static_cast<Derived*>(this)->finalize();
+            }
+        }
 
         void apply_deferred() {
             for (auto& action : deferred_actions_) {

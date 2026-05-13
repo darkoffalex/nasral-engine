@@ -29,7 +29,8 @@ namespace nasral::res
         {
             auto data = loader_->load(full_path);
 
-            if (!data.has_value()){
+            if (!data.has_value())
+            {
                 throw std::runtime_error("Failed to load project file: " + full_path);
             }
 

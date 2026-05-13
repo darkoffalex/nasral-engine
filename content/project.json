@@ -1,5 +1,32 @@
 {
   "resources": [
+    {"type": "eMaterial", "path": "materials/dummy/material.xml", "load_params": {}},
+    {"type": "eShader", "path": "materials/dummy/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/dummy/shader.frag.spv", "load_params": {}},
+
+    {"type": "eMaterial", "path": "materials/vertex-colored/material.xml", "load_params": {}},
+    {"type": "eShader", "path": "materials/vertex-colored/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/vertex-colored/shader.frag.spv", "load_params": {}},
+
+    {"type": "eMaterial", "path": "materials/phong/material.xml", "load_params": {}},
+    {"type": "eShader", "path": "materials/phong/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/phong/shader.geom.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/phong/shader.frag.spv", "load_params": {}},
+
+    {"type": "eMaterial", "path": "materials/pbr/material.xml", "load_params": {}},
+    {"type": "eShader", "path": "materials/pbr/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/pbr/shader.geom.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/pbr/shader.frag.spv", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/chair/chair_ao_1k.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair/chair_diff_1k.png:v0", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair/chair_diff_1k.png:v1", "load_params": {"srgb": true, "generate_mipmaps": false}},
+    {"type": "eTexture", "path": "textures/chair/chair_metal_1k.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair/chair_nor_gl_1k.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair/chair_rough_1k.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair/chair_spec_1k.png", "load_params": {}},
+
+    {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}}
   ],
 
   "materials": [
@@ -11,7 +38,7 @@
       {"action": "forward", "keys": ["key:eW"]},
       {"action": "backward", "keys": ["key:eS"]},
       {"action": "left", "keys": ["key:eA"]},
-      {"action": "right", "keys": ["key:dA"]},
+      {"action": "right", "keys": ["key:eD"]},
       {"action": "up", "keys": ["key:eSpace"]},
       {"action": "down", "keys": ["key:eC"]},
       {"action": "exit", "keys": ["key:eEscape"]}

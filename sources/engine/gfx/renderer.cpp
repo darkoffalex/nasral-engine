@@ -35,7 +35,12 @@ namespace nasral::gfx
         , material_ubo_ids_(kMaxMaterials)
         , light_ubo_ids_(kMaxLights)
         , vk_last_pipeline_(VK_NULL_HANDLE)
-    {
+    {}
+
+    Renderer::~Renderer()
+    {}
+
+    void Renderer::init(){
         log_info("Initializing Vulkan renderer...");
 
         init_vk_instance();
@@ -90,12 +95,14 @@ namespace nasral::gfx
         light_active_ids_.resize(kMaxLights);
         light_states_.resize(kMaxLights);
         is_active_ = true;
+
+        log_info("Renderer initialized.");
     }
 
-    Renderer::~Renderer()
-    {
+    void Renderer::finalize(){
         is_active_ = false;
         cmd_wait_for_frame();
+        log_info("Renderer finalized");
     }
 
 #pragma region render_commands
@@ -556,9 +563,5 @@ namespace nasral::gfx
 
         assert(frame_in_progress_ && "Frame not in progress");
         return frame_in_progress_;
-    }
-
-    void Renderer::finalize(){
-        // TODO: Implement
     }
 }

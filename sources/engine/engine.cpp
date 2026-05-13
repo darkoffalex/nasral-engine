@@ -9,27 +9,36 @@ namespace nasral
         {
             /* Подсистемы */
 
-            logger_ = std::make_unique<log::Logger>(this, config.log);
-            logger_->info("Logger initialized.");
+            auto& log = std::get<log::Logger::Ptr>(subsystems_);
+            log = std::make_unique<log::Logger>(this, config.log);
+            log->init();
 
-            evt_ = std::make_unique<evt::Manager>(this);
-            logger_->info("Event manager initialized.");
+            auto& evt = std::get<evt::Manager::Ptr>(subsystems_);
+            evt = std::make_unique<evt::Manager>(this);
+            evt->init();
 
-            ecs_ = std::make_unique<ecs::Manager>(this, config.ecs);
-            logger_->info("ECS manager initialized.");
+            auto& run = std::get<run::Manager::Ptr>(subsystems_);
+            run = std::make_unique<run::Manager>(this, config.run);
+            run->init();
 
-            gfx_ = std::make_unique<gfx::Renderer>(this, config.gfx);
-            logger_->info("Renderer initialized.");
+            auto& ecs = std::get<ecs::Manager::Ptr>(subsystems_);
+            ecs = std::make_unique<ecs::Manager>(this, config.ecs);
+            ecs->init();
 
-            res_ = std::make_unique<res::Manager>(this, config.res);
-            logger_->info("Resource manager initialized.");
+            auto& gfx = std::get<gfx::Renderer::Ptr>(subsystems_);
+            gfx = std::make_unique<gfx::Renderer>(this, config.gfx);
+            gfx->init();
+
+            auto& res = std::get<res::Manager::Ptr>(subsystems_);
+            res = std::make_unique<res::Manager>(this, config.res);
+            res->init();
 
             /* ECS */
 
             // TODO: Инициализация ECS систем
         }
         catch (const std::runtime_error& e){
-            if (logger_) logger()->fatal(e.what());
+            if (logger()) logger()->fatal(e.what());
             throw;
         }
     }
@@ -42,29 +51,78 @@ namespace nasral
 
         /* Подсистемы */
 
-        res_.reset();
-        logger_->info("Resource manager destroyed.");
+        auto& res = std::get<res::Manager::Ptr>(subsystems_);
+        res.reset();
 
-        gfx_.reset();
-        logger_->info("Renderer destroyed.");
+        auto& gfx = std::get<gfx::Renderer::Ptr>(subsystems_);
+        gfx.reset();
 
-        ecs_.reset();
-        logger_->info("ECS manager destroyed.");
+        auto& ecs = std::get<ecs::Manager::Ptr>(subsystems_);
+        ecs.reset();
 
-        evt_.reset();
-        logger_->info("Event manager destroyed.");
+        auto& run = std::get<run::Manager::Ptr>(subsystems_);
+        run.reset();
 
-        logger_.reset();
+        auto& evt = std::get<evt::Manager::Ptr>(subsystems_);
+        evt.reset();
+
+        auto& log = std::get<log::Logger::Ptr>(subsystems_);
+        log.reset();
     }
 
     void Engine::finalize() const
     {
-        gfx_->finalize();
-        res_->finalize();
+        res()->finalize();
+        gfx()->finalize();
+        ecs()->finalize();
+        run()->finalize();
+        events()->finalize();
+        logger()->finalize();
     }
 
     void Engine::update([[maybe_unused]] const float delta)
     {
+        if (kDebugBuild){
+            assert(res() && "Resource subsystem is null");
+            assert(gfx() && "Graphics subsystem is null");
+            assert(ecs() && "ECS subsystem is null");
+            assert(run() && "Runtime subsystem is null");
+            assert(events() && "Event subsystem is null");
+        }
 
+        // Итерации для подсистем
+        run()->update(delta);
+        res()->update(delta);
+
+        // Выполнить отложенные действия подсистем
+        std::apply([](auto&&... systems) {
+            (..., (void)[](auto* s) {
+                s->apply_deferred();
+            }(systems.get()));
+        }, subsystems_);
+    }
+
+    log::Logger* Engine::logger() const noexcept{
+        return std::get<log::Logger::Ptr>(subsystems_).get();
+    }
+
+    evt::Manager* Engine::events() const noexcept{
+        return std::get<evt::Manager::Ptr>(subsystems_).get();
+    }
+
+    ecs::Manager* Engine::ecs() const noexcept{
+        return std::get<ecs::Manager::Ptr>(subsystems_).get();
+    }
+
+    res::Manager* Engine::res() const noexcept{
+        return std::get<res::Manager::Ptr>(subsystems_).get();
+    }
+
+    gfx::Renderer* Engine::gfx() const noexcept{
+        return std::get<gfx::Renderer::Ptr>(subsystems_).get();
+    }
+
+    run::Manager* Engine::run() const noexcept{
+        return std::get<run::Manager::Ptr>(subsystems_).get();
     }
 }

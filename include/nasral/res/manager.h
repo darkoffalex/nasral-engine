@@ -52,6 +52,10 @@ namespace nasral::res
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
 
+        void init();
+        void update(float delta);
+        void finalize();
+
         void add(const ResourceDesc& description);
         void remove(const ResourceId& id);
         void remove_all();
@@ -65,9 +69,6 @@ namespace nasral::res
         [[nodiscard]] Resource* get(const ResourceId& id) const;
         [[nodiscard]] std::string path(const ResourceId& id, bool full = false) const;
         [[nodiscard]] size_t ref_count(const ResourceId& id) const;
-
-        void update(float delta);
-        void finalize();
 
     protected:
         void process_slot_requests(Slot& slot);

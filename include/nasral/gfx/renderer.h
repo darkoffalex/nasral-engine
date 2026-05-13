@@ -31,6 +31,9 @@ namespace nasral::gfx
         Renderer(const Renderer&) = delete;
         Renderer& operator=(const Renderer&) = delete;
 
+        void init();
+        void finalize();
+
         void cmd_begin_frame();
         void cmd_end_frame();
         void cmd_bind_material(const handles::Material& handles, uint32_t uniform_idx);
@@ -48,8 +51,6 @@ namespace nasral::gfx
         void update_light_uniforms(const uniforms::LightSettings& uniforms, uint32_t index) const;
         void update_light_states_unsafe(const std::vector<uint32_t>& ids, bool active);
         void update_light_states(const std::vector<uint32_t>& ids, bool active);
-
-        void finalize();
 
         [[nodiscard]] auto is_active() const noexcept{ return is_active_; }
         [[nodiscard]] auto frames() const noexcept{ return frame_count_; }

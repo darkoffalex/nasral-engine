@@ -16,9 +16,17 @@ namespace nasral::log
     }
 
     Logger::~Logger(){
+    }
+
+    void Logger::init(){
+        info("Logger subsystem initialized");
+    }
+
+    void Logger::finalize(){
         if (fs_.is_open()){
             fs_.close();
         }
+        info("Logger subsystem finalized");
     }
 
     void Logger::log_unsafe(Level level, const std::string& message)

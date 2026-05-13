@@ -1,12 +1,26 @@
 #include "pch.h"
 #include <nasral/ecs/manager.h>
+#include <nasral/engine.h>
 
 namespace nasral::ecs
 {
     Manager::Manager(Engine* e, const Config& config) : Subsystem(e, config)
-    {
-        entities_.reserve(config.max_entities);
-        free_slots_.reserve(config.max_entities);
+    {}
+
+    Manager::~Manager(){
+    }
+
+    void Manager::init(){
+        entities_.reserve(config().max_entities);
+        free_slots_.reserve(config().max_entities);
+        log_info("ECS manager initialized.");
+    }
+
+    void Manager::finalize(){
+        entities_.clear();
+        free_slots_.clear();
+        archetypes_.clear();
+        log_info("ECS manager finalized.");
     }
 
     EntityId Manager::spawn(){

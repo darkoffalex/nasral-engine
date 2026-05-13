@@ -3,10 +3,11 @@
 #include <shared_mutex>
 #include <nasral/common/subsystem.h>
 #include <nasral/evt/types.h>
+#include <nasral/log/loggable.h>
 
 namespace nasral::evt
 {
-    class Manager final : public Subsystem<Manager>
+    class Manager final : public Subsystem<Manager>, public log::Loggable<Manager>
     {
     public:
         typedef std::unique_ptr<Manager> Ptr;
@@ -16,6 +17,9 @@ namespace nasral::evt
 
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
+
+        void init();
+        void finalize() const;
 
         ListenerHandle register_listener_unsafe(Type type, ListenerCallback callback);
         ListenerHandle register_listener(Type type, ListenerCallback callback);
@@ -31,3 +35,5 @@ namespace nasral::evt
         EnumArray<Type, std::vector<ListenerCallback>> listeners_;
     };
 }
+
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(evt::Manager)

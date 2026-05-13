@@ -5,6 +5,7 @@
 #include <nasral/ecs/manager.h>
 #include <nasral/res/manager.h>
 #include <nasral/gfx/renderer.h>
+#include <nasral/run/manager.h>
 
 namespace nasral
 {
@@ -14,6 +15,7 @@ namespace nasral
         ecs::Config ecs = {};
         res::Config res = {};
         gfx::Config gfx = {};
+        run::Config run = {};
     };
 
     class Engine
@@ -30,17 +32,22 @@ namespace nasral
         void finalize() const;
         void update(float delta);
 
-        [[nodiscard]] log::Logger* logger() const noexcept { return logger_.get(); }
-        [[nodiscard]] evt::Manager* events() const noexcept { return evt_.get(); }
-        [[nodiscard]] ecs::Manager* ecs() const noexcept { return ecs_.get(); }
-        [[nodiscard]] res::Manager* res() const noexcept { return res_.get(); }
-        [[nodiscard]] gfx::Renderer* gfx() const noexcept { return gfx_.get(); }
+        [[nodiscard]] log::Logger* logger() const noexcept;
+        [[nodiscard]] evt::Manager* events() const noexcept;
+        [[nodiscard]] ecs::Manager* ecs() const noexcept;
+        [[nodiscard]] res::Manager* res() const noexcept;
+        [[nodiscard]] gfx::Renderer* gfx() const noexcept;
+        [[nodiscard]] run::Manager* run() const noexcept;
 
     protected:
-        log::Logger::Ptr logger_;
-        evt::Manager::Ptr evt_;
-        ecs::Manager::Ptr ecs_;
-        res::Manager::Ptr res_;
-        gfx::Renderer::Ptr gfx_;
+        using SubsystemTuple = std::tuple<
+            log::Logger::Ptr,
+            evt::Manager::Ptr,
+            ecs::Manager::Ptr,
+            res::Manager::Ptr,
+            gfx::Renderer::Ptr,
+            run::Manager::Ptr>;
+
+        SubsystemTuple subsystems_;
     };
 }

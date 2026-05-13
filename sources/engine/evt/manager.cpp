@@ -1,16 +1,25 @@
 #include "pch.h"
 #include <nasral/evt/manager.h>
+#include <nasral/engine.h>
 
 namespace nasral::evt
 {
     Manager::Manager(Engine* e) : Subsystem(e)
-    {
+    {}
+
+    Manager::~Manager() = default;
+
+    void Manager::init(){
         for (const Type t : magic_enum::enum_values<Type>()){
             listeners_[t].reserve(kInitialListenersCount);
         }
+
+        log_info("Event manager initialized.");
     }
 
-    Manager::~Manager() = default;
+    void Manager::finalize() const{
+        log_info("Event manager finalized.");
+    }
 
     ListenerHandle Manager::register_listener_unsafe(const Type type, ListenerCallback callback)
     {

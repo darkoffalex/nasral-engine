@@ -11,7 +11,7 @@ namespace nasral::evt
      */
     enum class Type : uint32_t
     {
-        // Файд проекта загружен (доступен для чтения)
+        // Файл проекта загружен (доступен для чтения)
         eProjectFileLoaded = 0,
         // Файл проекта обновлен (внесены изменения в документ)
         eProjectFileUpdated,

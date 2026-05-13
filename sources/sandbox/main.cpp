@@ -45,41 +45,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.ecs.max_entities = 1000;
 
             // Ресурсы
-            using ResType = nasral::res::Type;
-            using TexLoadParams = nasral::res::TextureLoadParams;
-            using MeshLoadParams = nasral::res::MeshLoadParams;
             config.res.content_dir = "../../content/";
             // Эти ресурсы будут добавлены в список по умолчанию
             config.res.initial_resources = {
-                // Dummy материал (вершины без преобразований)
-                {ResType::eMaterial, "materials/dummy/material.xml", std::nullopt},
-                {ResType::eShader, "materials/dummy/shader.vert.spv", std::nullopt},
-                {ResType::eShader, "materials/dummy/shader.frag.spv", std::nullopt},
-                // Vertex-colored материал (цветные вершины)
-                {ResType::eMaterial, "materials/vertex-colored/material.xml", std::nullopt},
-                {ResType::eShader, "materials/vertex-colored/shader.vert.spv", std::nullopt},
-                {ResType::eShader, "materials/vertex-colored/shader.frag.spv", std::nullopt},
-                // Phong освещение
-                {ResType::eMaterial, "materials/phong/material.xml", std::nullopt},
-                {ResType::eShader, "materials/phong/shader.vert.spv", std::nullopt},
-                {ResType::eShader, "materials/phong/shader.geom.spv", std::nullopt},
-                {ResType::eShader, "materials/phong/shader.frag.spv", std::nullopt},
-                // PBR
-                {ResType::eMaterial, "materials/pbr/material.xml", std::nullopt},
-                {ResType::eShader, "materials/pbr/shader.vert.spv", std::nullopt},
-                {ResType::eShader, "materials/pbr/shader.geom.spv", std::nullopt},
-                {ResType::eShader, "materials/pbr/shader.frag.spv", std::nullopt},
-                // Текстуры (стул, для теста)
-                { ResType::eTexture, "textures/chair/chair_ao_1k.png", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_diff_1k.png:v0", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_diff_1k.png:v1", TexLoadParams{true, false}},
-                { ResType::eTexture, "textures/chair/chair_metal_1k.png", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_nor_gl_1k.png", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_rough_1k.png", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_spec_1k.png", std::nullopt},
-                // Меш (стул, для теста)
-                {ResType::eMesh, "meshes/chair/chair.obj", MeshLoadParams{false, false, false}},
-
+                {nasral::res::Type::eProjectFile, "project.json", std::nullopt},
             };
 
             // Графика (Vulkan)

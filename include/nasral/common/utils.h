@@ -124,3 +124,7 @@ namespace nasral
         return result;
     }
 }
+
+#define DECLARE_DETECTOR(method) \
+    template <typename T, typename... Args> \
+    using has_##method##_t = decltype(std::declval<T>().method(std::declval<Args>()...));

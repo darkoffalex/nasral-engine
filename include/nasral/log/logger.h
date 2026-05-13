@@ -20,6 +20,9 @@ namespace nasral::log
         Logger(const Logger&) = delete;
         Logger& operator=(const Logger&) = delete;
 
+        void init();
+        void finalize();
+
         void log_unsafe(Level level, const std::string& message);
         void log(Level level, const std::string& message);
 

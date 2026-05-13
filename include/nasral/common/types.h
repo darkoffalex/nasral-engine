@@ -1,6 +1,7 @@
 #pragma once
 
 #include <random>
+#include <bitset>
 #include <magic_enum/magic_enum_containers.hpp>
 
 namespace nasral
@@ -13,6 +14,52 @@ namespace nasral
 
     template <typename E, typename V>
     using EnumArray = magic_enum::containers::array<E, V>;
+
+    template <typename E>
+    struct EnumMask
+    {
+        static_assert(std::is_enum_v<E>, "EnumMask can only be used with enum types.");
+        std::bitset<magic_enum::enum_count<E>()> bitset;
+
+        void set(E e) {
+            bitset.set(static_cast<std::size_t>(magic_enum::enum_integer(e)));
+        }
+
+        void reset(E e) {
+            bitset.reset(static_cast<std::size_t>(magic_enum::enum_integer(e)));
+        }
+
+        [[nodiscard]] bool test(E e) const {
+            return bitset.test(static_cast<std::size_t>(magic_enum::enum_integer(e)));
+        }
+
+        [[nodiscard]] bool any() const {
+            return bitset.any();
+        }
+
+        [[nodiscard]] bool all() const {
+            return bitset.all();
+        }
+
+        template <typename... Args>
+        [[nodiscard]] constexpr bool any_of(const Args... args) const {
+            return (test(static_cast<E>(args)) || ...);
+        }
+
+        template <typename... Args>
+        [[nodiscard]] constexpr bool all_of(const Args... args) const {
+            return (test(static_cast<E>(args)) && ...);
+        }
+
+        template <typename... Args>
+        [[nodiscard]] constexpr bool none_of(const Args... args) const {
+            return !(test(static_cast<E>(args)) || ...);
+        }
+
+        void clear() {
+            bitset.reset();
+        }
+    };
 
     /**
      * @brief Уникальный ID
@@ -83,32 +130,3 @@ struct std::hash<nasral::UniqueId>
         return nasral::UniqueIdHash{}(id);
     }
 };
-
-/**
- * @brief Объявление SFINAE void метода без аргументов для CRTP класса (статический полиморфизм)
- * @param name Имя метода
- */
-#define DECL_SFINAE_METHOD_NO_ARGS(name) \
-template<typename T = Derived> \
-using has_##name##_t = decltype(std::declval<T>().name()); \
-\
-template<typename T = Derived> \
-auto name() -> std::enable_if_t<std::is_void_v<has_##name##_t<T>>, void> \
-{ \
-static_cast<Derived*>(this)->name(); \
-}
-
-/**
- * @brief Объявление SFINAE void метода c float аргументом для CRTP класса (статический полиморфизм)
- * @param name Имя метода
- * @param f_arg Имя аргумента
- */
-#define DECL_SFINAE_METHOD_FLOAT_ARG(name, f_arg) \
-template<typename T = Derived> \
-using has_##name##_t = decltype(std::declval<T>().name(std::declval<float>())); \
-\
-template<typename T = Derived> \
-auto name(float f_arg) -> std::enable_if_t<std::is_void_v<has_##name##_t<T>>, void> \
-{ \
-static_cast<Derived*>(this)->name(f_arg); \
-}
