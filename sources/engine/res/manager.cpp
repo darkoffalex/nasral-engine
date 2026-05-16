@@ -2,6 +2,8 @@
 #include <nasral/res/manager.h>
 #include <nasral/res/objects/file.h>
 #include <nasral/res/objects/project.h>
+#include <nasral/log/loggable.h>
+#include <nasral/evt/utils.h>
 #include <nasral/engine.h>
 
 #include "res/loaders/project/json.hpp"
@@ -15,6 +17,78 @@ namespace nasral::res
     {}
 
     Manager::~Manager() = default;
+
+    void Manager::init()
+    {
+        // Информация о каталогах
+        const std::string cwd = std::filesystem::current_path().string();
+        log_info("Initializing resource manager...");
+        log_info("Current working directory: " + cwd);
+        log_info("Content directory: " + config().content_dir + "");
+
+        // Доступность каталога контента
+        if (!config().content_dir.empty() && !std::filesystem::exists(config().content_dir)){
+            throw std::runtime_error("Content directory does not exist");
+        }
+
+        // Слушать событие загрузки проекта
+        evl_on_proj_load_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eProjectFileLoaded,
+            evt::bind(this, &Manager::on_project_loaded));
+
+        // Зарезервировать память
+        active_slots_.reserve(kMaxResourceCount);
+
+        // Добавить встроенные по умолчанию ресурсы
+        add_builtins();
+
+        // Добавить ресурсы инициализации, если есть (из конфига)
+        for (const auto& desc : config().initial_resources){
+            add(desc);
+        }
+
+        // Запросить обязательные ресурсы (подразумевается, что они добавлены)
+        // Такие ресурсы должны быть доступны в любой момент времени
+        request_mandatory();
+
+        log_info("Resource manager initialized.");
+    }
+
+    void Manager::update([[maybe_unused]] float delta)
+    {
+        for (const size_t index : active_slots_){
+            auto& slot = slots_[index];
+            // 1. Загрузка была завершена (успешно, либо нет) и есть необработанные callbacks
+            process_slot_callbacks(slot);
+            // 2. Ресурс требуется, но не загружен (и не в процессе загрузки) - инициировать загрузку
+            process_slot_requests(slot);
+            // 3. Ресурс больше не требуется (нет ссылок) - выгрузить (уничтожение объекта)
+            process_slot_releases(slot);
+        }
+    }
+
+    void Manager::finalize()
+    {
+        // Отписаться от события загрузки проекта (дизлайк, отписка!)
+        evl_on_proj_load_.reset();
+
+        // Ожидаем всех загрузок (если в процессе)
+        wait_for_loading();
+
+        // Освободить обязательные ресурсы
+        release_mandatory();
+
+        // Покуда есть свободные ресурсы (без ссылок) - выгружать их
+        while (has_hanging_resources()){
+            for (const size_t index : active_slots_){
+                auto& slot = slots_[index];
+                process_slot_releases(slot);
+            }
+        }
+
+        log_info("Resource manager finalized");
+    }
 
     void Manager::add(const ResourceDesc& description)
     {
@@ -165,71 +239,6 @@ namespace nasral::res
             return 0;
         }
         return slots_[slot_idx].refs.count.load(std::memory_order_acquire);
-    }
-
-    /* S U B S Y S T E M */
-
-    void Manager::init()
-    {
-        // Информация о каталогах
-        const std::string cwd = std::filesystem::current_path().string();
-        log_info("Initializing resource manager...");
-        log_info("Current working directory: " + cwd);
-        log_info("Content directory: " + config().content_dir + "");
-
-        // Доступность каталога контента
-        if (!config().content_dir.empty() && !std::filesystem::exists(config().content_dir)){
-            throw std::runtime_error("Content directory does not exist");
-        }
-
-        // Зарезервировать память
-        active_slots_.reserve(kMaxResourceCount);
-
-        // Добавить встроенные по умолчанию ресурсы
-        add_builtins();
-
-        // Добавить ресурсы инициализации, если есть (из конфига)
-        for (const auto& desc : config().initial_resources){
-            add(desc);
-        }
-
-        // Запросить обязательные ресурсы (подразумевается, что они добавлены)
-        // Такие ресурсы должны быть доступны в любой момент времени
-        request_mandatory();
-
-        log_info("Resource manager initialized.");
-    }
-
-    void Manager::update([[maybe_unused]] float delta)
-    {
-        for (const size_t index : active_slots_){
-            auto& slot = slots_[index];
-            // 1. Загрузка была завершена (успешно, либо нет) и есть необработанные callbacks
-            process_slot_callbacks(slot);
-            // 2. Ресурс требуется, но не загружен (и не в процессе загрузки) - инициировать загрузку
-            process_slot_requests(slot);
-            // 3. Ресурс больше не требуется (нет ссылок) - выгрузить (уничтожение объекта)
-            process_slot_releases(slot);
-        }
-    }
-
-    void Manager::finalize()
-    {
-        // Ожидаем всех загрузок (если в процессе)
-        wait_for_loading();
-
-        // Освободить обязательные ресурсы
-        release_mandatory();
-
-        // Покуда есть свободные ресурсы (без ссылок) - выгружать их
-        while (has_hanging_resources()){
-            for (const size_t index : active_slots_){
-                auto& slot = slots_[index];
-                process_slot_releases(slot);
-            }
-        }
-
-        log_info("Resource manager finalized");
     }
 
     void Manager::process_slot_callbacks(Slot& slot)
@@ -457,6 +466,27 @@ namespace nasral::res
                 slot.loading.task.wait();
             }
         }
+    }
+
+    void Manager::on_project_loaded(const evt::Arg& arg)
+    {
+        // Получить ресурс файла проекта
+        auto* res = evt::from_arg<Resource*>(arg).value_or(nullptr);
+        const auto* proj = dynamic_cast<ProjectFile*>(res);
+
+        assert(res && "Wrong project file resource");
+        assert(res->status_ == Status::eLoaded && "Project file resource is not loaded");
+        assert(proj && "Project file resource is not a project file");
+
+        // Сформировать список ресурсов
+        for (auto& res_desc : proj->resources()){
+            add(res_desc);
+        }
+
+        // Список ресурсов готов
+        engine()->events()->send_deferred(
+            evt::Type::eResourceRegistryChanged,
+            evt::ChangeReason::eInitial);
     }
 
     /* S L O T S */

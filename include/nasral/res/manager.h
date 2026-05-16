@@ -4,11 +4,13 @@
 #include <atomic>
 #include <future>
 #include <unordered_map>
+
 #include <nasral/common/subsystem.h>
 #include <nasral/common/index_pool.h>
 #include <nasral/log/loggable.h>
 #include <nasral/res/types.h>
 #include <nasral/res/objects/resource.h>
+#include <nasral/evt/objects/listener.h>
 
 namespace nasral::res
 {
@@ -82,6 +84,8 @@ namespace nasral::res
         void release_mandatory();
         void wait_for_loading() const;
 
+        void on_project_loaded(const evt::Arg& arg);
+
     private:
         /// Фиксированный массив слотов ресурсов (кеш-когерентность)
         std::array<Slot, kMaxResourceCount> slots_;
@@ -91,6 +95,8 @@ namespace nasral::res
         std::vector<size_t> active_slots_;
         /// Карта "путь" -> "индекс", для доступа по пути
         std::unordered_map<std::string_view, ResourceId> indices_;
+        /// Слушатель события загрузки проекта
+        evt::Listener::Ptr evl_on_proj_load_;
     };
 }
 

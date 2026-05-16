@@ -96,6 +96,8 @@ namespace nasral::gfx
         void init_vk_synchronization();
         void refresh_vk_surface();
 
+        void on_project_loaded(const evt::Arg& arg);
+
     private:
         // Состояние
         bool is_active_;
@@ -154,6 +156,9 @@ namespace nasral::gfx
 
         // Последний использованный конвейер (pipeline)
         vk::Pipeline vk_last_pipeline_;
+
+        // Слушатель события загрузки проекта
+        evt::Listener::Ptr evl_on_proj_load_;
     };
 }
 

@@ -23,13 +23,17 @@ namespace nasral::run
             evt::Type::eResourceRegistryChanged,
             evt::bind(this, &Manager::on_res_registry_changed));
 
-        state_.set(StateFlags::eIdle);
-
         log_info("Runtime manager initialized.");
     }
 
     void Manager::update([[maybe_unused]] float delta){
 
+        if (state_.all_of(StateFlags::eResourcesReady, StateFlags::eMaterialsReady) && !state_.test(StateFlags::eRunning))
+        {
+            state_.set(StateFlags::eRunning);
+
+            // TODO: Инициировать загрузку сцены
+        }
     }
 
     void Manager::finalize(){
@@ -42,14 +46,14 @@ namespace nasral::run
     void Manager::on_res_registry_changed(const evt::Arg& arg){
         const auto reason = evt::from_arg<evt::ChangeReason>(arg);
         if (reason == evt::ChangeReason::eInitial){
-
+            state_.set(StateFlags::eResourcesReady);
         }
     }
 
     void Manager::on_mat_registry_changed(const evt::Arg& arg){
         const auto reason = evt::from_arg<evt::ChangeReason>(arg);
         if (reason == evt::ChangeReason::eInitial){
-
+            state_.set(StateFlags::eMaterialsReady);
         }
     }
 }

@@ -2,8 +2,9 @@
 #include <nasral/gfx/renderer.h>
 #include <nasral/engine.h>
 #include <nasral/log/loggable.h>
-#include <nasral/evt/objects/listener.h>
 #include <nasral/gfx/utils.h>
+#include <nasral/evt/utils.h>
+#include <nasral/res/objects/project.h>
 
 namespace nasral::gfx
 {
@@ -38,7 +39,7 @@ namespace nasral::gfx
     {}
 
     Renderer::~Renderer()
-    {}
+    = default;
 
     void Renderer::init(){
         log_info("Initializing Vulkan renderer...");
@@ -85,23 +86,28 @@ namespace nasral::gfx
         init_vk_synchronization();
         log_info("Vulkan: Synchronization initialized.");
 
-        /*
-        evt_res_list_ready_ = evt::Listener::reg(
-            engine()->events(),
-            evt::Type::eResourceListReady,
-            evt::bind(this, &Renderer::on_res_list_ready));
-        */
-
         light_active_ids_.resize(kMaxLights);
         light_states_.resize(kMaxLights);
         is_active_ = true;
+
+        evl_on_proj_load_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eProjectFileLoaded,
+            evt::bind(this, &Renderer::on_project_loaded));
 
         log_info("Renderer initialized.");
     }
 
     void Renderer::finalize(){
+        // Отписаться от события загрузки проекта (дизлайк, отписка!)
+        evl_on_proj_load_.reset();
+
+        // Остановить рендеринг
         is_active_ = false;
+
+        // Дождаться завершения кадра
         cmd_wait_for_frame();
+
         log_info("Renderer finalized");
     }
 
@@ -545,6 +551,27 @@ namespace nasral::gfx
 
         // Включить рендеринг
         is_active_ = true;
+    }
+
+    void Renderer::on_project_loaded(const evt::Arg& arg)
+    {
+        // Получить ресурс файла проекта
+        auto* res = evt::from_arg<res::Resource*>(arg).value_or(nullptr);
+        const auto* proj = dynamic_cast<res::ProjectFile*>(res);
+
+        assert(res && "Wrong project file resource");
+        assert(res->status() == res::Status::eLoaded && "Project file resource is not loaded");
+        assert(proj && "Project file resource is not a project file");
+
+        // Сформировать список ресурсов
+        for ([[maybe_unused]] auto& res_desc : proj->materials()){
+            // TODO: Aad material instance
+        }
+
+        // Список ресурсов готов
+        engine()->events()->send_deferred(
+            evt::Type::eMaterialRegistryChanged,
+            evt::ChangeReason::eInitial);
     }
 
     const vk::Extent2D& Renderer::rendering_resolution() const noexcept{

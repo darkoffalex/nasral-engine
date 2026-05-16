@@ -18,8 +18,7 @@ namespace nasral::run
 
     enum class StateFlags : uint32_t
     {
-        eIdle = 0,
-        eRunning,
+        eRunning = 0,
         ePaused,
         eResourcesReady,
         eMaterialsReady,

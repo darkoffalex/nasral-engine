@@ -1,7 +1,6 @@
 #pragma once
 
 #include <nasral/res/objects/resource.h>
-#include <nasral/log/loggable.h>
 #include <nasral/gfx/types.h>
 #include <nasral/res/types.h>
 

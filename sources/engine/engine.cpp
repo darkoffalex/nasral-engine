@@ -94,6 +94,9 @@ namespace nasral
         run()->update(delta);
         res()->update(delta);
 
+        // TODO: Обновление ECS систем
+        // TODO: Рендеринг
+
         // Выполнить отложенные действия подсистем
         std::apply([](auto&&... systems) {
             (..., (void)[](auto* s) {
