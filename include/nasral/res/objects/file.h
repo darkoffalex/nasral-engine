@@ -13,6 +13,9 @@ namespace nasral::res
         File(Manager* manager, const ResourceId& id);
         ~File() override;
 
+        File(const File&) = delete;
+        File& operator=(const File&) = delete;
+
         void load() noexcept override;
         bool read(void* buffer, size_t size);
 

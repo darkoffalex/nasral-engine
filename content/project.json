@@ -1,19 +1,19 @@
 {
   "resources": [
-    {"type": "eMaterial", "path": "materials/dummy/material.xml", "load_params": {}},
+    {"type": "eMaterial", "path": "materials/dummy/material.json", "load_params": {}},
     {"type": "eShader", "path": "materials/dummy/shader.vert.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/dummy/shader.frag.spv", "load_params": {}},
 
-    {"type": "eMaterial", "path": "materials/vertex-colored/material.xml", "load_params": {}},
+    {"type": "eMaterial", "path": "materials/vertex-colored/material.json", "load_params": {}},
     {"type": "eShader", "path": "materials/vertex-colored/shader.vert.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/vertex-colored/shader.frag.spv", "load_params": {}},
 
-    {"type": "eMaterial", "path": "materials/phong/material.xml", "load_params": {}},
+    {"type": "eMaterial", "path": "materials/phong/material.json", "load_params": {}},
     {"type": "eShader", "path": "materials/phong/shader.vert.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/phong/shader.geom.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/phong/shader.frag.spv", "load_params": {}},
 
-    {"type": "eMaterial", "path": "materials/pbr/material.xml", "load_params": {}},
+    {"type": "eMaterial", "path": "materials/pbr/material.json", "load_params": {}},
     {"type": "eShader", "path": "materials/pbr/shader.vert.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/pbr/shader.geom.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/pbr/shader.frag.spv", "load_params": {}},
@@ -30,6 +30,56 @@
   ],
 
   "materials": [
+    {
+      "uid" : [0,1],
+      "name": "ChairUnlit",
+      "base_material" : "materials/vertex-colored/material.xml",
+      "textures": [{
+        "type" : "albedo",
+        "path" : "textures/chair/chair_diff_1k.png:v0",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,2],
+      "name": "ChairPhong",
+      "base_material" : "materials/pbr/material.xml",
+      "textures": [{
+        "type" : "albedo",
+        "path" : "textures/chair/chair_diff_1k.png:v0",
+        "filter" : "eLinear"
+      }, {
+        "type" : "normal",
+        "path" : "textures/chair/chair_nor_gl_1k.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "specular",
+        "path" : "textures/chair/chair_spec_1k.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,3],
+      "name": "ChairPBR",
+      "base_material" : "materials/pbr/material.xml",
+      "textures": [{
+        "type" : "albedo",
+        "path" : "textures/chair/chair_diff_1k.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "normal",
+        "path" : "textures/chair/chair_nor_gl_1k.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "metallic",
+        "path" : "textures/chair/chair_metal_1k.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "roughness",
+        "path" : "textures/chair/chair_rough_1k.png",
+        "filter" : "eLinear"
+      }]
+    }
   ],
 
   "input" : {

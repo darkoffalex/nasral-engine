@@ -2,12 +2,17 @@
 #include <nasral/res/manager.h>
 #include <nasral/res/objects/file.h>
 #include <nasral/res/objects/project.h>
+#include <nasral/res/objects/sahder.h>
+#include <nasral/res/objects/texture.h>
 #include <nasral/log/loggable.h>
 #include <nasral/evt/utils.h>
 #include <nasral/engine.h>
 
 #include "res/loaders/project/json.hpp"
 #include "res/loaders/project/builtin.hpp"
+#include "res/loaders/shader/spv.hpp"
+#include "res/loaders/texture/stb.hpp"
+#include "res/loaders/texture/builtins.hpp"
 
 namespace nasral::res
 {
@@ -324,6 +329,16 @@ namespace nasral::res
                 ? Ret{std::make_unique<ProjectFileBuiltinLoader>(manager)}
                 : Ret{std::make_unique<ProjectFileJsonLoader>(manager)};
         }
+        else if constexpr (std::is_same_v<T, Texture>){
+            assert(slot.info.type == Type::eTexture);
+            return slot.info.path.is_builtin()
+                ? Ret{std::make_unique<TextureBuiltinLoader>(manager)}
+                : Ret{std::make_unique<TextureStbLoader>(manager, slot.loading.params)};
+        }
+        else if constexpr (std::is_same_v<T, Shader>){
+            assert(slot.info.type == Type::eShader);
+            return Ret{std::make_unique<ShaderSpvLoader>(manager)};
+        }
 
         assert(false && "Unsupported resource type");
         return Ret{nullptr};
@@ -354,6 +369,20 @@ namespace nasral::res
                     auto id = find(slot.info.path.view());
                     assert(id.has_value());
                     res = std::make_unique<ProjectFile>(this, id.value(), make_res_loader<ProjectFile>(slot, this));
+                    break;
+                }
+            case Type::eTexture:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value());
+                    res = std::make_unique<Texture>(this, id.value(), make_res_loader<Texture>(slot, this));
+                    break;
+                }
+            case Type::eShader:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value());
+                    res = std::make_unique<Shader>(this, id.value(), make_res_loader<Shader>(slot, this));
                     break;
                 }
             default:

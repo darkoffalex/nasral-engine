@@ -28,8 +28,8 @@ add_library(Engine OBJECT
 #        res/system.cpp
         res/objects/file.cpp
         res/objects/project.cpp
-#        res/resources/shader.cpp
-#        res/resources/texture.cpp
+        res/objects/shader.cpp
+        res/objects/texture.cpp
 #        res/resources/mesh.cpp
 #        res/resources/material.cpp
 #        res/resources/project.cpp

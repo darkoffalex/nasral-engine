@@ -56,7 +56,7 @@ namespace nasral::gfx
         [[nodiscard]] auto frames() const noexcept{ return frame_count_; }
         [[nodiscard]] auto frame() const noexcept{ return frame_index_; }
         [[nodiscard]] const auto& vk_instance() const noexcept{ return *vk_instance_; }
-        [[nodiscard]] const auto& vk_device() const noexcept{ return *vk_device_; }
+        [[nodiscard]] auto& vk_device() const noexcept{ return *vk_device_; }
         [[nodiscard]] const auto& vk_render_pass() const noexcept{ return *vk_render_pass_; }
         [[nodiscard]] const auto& vk_surface() const noexcept{ return *vk_surface_; }
         [[nodiscard]] const auto& vk_framebuffer(const size_t index) const noexcept{ return *vk_framebuffers_[index]; }

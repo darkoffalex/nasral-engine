@@ -33,11 +33,11 @@ namespace nasral::res
 
                 file.close();
             }
-            catch (const nlohmann::json::exception& e){
+            catch ([[maybe_unused]] const nlohmann::json::exception& e){
                 set_error(Error::eBadFormat);
                 return std::nullopt;
             }
-            catch (std::exception& e){
+            catch ([[maybe_unused]] std::exception& e){
                 set_error(Error::eLoadingFailed);
                 return std::nullopt;
             }

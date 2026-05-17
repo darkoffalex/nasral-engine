@@ -37,6 +37,7 @@ namespace nasral::res
 
         protected:
             void set_error(const Error error) { error_ = error; }
+            void set_params(const LoadParams& params) { params_ = params; }
 
         private:
             Error error_ = Error::eNone;

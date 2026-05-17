@@ -59,7 +59,7 @@ namespace vk::utils
          * @note Для каждого вложения автоматически создается Image и ImageView,
          * либо используется существующее изображение, если оно указано в AttachmentInfo
          */
-        Framebuffer(const Device::Ptr& device,
+        Framebuffer(Device* device,
                     const vk::RenderPass& render_pass,
                     const vk::Extent2D& extent,
                     const std::vector<AttachmentInfo>& attachment_infos,

@@ -381,7 +381,7 @@ namespace nasral::gfx
 
             // Создать и добавить кадровый буфер
             vk_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
-                vk_device_,
+                vk_device_.get(),
                 vk_render_pass_.get(),
                 swap_chain_extent,
                 attachments));
