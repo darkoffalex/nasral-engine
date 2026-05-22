@@ -35,7 +35,7 @@
       "name": "ChairUnlit",
       "base_material" : "materials/vertex-colored/material.xml",
       "textures": [{
-        "type" : "albedo",
+        "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v0",
         "filter" : "eLinear"
       }]
@@ -45,15 +45,15 @@
       "name": "ChairPhong",
       "base_material" : "materials/pbr/material.xml",
       "textures": [{
-        "type" : "albedo",
+        "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v0",
         "filter" : "eLinear"
       }, {
-        "type" : "normal",
+        "type" : "eNormal",
         "path" : "textures/chair/chair_nor_gl_1k.png",
         "filter" : "eLinear"
       },{
-        "type" : "specular",
+        "type" : "eRoughOrSpec",
         "path" : "textures/chair/chair_spec_1k.png",
         "filter" : "eLinear"
       }]
@@ -63,19 +63,19 @@
       "name": "ChairPBR",
       "base_material" : "materials/pbr/material.xml",
       "textures": [{
-        "type" : "albedo",
+        "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v1",
         "filter" : "eLinear"
       }, {
-        "type" : "normal",
+        "type" : "eNormal",
         "path" : "textures/chair/chair_nor_gl_1k.png",
         "filter" : "eLinear"
       },{
-        "type" : "metallic",
+        "type" : "eMetalOrReflect",
         "path" : "textures/chair/chair_metal_1k.png",
         "filter" : "eLinear"
       },{
-        "type" : "roughness",
+        "type" : "eRoughOrSpec",
         "path" : "textures/chair/chair_rough_1k.png",
         "filter" : "eLinear"
       }]

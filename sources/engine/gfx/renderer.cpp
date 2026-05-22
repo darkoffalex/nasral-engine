@@ -564,7 +564,7 @@ namespace nasral::gfx
         assert(proj && "Project file resource is not a project file");
 
         // Сформировать список ресурсов
-        for ([[maybe_unused]] auto& res_desc : proj->materials()){
+        for ([[maybe_unused]] auto& mat_desc : proj->materials()){
             // TODO: Aad material instance
         }
 

@@ -14,8 +14,15 @@ namespace nasral::ecs
      */
     struct EntityId
     {
-        size_t index;
-        size_t version;
+        size_t index = 0;
+        size_t version = 0;
+
+        static constexpr EntityId invalid() {
+            return {
+                static_cast<size_t>(-1),
+                static_cast<size_t>(-1)
+            };
+        }
 
         bool operator==(const EntityId& other) const{
             return index == other.index && version == other.version;

@@ -12,11 +12,30 @@ namespace nasral::ecs
     /**
      * @brief Перечисление всех используемых компонентов
      */
-    using ComponentTypes = std::tuple<
+    using ComponentTypes = std::tuple
+    <
         // Общие
         ActivateComponent,
         DeactivateComponent,
-        DestroyComponent
+        DestroyComponent,
+        UidComponent,
+        NameComponent,
+
+        // Ресурсы
+        ResourceComponent,
+        ResourceListComponent<gfx::TextureType>,
+        ResourceRequestComponent,
+        ResourceReleaseComponent,
+        ResourceErrorComponent,
+        ResourceLoadedComponent,
+
+        // Графика
+        MaterialHandlesComponent,
+        MaterialSettingsComponent,
+        UniformIndexComponent,
+        UniformStateComponent,
+        DirtyUnformComponent,
+        DirtyTexturesComponent
     >;
 
     // Проверка типов компонентов на соответствие требования (на этапе компиляции)

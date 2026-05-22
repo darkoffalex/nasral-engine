@@ -29,6 +29,10 @@ namespace nasral::res
                     data.resources.push_back(parse_resource_entry(res_entry));
                 }
 
+                for (const auto& mat_entry : json.at("materials")){
+                    data.materials.push_back(parse_material_entry(mat_entry));
+                }
+
                 data.initial_scene = json.at("initial_scene").get<std::string>();
 
                 file.close();
@@ -92,6 +96,12 @@ namespace nasral::res
                 path_str,
                 params
             };
+        }
+
+        static gfx::MaterialDesc parse_material_entry(const nlohmann::json& entry)
+        {
+            // TODO: Parse
+            return {};
         }
     };
 }

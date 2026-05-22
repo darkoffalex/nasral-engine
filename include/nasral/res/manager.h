@@ -9,6 +9,7 @@
 #include <nasral/common/index_pool.h>
 #include <nasral/log/loggable.h>
 #include <nasral/res/types.h>
+#include <nasral/gfx/types.h>
 #include <nasral/res/objects/resource.h>
 #include <nasral/evt/objects/listener.h>
 
@@ -67,6 +68,7 @@ namespace nasral::res
 
         [[nodiscard]] std::optional<ResourceId> find(const std::string_view& path) const;
         [[nodiscard]] std::optional<ResourceId> find_project() const;
+        [[nodiscard]] std::optional<ResourceId> find_texture_fallback(gfx::TextureType type) const;
         [[nodiscard]] const Slot* slot(const ResourceId& id) const;
         [[nodiscard]] Resource* get(const ResourceId& id) const;
         [[nodiscard]] std::string path(const ResourceId& id, bool full = false) const;

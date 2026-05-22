@@ -7,6 +7,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vulkan/vulkan.hpp>
 
+#include "nasral/common/types.h"
+
 namespace nasral::gfx
 {
     constexpr uint32_t kVkAppVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -196,10 +198,10 @@ namespace nasral::gfx
 
     struct MaterialDesc
     {
-        MaterialBaseType base_type = MaterialBaseType::eDummy;
-        std::map<vk::ShaderStageFlagBits, std::string> shaders = {};
-        vk::PolygonMode polygon_mode = vk::PolygonMode::eFill;
-        float line_width = 1.0f;
+        std::string name = {};
+        std::string material_resource = {};
+        EnumArray<TextureType, std::string> texture_paths;
+        EnumArray<TextureType, TextureSamplerType> texture_samplers;
     };
 
     struct Config

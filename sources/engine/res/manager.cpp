@@ -16,8 +16,8 @@
 #include "res/loaders/mesh/assimp.hpp"
 #include "res/loaders/mesh/builtin.hpp"
 #include "res/loaders/material/json.hpp"
-#include "res/loaders/scene/json.hpp"
-#include "res/loaders/scene/builtin.hpp"
+// #include "res/loaders/scene/json.hpp"
+// #include "res/loaders/scene/builtin.hpp"
 
 namespace nasral::res
 {
@@ -202,6 +202,24 @@ namespace nasral::res
         }
 
         return id;
+    }
+
+    std::optional<ResourceId> Manager::find_texture_fallback(const gfx::TextureType type) const{
+        switch (type)
+        {
+        case gfx::TextureType::eAlbedoColor:
+            return find(kBuiltinTexWhitePixel.data());
+        case gfx::TextureType::eNormal:
+            return find(kBuiltinTexNormPixel.data());
+        case gfx::TextureType::eMetalOrReflect:
+            return find(kBuiltinTexBlackPixel.data());
+        case gfx::TextureType::eHeight:
+            return find(kBuiltinTexWhitePixel.data());
+        case gfx::TextureType::eRoughOrSpec:
+            return find(kBuiltinTexWhitePixel.data());
+        default:
+            return std::nullopt;
+        }
     }
 
     const Manager::Slot* Manager::slot(const ResourceId& id) const{
@@ -458,13 +476,13 @@ namespace nasral::res
     {
         // 1. Запросить встроенные ресурсы
         static std::vector<std::string> paths = {
-            // kBuiltinTexWhitePixel.data(),
-            // kBuiltinTexBlackPixel.data(),
-            // kBuiltinTexNormPixel.data(),
-            // kBuiltinCheckerboard.data(),
-            // kBuiltinMeshQuad.data(),
-            // kBuiltinMeshCube.data(),
-            // kBuiltinMeshSphere.data()
+            kBuiltinTexWhitePixel.data(),
+            kBuiltinTexBlackPixel.data(),
+            kBuiltinTexNormPixel.data(),
+            kBuiltinCheckerboard.data(),
+            kBuiltinMeshQuad.data(),
+            kBuiltinMeshCube.data(),
+            kBuiltinMeshSphere.data()
         };
 
         for (const auto& path : paths){
@@ -492,13 +510,13 @@ namespace nasral::res
     {
         // 1. Освободить встроенные ресурсы
         static std::vector<std::string> paths = {
-            // kBuiltinTexWhitePixel.data(),
-            // kBuiltinTexBlackPixel.data(),
-            // kBuiltinTexNormPixel.data(),
-            // kBuiltinCheckerboard.data(),
-            // kBuiltinMeshQuad.data(),
-            // kBuiltinMeshCube.data(),
-            // kBuiltinMeshSphere.data()
+            kBuiltinTexWhitePixel.data(),
+            kBuiltinTexBlackPixel.data(),
+            kBuiltinTexNormPixel.data(),
+            kBuiltinCheckerboard.data(),
+            kBuiltinMeshQuad.data(),
+            kBuiltinMeshCube.data(),
+            kBuiltinMeshSphere.data()
         };
 
         for (const auto& path : paths){

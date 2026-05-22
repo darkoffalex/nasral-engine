@@ -38,6 +38,7 @@ add_library(Engine OBJECT
 #        # Рендеринг
         gfx/renderer.cpp
         gfx/renderer_init.cpp
+        gfx/objects/material_instance.cpp
 #        gfx/system.cpp
 #        gfx/io/material.cpp
 #
