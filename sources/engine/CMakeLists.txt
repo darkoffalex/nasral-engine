@@ -30,10 +30,10 @@ add_library(Engine OBJECT
         res/objects/project.cpp
         res/objects/shader.cpp
         res/objects/texture.cpp
-#        res/resources/mesh.cpp
-#        res/resources/material.cpp
-#        res/resources/project.cpp
-#        res/resources/scene.cpp
+        res/objects/mesh.cpp
+        res/objects/material.cpp
+        res/objects/project.cpp
+        res/objects/scene.cpp
 #
 #        # Рендеринг
         gfx/renderer.cpp

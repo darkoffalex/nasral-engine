@@ -15,6 +15,7 @@ namespace nasral::gfx
     constexpr uint32_t kMaxCameras = 1;
     constexpr uint32_t kMaxObjects = 1024;
     constexpr uint32_t kMaxMaterials = 128;
+    constexpr uint32_t kMaxMaterialsPerMesh = 5;
     constexpr uint32_t kMaxLights = 64;
 
     struct Vertex
@@ -66,6 +67,14 @@ namespace nasral::gfx
         TOTAL
     };
 
+    enum class PolygonMode : uint32_t
+    {
+        eFill = 0,
+        eLine,
+        ePoint,
+        TOTAL
+    };
+
     enum class LightType : uint32_t
     {
         ePointLight = 0,
@@ -105,12 +114,20 @@ namespace nasral::gfx
 
         struct Mesh
         {
+            struct Surface
+            {
+                uint32_t index_offset = 0;
+                uint32_t index_count = 0;
+                uint32_t material_index = 0;
+            };
+
             vk::Buffer vertex_buffer = VK_NULL_HANDLE;
             vk::Buffer index_buffer = VK_NULL_HANDLE;
-            uint32_t index_count = 0;
+            std::array<Surface, kMaxMaterialsPerMesh> surfaces = {};
+            uint32_t surfaces_count = 0;
 
             [[nodiscard]] explicit operator bool() const noexcept{
-                return vertex_buffer && index_buffer && index_count;
+                return vertex_buffer && index_buffer && surfaces_count > 0;
             }
         };
     }

@@ -12,7 +12,12 @@
 #include "res/loaders/project/builtin.hpp"
 #include "res/loaders/shader/spv.hpp"
 #include "res/loaders/texture/stb.hpp"
-#include "res/loaders/texture/builtins.hpp"
+#include "res/loaders/texture/builtin.hpp"
+#include "res/loaders/mesh/assimp.hpp"
+#include "res/loaders/mesh/builtin.hpp"
+#include "res/loaders/material/json.hpp"
+#include "res/loaders/scene/json.hpp"
+#include "res/loaders/scene/builtin.hpp"
 
 namespace nasral::res
 {
@@ -339,6 +344,16 @@ namespace nasral::res
             assert(slot.info.type == Type::eShader);
             return Ret{std::make_unique<ShaderSpvLoader>(manager)};
         }
+        else if constexpr (std::is_same_v<T, Mesh>){
+            assert(slot.info.type == Type::eMesh);
+            return slot.info.path.is_builtin()
+                ? Ret{std::make_unique<MeshBuiltinLoader>(manager)}
+                : Ret{std::make_unique<MeshAssimpLoader>(manager, slot.loading.params)};
+        }
+        else if constexpr (std::is_same_v<T, Material>){
+            assert(slot.info.type == Type::eMaterial);
+            return Ret{std::make_unique<MaterialJsonLoader>(manager)};
+        }
 
         assert(false && "Unsupported resource type");
         return Ret{nullptr};
@@ -360,29 +375,43 @@ namespace nasral::res
             case Type::eFile:
                 {
                     auto id = find(slot.info.path.view());
-                    assert(id.has_value());
+                    assert(id.has_value() && "Resource not found");
                     res = std::make_unique<File>(this, id.value());
                     break;
                 }
             case Type::eProjectFile:
                 {
                     auto id = find(slot.info.path.view());
-                    assert(id.has_value());
+                    assert(id.has_value() && "Resource not found");
                     res = std::make_unique<ProjectFile>(this, id.value(), make_res_loader<ProjectFile>(slot, this));
                     break;
                 }
             case Type::eTexture:
                 {
                     auto id = find(slot.info.path.view());
-                    assert(id.has_value());
+                    assert(id.has_value() && "Resource not found");
                     res = std::make_unique<Texture>(this, id.value(), make_res_loader<Texture>(slot, this));
                     break;
                 }
             case Type::eShader:
                 {
                     auto id = find(slot.info.path.view());
-                    assert(id.has_value());
+                    assert(id.has_value() && "Resource not found");
                     res = std::make_unique<Shader>(this, id.value(), make_res_loader<Shader>(slot, this));
+                    break;
+                }
+            case Type::eMesh:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value() && "Resource not found");
+                    res = std::make_unique<Mesh>(this, id.value(), make_res_loader<Mesh>(slot, this));
+                    break;
+                }
+            case Type::eMaterial:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value() && "Resource not found");
+                    res = std::make_unique<Material>(this, id.value(), make_res_loader<Material>(slot, this));
                     break;
                 }
             default:

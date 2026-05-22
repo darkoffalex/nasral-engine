@@ -22,6 +22,8 @@ namespace nasral::res
         Shader& operator=(const Shader&) = delete;
 
         void load() noexcept override;
+
+        [[nodiscard]] const auto& vk_shader_module() const noexcept { return *vk_shader_module_; }
     
     private:
         Loader<Data>::Ptr loader_;

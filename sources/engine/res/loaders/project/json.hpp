@@ -54,7 +54,7 @@ namespace nasral::res
             std::optional<LoadParams> params = {};
 
             const auto type = magic_enum::enum_cast<Type>(type_str);
-            if (!type){
+            if (!type.has_value()){
                 throw std::runtime_error("Unknown resource type while parsing resource list: " + type_str);
             }
 
@@ -62,21 +62,23 @@ namespace nasral::res
             {
             case Type::eTexture:
                 {
-                    if (!entry.at("load_params").empty()){
+                    if (entry.contains("load_params") && !entry.at("load_params").empty()){
                         TextureLoadParams tlp;
-                        tlp.srgb = entry.at("load_params").at("srgb").get<bool>();
-                        tlp.generate_mipmaps = entry.at("load_params").at("generate_mipmaps").get<bool>();
+                        auto& params_node = entry.at("load_params");
+                        tlp.srgb = params_node.at("srgb").get<bool>();
+                        tlp.generate_mipmaps = params_node.at("generate_mipmaps").get<bool>();
                         params = tlp;
                     }
                     break;
                 }
             case Type::eMesh:
                 {
-                    if (!entry.at("load_params").empty()){
+                    if (entry.contains("load_params") && !entry.at("load_params").empty()){
                         MeshLoadParams mlp;
-                        mlp.generate_tangents = entry.at("load_params").at("generate_tangents").get<bool>();
-                        mlp.generate_normals = entry.at("load_params").at("generate_normals").get<bool>();
-                        mlp.winding_order_ccw = entry.at("load_params").at("winding_order_ccw").get<bool>();
+                        auto& params_node = entry.at("load_params");
+                        mlp.generate_tangents = params_node.at("generate_tangents").get<bool>();
+                        mlp.generate_normals = params_node.at("generate_normals").get<bool>();
+                        mlp.winding_order_ccw = params_node.at("winding_order_ccw").get<bool>();
                         params = mlp;
                     }
                     break;

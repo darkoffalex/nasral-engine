@@ -34,6 +34,7 @@ namespace vk::utils
          */
         Buffer()
         : size_(0)
+        , allocated_size_(0)
         , mapped_ptr_(nullptr)
         {}
 
@@ -49,7 +50,7 @@ namespace vk::utils
          * @param properties Свойства памяти, которые должны быть настроены.
          * @param families Вектор с индексами очередей, которым должен быть предоставлен доступ к буферу.
          */
-        Buffer(const Device::Ptr& device,
+        Buffer(Device* device,
                const vk::DeviceSize size,
                const vk::BufferUsageFlags& usage,
                const vk::MemoryPropertyFlags& properties,

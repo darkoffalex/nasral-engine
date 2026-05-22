@@ -711,42 +711,42 @@ namespace nasral::gfx
 
             // Выделить uniform буфер для камеры (вид, проекция)
             vk_ubo_view_ = std::make_unique<vk::utils::Buffer>(
-                vk_device_,
+                vk_device_.get(),
                 size_align(sizeof(uniforms::Camera), ubo_alignment) * kMaxCameras,
                 vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для трансформаций объектов сцены
             vk_ubo_objects_transforms_ = std::make_unique<vk::utils::Buffer>(
-                vk_device_,
+                vk_device_.get(),
                 size_align(sizeof(uniforms::Object), sbo_alignment) * kMaxObjects,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для параметров материала (Blin-Phong)
             vk_ubo_materials_phong_ = std::make_unique<vk::utils::Buffer>(
-                vk_device_,
+                vk_device_.get(),
                 size_align(sizeof(uniforms::MaterialPhong), sbo_alignment) * kMaxMaterials,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для параметров материала (PBR)
             vk_ubo_materials_pbr_ = std::make_unique<vk::utils::Buffer>(
-                vk_device_,
+                vk_device_.get(),
                 size_align(sizeof(uniforms::MaterialPbr), sbo_alignment) * kMaxMaterials,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для источников света
             vk_ubo_light_sources_ = std::make_unique<vk::utils::Buffer>(
-                vk_device_,
+                vk_device_.get(),
                 size_align(sizeof(uniforms::LightSettings), sbo_alignment) * kMaxObjects,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для индексов источников
             vk_ubo_light_indices_ = std::make_unique<vk::utils::Buffer>(
-                vk_device_,
+                vk_device_.get(),
                 size_align(sizeof(uniforms::LightIndices), sbo_alignment),
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
