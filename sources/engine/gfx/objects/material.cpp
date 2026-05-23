@@ -1,5 +1,5 @@
 #include "pch.h"
-#include <nasral/gfx/objects/material_instance.h>
+#include <nasral/gfx/objects/material.h>
 #include <nasral/gfx/renderer.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/engine.h>
@@ -7,8 +7,7 @@
 namespace nasral::gfx
 {
     MaterialInstance::MaterialInstance(Renderer* renderer,
-        const MaterialDesc& description,
-        const UniqueId& id)
+        const MaterialDesc& description)
         : SubsystemObject(renderer)
         , entity_(ecs::EntityId::invalid())
     {
@@ -18,23 +17,23 @@ namespace nasral::gfx
         const auto* res = subsystem()->engine()->res();
 
         // ID ресурса материала
-        const auto mat_res_id = res->find(description.material_resource);
+        const auto mat_res_id = res->find(description.base_material_path);
         if (!mat_res_id.has_value()){
             throw std::runtime_error("Material resource not found");
         }
 
         // IDs ресурсов текстур
-        ecs::ResourceListComponent<TextureType> tex_res_ids = {};
+        EnumArray<TextureType, res::ResourceId> tex_res_ids = {};
         for (const auto type : magic_enum::enum_values<TextureType>()){
             const auto& path = description.texture_paths[type];
             if (path.empty()){
-                tex_res_ids.res_ids[type] = res->find_texture_fallback(type).value_or(res::kInvalidResourceId);
+                tex_res_ids[type] = res->find_texture_fallback(type).value_or(res::kInvalidResourceId);
             }else{
                 const auto res_id = res->find(path);
                 if (!res_id.has_value()){
                     throw std::runtime_error("Texture resource not found");
                 }
-                tex_res_ids.res_ids[type] = res_id.value();
+                tex_res_ids[type] = res_id.value();
             }
         }
 
@@ -48,80 +47,83 @@ namespace nasral::gfx
         ecs->add_components_immediate<
             Components::Uid,
             Components::Name,
+            Components::Settings,
             Components::Handles,
             Components::UniformIndex,
             Components::UniformsDirty,
             Components::TextureDirty,
             Components::MaterialResource,
             Components::TextureResources>(entity_,
-                {id},
+                {description.unique_id},
                 {description.name},
+                {description.base_material_type, {}, description.texture_samplers},
                 {},
                 {mat_ubo_id},
                 {},
                 {},
                 {mat_res_id.value()},
-                std::move(tex_res_ids));
+                {tex_res_ids});
+
+        // Информация о добавлении
+        log_info("Material instance registered (" + info_str() + ")");
     }
 
     MaterialInstance::~MaterialInstance()
     {
         // Отложить удаление entity
         auto* ecs = subsystem()->engine()->ecs();
-        ecs->add_components<Components::PendingDestroy>(entity_, {});
+        ecs->add_components_immediate<Components::PendingDestroy>(entity_, {});
 
         // Освобождение UBO ID
         auto* gfx = subsystem();
         const auto& [index] = ecs->get_component<Components::UniformIndex>(entity_);
         gfx->material_ubo_ids().release(index);
+
+        // Информация об уничтожении
+        log_info("Material instance unregistered (" + info_str(false) + ")");
     }
 
-    const UniqueId& MaterialInstance::uid() const{
-        const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [id] = ecs->get_component<Components::Uid>(entity_);
-        return id;
+    const ecs::EntityId& MaterialInstance::entity() const{
+        return entity_;
     }
 
-    const std::string& MaterialInstance::name() const{
+    MaterialInstance::Components::View MaterialInstance::components() const{
         const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [name] = ecs->get_component<Components::Name>(entity_);
-        return name;
+        const auto& [id, name, settings, res, tex, ubo_id] = ecs->get_components<
+            Components::Uid,
+            Components::Name,
+            Components::Settings,
+            Components::MaterialResource,
+            Components::TextureResources,
+            Components::UniformIndex
+        >(entity_);
+
+        return {
+            id.id,
+            name.name,
+            settings.base_type,
+            res.res_id,
+            tex.res_ids,
+            settings.samplers,
+            settings.uniforms,
+            ubo_id.index
+        };
     }
 
-    const MaterialBaseType& MaterialInstance::material_base_type() const{
-        const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [bt, uniforms, samplers] = ecs->get_component<Components::Settings>(entity_);
-        return bt;
-    }
+    std::string MaterialInstance::info_str(const bool full) const{
+        const auto data = components();
 
-    const res::ResourceId& MaterialInstance::material_resource() const{
-        const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [res_id] = ecs->get_component<Components::MaterialResource>(entity_);
-        return res_id;
-    }
+        std::stringstream ss;
+        ss << "UID: " << data.uid.to_string();
 
-    const EnumArray<TextureType, res::ResourceId>& MaterialInstance::texture_resources() const{
-        const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [res_ids] = ecs->get_component<Components::TextureResources>(entity_);
-        return res_ids;
-    }
+        if (full){
+            ss  << ", Name: " << data.name
+                << ", UBO index: " << data.uniform_index
+                << ", Base type: " << magic_enum::enum_name(data.base_type)
+                << ", Resource ID: " << data.material_resource;
+        }
 
-    const EnumArray<TextureType, TextureSamplerType>& MaterialInstance::texture_samplers() const{
-        const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [bt, uniforms, samplers] = ecs->get_component<Components::Settings>(entity_);
-        return samplers;
-    }
-
-    const uniforms::Material& MaterialInstance::uniforms() const{
-        const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [bt, uniforms, samplers] = ecs->get_component<Components::Settings>(entity_);
-        return uniforms;
-    }
-
-    uint32_t MaterialInstance::uniform_index() const{
-        const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [index] = ecs->get_component<Components::UniformIndex>(entity_);
-        return index;
+        return ss.str();
     }
 
     void MaterialInstance::set_name(const std::string& name) const{
@@ -138,7 +140,6 @@ namespace nasral::gfx
         if (!ecs->has_components<Components::UniformsDirty>(entity_)){
             ecs->add_components_immediate<Components::UniformsDirty>(entity_, {});
         }
-
     }
 
     void MaterialInstance::set_texture_resource(const TextureType type, const res::ResourceId id) const{

@@ -7,8 +7,7 @@ namespace nasral::ecs
     Manager::Manager(Engine* e, const Config& config) : Subsystem(e, config)
     {}
 
-    Manager::~Manager(){
-    }
+    Manager::~Manager() = default;
 
     void Manager::init(){
         entities_.reserve(config().max_entities);

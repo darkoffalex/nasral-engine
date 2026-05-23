@@ -90,23 +90,27 @@ namespace nasral::gfx
         light_states_.resize(kMaxLights);
         is_active_ = true;
 
-        evl_on_proj_load_ = evt::Listener::reg(
+        // Слушать событие формирования списка ресурсов
+        evl_res_reg_ = evt::Listener::reg(
             engine()->events(),
-            evt::Type::eProjectFileLoaded,
-            evt::bind(this, &Renderer::on_project_loaded));
+            evt::Type::eResourceRegistryChanged,
+            evt::bind(this, &Renderer::on_res_registry_changed));
 
         log_info("Renderer initialized.");
     }
 
     void Renderer::finalize(){
-        // Отписаться от события загрузки проекта (дизлайк, отписка!)
-        evl_on_proj_load_.reset();
+        // Отписаться от события формирования списка ресурсов (дизлайк, отписка!)
+        evl_res_reg_.reset();
 
         // Остановить рендеринг
         is_active_ = false;
 
         // Дождаться завершения кадра
         cmd_wait_for_frame();
+
+        // Уничтожение регистра материалов
+        materials_.clear();
 
         log_info("Renderer finalized");
     }
@@ -553,25 +557,30 @@ namespace nasral::gfx
         is_active_ = true;
     }
 
-    void Renderer::on_project_loaded(const evt::Arg& arg)
+    void Renderer::on_res_registry_changed(const evt::Arg& arg)
     {
-        // Получить ресурс файла проекта
-        auto* res = evt::from_arg<res::Resource*>(arg).value_or(nullptr);
-        const auto* proj = dynamic_cast<res::ProjectFile*>(res);
+        const auto reason = evt::from_arg<evt::ChangeReason>(arg);
 
-        assert(res && "Wrong project file resource");
-        assert(res->status() == res::Status::eLoaded && "Project file resource is not loaded");
-        assert(proj && "Project file resource is not a project file");
+        if (reason == evt::ChangeReason::eInitial)
+        {
+            const auto res_id = engine()->res()->find_project().value_or(res::kInvalidResourceId);
+            auto* res = engine()->res()->get(res_id);
+            const auto* proj = dynamic_cast<res::ProjectFile*>(res);
 
-        // Сформировать список ресурсов
-        for ([[maybe_unused]] auto& mat_desc : proj->materials()){
-            // TODO: Aad material instance
+            assert(res && "Wrong project file resource");
+            assert(res->status() == res::Status::eLoaded && "Project file resource is not loaded");
+            assert(proj && "Project file resource is not a project file");
+
+            // Сформировать список материалов
+            for (const auto& mat_desc : proj->materials()){
+                materials_.emplace_back(MaterialInstance::Ptr(new MaterialInstance(this, mat_desc)));
+            }
+
+            // Список ресурсов готов
+            engine()->events()->send_deferred(
+                evt::Type::eMaterialRegistryChanged,
+                evt::ChangeReason::eInitial);
         }
-
-        // Список ресурсов готов
-        engine()->events()->send_deferred(
-            evt::Type::eMaterialRegistryChanged,
-            evt::ChangeReason::eInitial);
     }
 
     const vk::Extent2D& Renderer::rendering_resolution() const noexcept{

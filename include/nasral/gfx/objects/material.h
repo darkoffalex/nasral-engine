@@ -16,7 +16,7 @@ namespace nasral::gfx
     class MaterialInstance : public SubsystemObject<Renderer>, public log::Loggable<MaterialInstance>
     {
     public:
-        friend class Manager;
+        friend class Renderer;
         typedef std::unique_ptr<MaterialInstance> Ptr;
 
         struct Components
@@ -31,6 +31,18 @@ namespace nasral::gfx
             using MaterialResource = ecs::ResourceComponent;                      // Ресурсы материала (для запроса)
             using TextureResources = ecs::ResourceListComponent<TextureType>;     // Ресурсы текстур (для запроса)
             using PendingDestroy = ecs::DestroyComponent;                         // Помечен к удалению
+
+            struct View
+            {
+                const UniqueId& uid;
+                const std::string& name;
+                const MaterialBaseType& base_type;
+                const res::ResourceId& material_resource;
+                const EnumArray<TextureType, res::ResourceId>& texture_resources;
+                const EnumArray<TextureType, TextureSamplerType>& texture_samplers;
+                const uniforms::Material& uniforms;
+                const uint32_t uniform_index;
+            };
         };
 
         ~MaterialInstance();
@@ -38,16 +50,9 @@ namespace nasral::gfx
         MaterialInstance(const MaterialInstance&) = delete;
         MaterialInstance& operator=(const MaterialInstance&) = delete;
 
-        [[nodiscard]] const auto& entity() const {return entity_;}
-
-        [[nodiscard]] const UniqueId& uid() const;
-        [[nodiscard]] const std::string& name() const;
-        [[nodiscard]] const MaterialBaseType& material_base_type() const;
-        [[nodiscard]] const res::ResourceId& material_resource() const;
-        [[nodiscard]] const EnumArray<TextureType, res::ResourceId>& texture_resources() const;
-        [[nodiscard]] const EnumArray<TextureType, TextureSamplerType>& texture_samplers() const;
-        [[nodiscard]] const uniforms::Material& uniforms() const;
-        [[nodiscard]] uint32_t uniform_index() const;
+        [[nodiscard]] const ecs::EntityId& entity() const;
+        [[nodiscard]] Components::View components() const;
+        [[nodiscard]] std::string info_str(bool full = true) const;
 
         void set_name(const std::string& name) const;
         void set_uniforms(const uniforms::Material& uniforms) const;
@@ -55,7 +60,7 @@ namespace nasral::gfx
         void set_texture_sampler(TextureType type, TextureSamplerType sampler_type) const;
 
     protected:
-        MaterialInstance(Renderer* renderer, const MaterialDesc& description, const UniqueId& id);
+        MaterialInstance(Renderer* renderer, const MaterialDesc& description);
 
     private:
         ecs::EntityId entity_;

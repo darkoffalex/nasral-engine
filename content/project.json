@@ -33,7 +33,8 @@
     {
       "uid" : [0,1],
       "name": "ChairUnlit",
-      "base_material" : "materials/vertex-colored/material.xml",
+      "base_material_path" : "materials/vertex-colored/material.json",
+      "base_material_type" : "eVertexColored",
       "textures": [{
         "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v0",
@@ -43,7 +44,8 @@
     {
       "uid" : [0,2],
       "name": "ChairPhong",
-      "base_material" : "materials/pbr/material.xml",
+      "base_material_path" : "materials/phong/material.json",
+      "base_material_type" : "ePhong",
       "textures": [{
         "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v0",
@@ -61,7 +63,8 @@
     {
       "uid" : [0,3],
       "name": "ChairPBR",
-      "base_material" : "materials/pbr/material.xml",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePbr",
       "textures": [{
         "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v1",

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <nasral/res/objects/project.h>
+#include <nasral/gfx/types.h>
 
 namespace nasral::res
 {
@@ -100,8 +101,53 @@ namespace nasral::res
 
         static gfx::MaterialDesc parse_material_entry(const nlohmann::json& entry)
         {
-            // TODO: Parse
-            return {};
+            gfx::MaterialDesc desc = {};
+
+            // Парсинг UniqueId из массива [uint64, uint64]
+            const auto& uid_array = entry.at("uid").get<std::vector<uint64_t>>();
+            if (uid_array.size() >= 2)
+            {
+                desc.unique_id.set(uid_array[0], uid_array[1]);
+            }
+
+            desc.name = entry.at("name").get<std::string>();
+            desc.base_material_path = entry.at("base_material_path").get<std::string>();
+
+            // Обработка типа базового материала
+            if (entry.contains("base_material_type"))
+            {
+                const auto base_type_str = entry.at("base_material_type").get<std::string>();
+                desc.base_material_type =
+                    magic_enum::enum_cast<gfx::MaterialBaseType>(base_type_str)
+                    .value_or(gfx::MaterialBaseType::eDummy);
+            }
+
+            // Обработка текстур (заполнение EnumArray)
+            if (entry.contains("textures") && entry.at("textures").is_array())
+            {
+                for (const auto& tex_entry : entry.at("textures"))
+                {
+                    const auto type_str = tex_entry.at("type").get<std::string>();
+                    auto tex_type = magic_enum::enum_cast<gfx::TextureType>(type_str);
+
+                    if (tex_type.has_value())
+                    {
+                        // Записываем путь к текстуре
+                        desc.texture_paths[tex_type.value()] = tex_entry.at("path").get<std::string>();
+
+                        // Записываем тип семплера (фильтрацию), если указан
+                        if (tex_entry.contains("filter"))
+                        {
+                            const auto filter_str = tex_entry.at("filter").get<std::string>();
+                            desc.texture_samplers[tex_type.value()] =
+                                magic_enum::enum_cast<gfx::TextureSamplerType>(filter_str)
+                                .value_or(gfx::TextureSamplerType::eNearest);
+                        }
+                    }
+                }
+            }
+
+            return desc;
         }
     };
 }

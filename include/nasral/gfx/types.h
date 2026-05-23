@@ -198,8 +198,10 @@ namespace nasral::gfx
 
     struct MaterialDesc
     {
+        UniqueId unique_id = {};
         std::string name = {};
-        std::string material_resource = {};
+        MaterialBaseType base_material_type = MaterialBaseType::eDummy;
+        std::string base_material_path = {};
         EnumArray<TextureType, std::string> texture_paths;
         EnumArray<TextureType, TextureSamplerType> texture_samplers;
     };

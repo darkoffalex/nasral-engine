@@ -5,6 +5,7 @@
 #include <nasral/log/loggable.h>
 #include <nasral/gfx/types.h>
 #include <nasral/evt/objects/listener.h>
+#include <nasral/gfx/objects/material.h>
 
 #include <vulkan/utils/device.hpp>
 #include <vulkan/utils/framebuffer.hpp>
@@ -96,7 +97,7 @@ namespace nasral::gfx
         void init_vk_synchronization();
         void refresh_vk_surface();
 
-        void on_project_loaded(const evt::Arg& arg);
+        void on_res_registry_changed(const evt::Arg& arg);
 
     private:
         // Состояние
@@ -158,7 +159,10 @@ namespace nasral::gfx
         vk::Pipeline vk_last_pipeline_;
 
         // Слушатель события загрузки проекта
-        evt::Listener::Ptr evl_on_proj_load_;
+        evt::Listener::Ptr evl_res_reg_;
+
+        // Глобальный реестр материалов (общий для проекта)
+        std::vector<MaterialInstance::Ptr> materials_;
     };
 }
 
