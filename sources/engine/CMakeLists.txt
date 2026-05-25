@@ -25,7 +25,7 @@ add_library(Engine OBJECT
         # Ресурсы
         res/manager.cpp
         res/objects/resource.cpp
-#        res/system.cpp
+        res/system.cpp
         res/objects/file.cpp
         res/objects/project.cpp
         res/objects/shader.cpp
@@ -39,8 +39,7 @@ add_library(Engine OBJECT
         gfx/renderer.cpp
         gfx/renderer_init.cpp
         gfx/objects/material.cpp
-#        gfx/system.cpp
-#        gfx/io/material.cpp
+        gfx/system.cpp
 #
 #        # Сцена
 #        scn/manager.cpp

@@ -11,6 +11,7 @@
 #include <nasral/res/types.h>
 #include <nasral/gfx/types.h>
 #include <nasral/res/objects/resource.h>
+#include <nasral/res/system.h>
 #include <nasral/evt/objects/listener.h>
 
 namespace nasral::res
@@ -99,6 +100,8 @@ namespace nasral::res
         std::unordered_map<std::string_view, ResourceId> indices_;
         /// Слушатель события загрузки проекта
         evt::Listener::Ptr evl_on_proj_load_;
+        /// ECS-система
+        System::Ptr ecs_system_;
     };
 }
 

@@ -4,6 +4,7 @@
 #include <nasral/common/index_pool.h>
 #include <nasral/log/loggable.h>
 #include <nasral/gfx/types.h>
+#include <nasral/gfx/system.h>
 #include <nasral/evt/objects/listener.h>
 #include <nasral/gfx/objects/material.h>
 
@@ -163,6 +164,9 @@ namespace nasral::gfx
 
         // Глобальный реестр материалов (общий для проекта)
         std::vector<MaterialInstance::Ptr> materials_;
+
+        // ECS-система
+        System::Ptr ecs_system_;
     };
 }
 

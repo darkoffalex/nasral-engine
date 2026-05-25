@@ -2,19 +2,19 @@
 
 #include <nasral/gfx/types.h>
 
-namespace nasral::ecs
+namespace nasral::gfx
 {
     struct MaterialHandlesComponent
     {
-        gfx::handles::Material material;
-        EnumArray<gfx::TextureType, gfx::handles::Texture> textures;
+        handles::Material material;
+        EnumArray<TextureType, handles::Texture> textures;
     };
 
     struct MaterialSettingsComponent
     {
-        gfx::MaterialBaseType base_type = gfx::MaterialBaseType::eDummy;
-        gfx::uniforms::Material uniforms = {};
-        EnumArray<gfx::TextureType, gfx::TextureSamplerType> samplers = {};
+        MaterialBaseType base_type = MaterialBaseType::eDummy;
+        uniforms::Material uniforms = {};
+        EnumArray<TextureType, TextureSamplerType> samplers = {};
     };
 
     struct UniformIndexComponent

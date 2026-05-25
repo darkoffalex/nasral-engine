@@ -6,9 +6,9 @@
 #include <nasral/res/types.h>
 #include <nasral/ecs/entity.h>
 
-#include <nasral/ecs/components/gfx.h>
-#include <nasral/ecs/components/common.h>
-#include <nasral/ecs/components/res.h>
+#include <nasral/gfx/components.h>
+#include <nasral/ecs/components.h>
+#include <nasral/res/components.h>
 
 namespace nasral::gfx
 {
@@ -23,13 +23,13 @@ namespace nasral::gfx
         {
             using Uid = ecs::UidComponent;                                        // Уникальный ID
             using Name = ecs::NameComponent;                                      // Название конкретного instance
-            using Handles = ecs::MaterialHandlesComponent;                        // Хендлы материала (pipeline, images)
-            using Settings = ecs::MaterialSettingsComponent;                      // Настройки материала
-            using UniformIndex = ecs::UniformIndexComponent;                      // Индекс UBO
-            using UniformsDirty = ecs::DirtyUnformComponent;                      // Нужно обновить UBO
-            using TextureDirty = ecs::DirtyTexturesComponent;                     // Нужно обновить текстуры
-            using MaterialResource = ecs::ResourceComponent;                      // Ресурсы материала (для запроса)
-            using TextureResources = ecs::ResourceListComponent<TextureType>;     // Ресурсы текстур (для запроса)
+            using Handles = MaterialHandlesComponent;                             // Хендлы материала (pipeline, images)
+            using Settings = MaterialSettingsComponent;                           // Настройки материала
+            using UniformIndex = UniformIndexComponent;                           // Индекс UBO
+            using UniformsDirty = DirtyUnformComponent;                           // Нужно обновить UBO
+            using TextureDirty = DirtyTexturesComponent;                          // Нужно обновить текстуры
+            using MaterialResource = res::IdComponent;                            // Ресурсы материала (для запроса)
+            using TextureResources = res::IdListComponent<TextureType>;           // Ресурсы текстур (для запроса)
             using PendingDestroy = ecs::DestroyComponent;                         // Помечен к удалению
 
             struct View

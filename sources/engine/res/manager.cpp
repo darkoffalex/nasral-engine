@@ -24,6 +24,7 @@ namespace nasral::res
     Manager::Manager(Engine* e, const Config& config)
         : Subsystem(e, config)
         , free_slots_(kMaxResourceCount)
+        , ecs_system_(std::make_unique<System>(this))
     {}
 
     Manager::~Manager() = default;
@@ -62,11 +63,18 @@ namespace nasral::res
         // Такие ресурсы должны быть доступны в любой момент времени
         request_mandatory();
 
+        // Инициализация ECS системы
+        ecs_system_->init();
+
         log_info("Resource manager initialized.");
     }
 
-    void Manager::update([[maybe_unused]] float delta)
+    void Manager::update([[maybe_unused]] const float delta)
     {
+        // Обновление ECS системы
+        ecs_system_->update(delta);
+
+        // Обновление ресурсов
         for (const size_t index : active_slots_){
             auto& slot = slots_[index];
             // 1. Загрузка была завершена (успешно, либо нет) и есть необработанные callbacks
@@ -80,6 +88,9 @@ namespace nasral::res
 
     void Manager::finalize()
     {
+        // Финализация ECS системы
+        ecs_system_->finalize();
+
         // Отписаться от события загрузки проекта (дизлайк, отписка!)
         evl_on_proj_load_.reset();
 
@@ -214,7 +225,6 @@ namespace nasral::res
         case gfx::TextureType::eMetalOrReflect:
             return find(kBuiltinTexBlackPixel.data());
         case gfx::TextureType::eHeight:
-            return find(kBuiltinTexWhitePixel.data());
         case gfx::TextureType::eRoughOrSpec:
             return find(kBuiltinTexWhitePixel.data());
         default:

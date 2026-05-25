@@ -36,6 +36,7 @@ namespace nasral::gfx
         , material_ubo_ids_(kMaxMaterials)
         , light_ubo_ids_(kMaxLights)
         , vk_last_pipeline_(VK_NULL_HANDLE)
+        , ecs_system_(std::make_unique<System>(this))
     {}
 
     Renderer::~Renderer()
@@ -96,10 +97,17 @@ namespace nasral::gfx
             evt::Type::eResourceRegistryChanged,
             evt::bind(this, &Renderer::on_res_registry_changed));
 
+        // Инициализация ECS системы
+        ecs_system_->init();
+
         log_info("Renderer initialized.");
     }
 
-    void Renderer::finalize(){
+    void Renderer::finalize()
+    {
+        // Финализация ECS системы
+        ecs_system_->finalize();
+
         // Отписаться от события формирования списка ресурсов (дизлайк, отписка!)
         evl_res_reg_.reset();
 

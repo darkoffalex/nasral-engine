@@ -14,10 +14,10 @@ namespace nasral::ecs
         // Fold expression.
         // Пройтись по всем типам компонентов, выделить пулы (под каждый используемый тип)
         // Зарезервировать нужное кол-во памяти в пуле (векторе) под кол-во entities (если компонент нужен)
-        std::apply([&]([[maybe_unused]] auto... component_dummies){
+        std::apply([&]([[maybe_unused]] auto&&... component_dummies){
             [[maybe_unused]] size_t comp_idx = 0;
             ([&]{
-                using ComponentType = decltype(component_dummies);
+                using ComponentType = std::decay_t<decltype(component_dummies)>;
                 pools_.emplace_back(std::vector<ComponentType>());
                 if (mask_.test(comp_idx)){
                     auto& vec = std::get<std::vector<ComponentType>>(pools_.back());
@@ -112,11 +112,11 @@ namespace nasral::ecs
         assert(addition.new_idx.has_value());
 
         // Перенос компонентов между архетипами (только общие типы компонентов задействованы)
-        std::apply([&]([[maybe_unused]] auto... component_dummies){
+        std::apply([&]([[maybe_unused]] auto&&... component_dummies){
             [[maybe_unused]] size_t comp_idx = 0;
             ([&]{
                 if (dst.mask_.test(comp_idx) && src.mask_.test(comp_idx)){
-                    using ComponentType = decltype(component_dummies);
+                    using ComponentType = std::decay_t<decltype(component_dummies)>;
                     auto& src_vec = std::get<std::vector<ComponentType>>(src.pools_[comp_idx]);
                     auto& dst_vec = std::get<std::vector<ComponentType>>(dst.pools_[comp_idx]);
                     dst_vec[addition.new_idx.value()] = std::move(src_vec[index_in_src.value()]);

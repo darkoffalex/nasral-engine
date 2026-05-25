@@ -2,10 +2,9 @@
 
 #include <bitset>
 #include <nasral/common/utils.h>
-#include <nasral/ecs/components/common.h>
-#include <nasral/ecs/components/gfx.h>
-#include <nasral/ecs/components/res.h>
-#include <nasral/ecs/components/scn.h>
+#include <nasral/ecs/components.h>
+#include <nasral/gfx/components.h>
+#include <nasral/res/components.h>
 
 namespace nasral::ecs
 {
@@ -22,20 +21,20 @@ namespace nasral::ecs
         NameComponent,
 
         // Ресурсы
-        ResourceComponent,
-        ResourceListComponent<gfx::TextureType>,
-        ResourceRequestComponent,
-        ResourceReleaseComponent,
-        ResourceErrorComponent,
-        ResourceLoadedComponent,
+        res::IdComponent,
+        res::IdListComponent<gfx::TextureType>,
+        res::RequestComponent,
+        res::ReleaseComponent,
+        res::ErrorComponent,
+        res::LoadedComponent,
 
         // Графика
-        MaterialHandlesComponent,
-        MaterialSettingsComponent,
-        UniformIndexComponent,
-        UniformStateComponent,
-        DirtyUnformComponent,
-        DirtyTexturesComponent
+        gfx::MaterialHandlesComponent,
+        gfx::MaterialSettingsComponent,
+        gfx::UniformIndexComponent,
+        gfx::UniformStateComponent,
+        gfx::DirtyUnformComponent,
+        gfx::DirtyTexturesComponent
     >;
 
     // Проверка типов компонентов на соответствие требования (на этапе компиляции)
