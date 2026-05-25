@@ -38,8 +38,9 @@ namespace nasral::res
             auto& cmd_group = subsystem()
                 ->engine()
                 ->gfx()
+                ->renderer()
                 ->vk_device()
-                .queue_group(static_cast<size_t>(gfx::Renderer::CmdGroupType::eGraphicsAndPresent));
+                .queue_group(static_cast<size_t>(gfx::Manager::CmdGroupType::eGraphicsAndPresent));
 
             // Получить формат в зависимости от кол-ва байт на пиксель
             const auto desired_format = gfx::get_image_vk_format(
@@ -53,6 +54,7 @@ namespace nasral::res
             const auto fp = subsystem()
                 ->engine()
                 ->gfx()
+                ->renderer()
                 ->vk_device()
                 .physical_device()
                 .getFormatProperties(desired_format);
@@ -74,7 +76,7 @@ namespace nasral::res
 
             // Создать временное изображение
             const auto staging_image = std::make_unique<vk::utils::Image>(
-                &subsystem()->engine()->gfx()->vk_device()
+                &subsystem()->engine()->gfx()->renderer()->vk_device()
                 , vk::utils::Image::Type::e2D
                 , desired_format
                 , vk::Extent3D{data->width, data->height, 1}
@@ -89,7 +91,7 @@ namespace nasral::res
 
             // Создать целевое изображение
             image_ = std::make_unique<vk::utils::Image>(
-                &subsystem()->engine()->gfx()->vk_device()
+                &subsystem()->engine()->gfx()->renderer()->vk_device()
                 , vk::utils::Image::Type::e2D
                 , desired_format
                 , vk::Extent3D{data->width, data->height, 1}
@@ -107,6 +109,7 @@ namespace nasral::res
             const auto isl = subsystem()
                 ->engine()
                 ->gfx()
+                ->renderer()
                 ->vk_device()
                 .logical_device()
                 .getImageSubresourceLayout(staging_image->image(),{vk::ImageAspectFlagBits::eColor, 0, 0});

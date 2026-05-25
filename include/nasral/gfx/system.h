@@ -4,12 +4,12 @@
 
 namespace nasral::gfx
 {
-    class Renderer;
-    class System : public ecs::System<System, Renderer>, public log::Loggable<System>
+    class Manager;
+    class System : public ecs::System<System, Manager>, public log::Loggable<System>
     {
     public:
         typedef std::unique_ptr<System> Ptr;
-        explicit System(Renderer* m);
+        explicit System(Manager* m);
         ~System();
 
         System(const System&) = delete;

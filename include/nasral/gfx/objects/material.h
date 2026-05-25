@@ -12,11 +12,11 @@
 
 namespace nasral::gfx
 {
-    class Renderer;
-    class MaterialInstance : public SubsystemObject<Renderer>, public log::Loggable<MaterialInstance>
+    class Manager;
+    class MaterialInstance : public SubsystemObject<Manager>, public log::Loggable<MaterialInstance>
     {
     public:
-        friend class Renderer;
+        friend class Manager;
         typedef std::unique_ptr<MaterialInstance> Ptr;
 
         struct Components
@@ -60,7 +60,7 @@ namespace nasral::gfx
         void set_texture_sampler(TextureType type, TextureSamplerType sampler_type) const;
 
     protected:
-        MaterialInstance(Renderer* renderer, const MaterialDesc& description);
+        MaterialInstance(Manager* renderer, const MaterialDesc& description);
 
     private:
         ecs::EntityId entity_;

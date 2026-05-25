@@ -34,6 +34,7 @@ namespace nasral::res
             const auto& vk_device = subsystem()
                 ->engine()
                 ->gfx()
+                ->renderer()
                 ->vk_device()
                 .logical_device();
 

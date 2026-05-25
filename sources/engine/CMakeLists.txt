@@ -36,6 +36,7 @@ add_library(Engine OBJECT
         res/objects/scene.cpp
 #
 #        # Рендеринг
+        gfx/manager.cpp
         gfx/renderer.cpp
         gfx/renderer_init.cpp
         gfx/objects/material.cpp

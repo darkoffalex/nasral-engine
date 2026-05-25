@@ -25,17 +25,13 @@ namespace nasral
             ecs = std::make_unique<ecs::Manager>(this, config.ecs);
             ecs->init();
 
-            auto& gfx = std::get<gfx::Renderer::Ptr>(subsystems_);
-            gfx = std::make_unique<gfx::Renderer>(this, config.gfx);
+            auto& gfx = std::get<gfx::Manager::Ptr>(subsystems_);
+            gfx = std::make_unique<gfx::Manager>(this, config.gfx);
             gfx->init();
 
             auto& res = std::get<res::Manager::Ptr>(subsystems_);
             res = std::make_unique<res::Manager>(this, config.res);
             res->init();
-
-            /* ECS */
-
-            // TODO: Инициализация ECS систем
         }
         catch (const std::runtime_error& e){
             if (logger()) logger()->fatal(e.what());
@@ -45,16 +41,12 @@ namespace nasral
 
     Engine::~Engine()
     {
-        /* ECS */
-
-        // TODO: Уничтожение ECS систем
-
         /* Подсистемы */
 
         auto& res = std::get<res::Manager::Ptr>(subsystems_);
         res.reset();
 
-        auto& gfx = std::get<gfx::Renderer::Ptr>(subsystems_);
+        auto& gfx = std::get<gfx::Manager::Ptr>(subsystems_);
         gfx.reset();
 
         auto& ecs = std::get<ecs::Manager::Ptr>(subsystems_);
@@ -93,9 +85,7 @@ namespace nasral
         // Итерации для подсистем
         run()->update(delta);
         res()->update(delta);
-
-        // TODO: Обновление ECS систем
-        // TODO: Рендеринг
+        gfx()->update(delta);
 
         // Выполнить отложенные действия подсистем
         std::apply([](auto&&... systems) {
@@ -121,8 +111,8 @@ namespace nasral
         return std::get<res::Manager::Ptr>(subsystems_).get();
     }
 
-    gfx::Renderer* Engine::gfx() const noexcept{
-        return std::get<gfx::Renderer::Ptr>(subsystems_).get();
+    gfx::Manager* Engine::gfx() const noexcept{
+        return std::get<gfx::Manager::Ptr>(subsystems_).get();
     }
 
     run::Manager* Engine::run() const noexcept{

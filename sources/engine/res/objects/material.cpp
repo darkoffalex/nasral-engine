@@ -182,7 +182,7 @@ namespace nasral::res
         }
 
         // Получить renderer и устройство
-        const auto* renderer = subsystem()->engine()->gfx();
+        const auto* renderer = subsystem()->engine()->gfx()->renderer();
         const auto& ul = renderer->vk_uniform_layout(gfx::UniformLayoutType::eRasterization);
         auto& vd = renderer->vk_device();
 

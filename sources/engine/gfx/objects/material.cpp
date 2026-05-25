@@ -1,12 +1,12 @@
 #include "pch.h"
 #include <nasral/gfx/objects/material.h>
-#include <nasral/gfx/renderer.h>
+#include <nasral/gfx/manager.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/engine.h>
 
 namespace nasral::gfx
 {
-    MaterialInstance::MaterialInstance(Renderer* renderer,
+    MaterialInstance::MaterialInstance(Manager* renderer,
         const MaterialDesc& description)
         : SubsystemObject(renderer)
         , entity_(ecs::EntityId::invalid())

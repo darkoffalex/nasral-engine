@@ -4,7 +4,7 @@
 #include <nasral/evt/manager.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/res/manager.h>
-#include <nasral/gfx/renderer.h>
+#include <nasral/gfx/manager.h>
 #include <nasral/run/manager.h>
 
 namespace nasral
@@ -36,7 +36,7 @@ namespace nasral
         [[nodiscard]] evt::Manager* events() const noexcept;
         [[nodiscard]] ecs::Manager* ecs() const noexcept;
         [[nodiscard]] res::Manager* res() const noexcept;
-        [[nodiscard]] gfx::Renderer* gfx() const noexcept;
+        [[nodiscard]] gfx::Manager* gfx() const noexcept;
         [[nodiscard]] run::Manager* run() const noexcept;
 
     protected:
@@ -45,7 +45,7 @@ namespace nasral
             evt::Manager::Ptr,
             ecs::Manager::Ptr,
             res::Manager::Ptr,
-            gfx::Renderer::Ptr,
+            gfx::Manager::Ptr,
             run::Manager::Ptr>;
 
         SubsystemTuple subsystems_;

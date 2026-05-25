@@ -1,12 +1,8 @@
 #pragma once
 
 #include <nasral/common/subsystem.h>
-#include <nasral/common/index_pool.h>
 #include <nasral/log/loggable.h>
 #include <nasral/gfx/types.h>
-#include <nasral/gfx/system.h>
-#include <nasral/evt/objects/listener.h>
-#include <nasral/gfx/objects/material.h>
 
 #include <vulkan/utils/device.hpp>
 #include <vulkan/utils/framebuffer.hpp>
@@ -15,6 +11,7 @@
 
 namespace nasral::gfx
 {
+    class Manager;
     class Renderer final : public Subsystem<Renderer, Config>, public log::Loggable<Renderer>
     {
     public:
@@ -33,9 +30,6 @@ namespace nasral::gfx
         Renderer(const Renderer&) = delete;
         Renderer& operator=(const Renderer&) = delete;
 
-        void init();
-        void finalize();
-
         void cmd_begin_frame();
         void cmd_end_frame();
         void cmd_bind_material(const handles::Material& handles, uint32_t uniform_idx);
@@ -44,15 +38,6 @@ namespace nasral::gfx
         void cmd_wait_for_frame() const;
 
         void request_surface_refresh();
-
-        void update_cam_uniforms(const uniforms::Camera& uniforms, uint32_t index) const;
-        void update_obj_uniforms(const uniforms::Object& uniforms, uint32_t index) const;
-        void update_mat_phong_uniforms(const uniforms::MaterialPhong& uniforms, uint32_t index) const;
-        void update_mat_pbr_uniforms(const uniforms::MaterialPbr& uniforms, uint32_t index) const;
-        void update_mat_textures(const TextureBindingInfo& info, uint32_t index);
-        void update_light_uniforms(const uniforms::LightSettings& uniforms, uint32_t index) const;
-        void update_light_states_unsafe(const std::vector<uint32_t>& ids, bool active);
-        void update_light_states(const std::vector<uint32_t>& ids, bool active);
 
         [[nodiscard]] auto is_active() const noexcept{ return is_active_; }
         [[nodiscard]] auto frames() const noexcept{ return frame_count_; }
@@ -64,9 +49,6 @@ namespace nasral::gfx
         [[nodiscard]] const auto& vk_framebuffer(const size_t index) const noexcept{ return *vk_framebuffers_[index]; }
         [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{ return *vk_texture_samplers_[type]; }
         [[nodiscard]] const auto& vk_uniform_layout(const UniformLayoutType& type) const noexcept{ return *vk_uniform_layouts_[type]; }
-        [[nodiscard]] auto& object_ubo_ids(){ return object_ubo_ids_; }
-        [[nodiscard]] auto& material_ubo_ids(){ return material_ubo_ids_; }
-        [[nodiscard]] auto& light_ubo_ids(){ return light_ubo_ids_; }
 
         [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
         [[nodiscard]] float rendering_aspect() const noexcept;
@@ -98,9 +80,9 @@ namespace nasral::gfx
         void init_vk_synchronization();
         void refresh_vk_surface();
 
-        void on_res_registry_changed(const evt::Arg& arg);
-
     private:
+        friend class Manager;
+
         // Состояние
         bool is_active_;
         bool frame_in_progress_;
@@ -146,27 +128,8 @@ namespace nasral::gfx
         std::vector<vk::UniqueSemaphore> vk_render_finished_semaphore_;
         std::vector<vk::UniqueFence> vk_frame_fence_;
 
-        // Индексы и пулы индексов
-        IndexPool<> object_ubo_ids_;
-        IndexPool<> material_ubo_ids_;
-        IndexPool<> light_ubo_ids_;
-
-        // Активные источники света (их индексы)
-        std::vector<uint32_t> light_active_ids_;
-        std::vector<uint8_t> light_states_;
-        std::mutex light_ids_mutex_;
-
         // Последний использованный конвейер (pipeline)
         vk::Pipeline vk_last_pipeline_;
-
-        // Слушатель события загрузки проекта
-        evt::Listener::Ptr evl_res_reg_;
-
-        // Глобальный реестр материалов (общий для проекта)
-        std::vector<MaterialInstance::Ptr> materials_;
-
-        // ECS-система
-        System::Ptr ecs_system_;
     };
 }
 

@@ -3,8 +3,6 @@
 #include <nasral/engine.h>
 #include <nasral/log/loggable.h>
 #include <nasral/gfx/utils.h>
-#include <nasral/evt/utils.h>
-#include <nasral/res/objects/project.h>
 
 namespace nasral::gfx
 {
@@ -32,17 +30,8 @@ namespace nasral::gfx
         , frame_count_(0)
         , frame_index_(0)
         , available_image_index_(0)
-        , object_ubo_ids_(kMaxObjects)
-        , material_ubo_ids_(kMaxMaterials)
-        , light_ubo_ids_(kMaxLights)
         , vk_last_pipeline_(VK_NULL_HANDLE)
-        , ecs_system_(std::make_unique<System>(this))
-    {}
-
-    Renderer::~Renderer()
-    = default;
-
-    void Renderer::init(){
+    {
         log_info("Initializing Vulkan renderer...");
 
         init_vk_instance();
@@ -87,40 +76,26 @@ namespace nasral::gfx
         init_vk_synchronization();
         log_info("Vulkan: Synchronization initialized.");
 
-        light_active_ids_.resize(kMaxLights);
-        light_states_.resize(kMaxLights);
         is_active_ = true;
-
-        // Слушать событие формирования списка ресурсов
-        evl_res_reg_ = evt::Listener::reg(
-            engine()->events(),
-            evt::Type::eResourceRegistryChanged,
-            evt::bind(this, &Renderer::on_res_registry_changed));
-
-        // Инициализация ECS системы
-        ecs_system_->init();
 
         log_info("Renderer initialized.");
     }
 
-    void Renderer::finalize()
+    Renderer::~Renderer()
     {
-        // Финализация ECS системы
-        ecs_system_->finalize();
+        try
+        {
+            // Остановить рендеринг
+            is_active_ = false;
 
-        // Отписаться от события формирования списка ресурсов (дизлайк, отписка!)
-        evl_res_reg_.reset();
+            // Дождаться завершения кадра
+            cmd_wait_for_frame();
 
-        // Остановить рендеринг
-        is_active_ = false;
-
-        // Дождаться завершения кадра
-        cmd_wait_for_frame();
-
-        // Уничтожение регистра материалов
-        materials_.clear();
-
-        log_info("Renderer finalized");
+            log_info("Renderer finalized");
+        }
+        catch (...)
+        {
+        }
     }
 
 #pragma region render_commands
@@ -406,116 +381,6 @@ namespace nasral::gfx
 
 #pragma endregion
 
-#pragma region uniforms
-
-    void Renderer::update_cam_uniforms(const uniforms::Camera& uniforms, const uint32_t index) const
-    {
-        assert(vk_ubo_view_->is_mapped());
-        auto& pd = vk_device_->physical_device();
-        vk_ubo_view_->update_mapped(
-            ubo_offset<uniforms::Camera>(pd, index),
-            aligned_ubo<uniforms::Camera>(pd),
-            &uniforms);
-    }
-
-    void Renderer::update_obj_uniforms(const uniforms::Object& uniforms, const uint32_t index) const
-    {
-        assert(vk_ubo_view_->is_mapped());
-        auto& pd = vk_device_->physical_device();
-        vk_ubo_objects_transforms_->update_mapped(
-            sbo_offset<uniforms::Object>(pd, index),
-            aligned_sbo<uniforms::Object>(pd),
-            &uniforms);
-    }
-
-    void Renderer::update_mat_phong_uniforms(const uniforms::MaterialPhong& uniforms, const uint32_t index) const
-    {
-        assert(vk_ubo_materials_phong_->is_mapped());
-        auto& pd = vk_device_->physical_device();
-        vk_ubo_materials_phong_->update_mapped(
-            sbo_offset<uniforms::MaterialPhong>(pd, index),
-            aligned_sbo<uniforms::MaterialPhong>(pd),
-            &uniforms);
-    }
-
-    void Renderer::update_mat_pbr_uniforms(const uniforms::MaterialPbr& uniforms, const uint32_t index) const
-    {
-        assert(vk_ubo_materials_pbr_->is_mapped());
-        auto& pd = vk_device_->physical_device();
-        vk_ubo_materials_pbr_->update_mapped(
-            sbo_offset<uniforms::MaterialPbr>(pd, index),
-            aligned_sbo<uniforms::MaterialPbr>(pd),
-            &uniforms);
-    }
-
-    void Renderer::update_mat_textures(const TextureBindingInfo& info, const uint32_t index)
-    {
-        assert(index < kMaxMaterials);
-        assert(info.texture);
-        assert(vk_dset_material_textures_);
-
-        const auto& sampler = vk_texture_samplers_[info.sampler_type];
-        vk::DescriptorImageInfo image_info{};
-        image_info.setSampler(sampler.get())
-                  .setImageView(info.texture.image_view)
-                  .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
-
-        vk::WriteDescriptorSet write{};
-        write.setDstSet(vk_dset_material_textures_.get())
-             .setDstBinding(static_cast<uint32_t>(info.type))
-             .setDstArrayElement(index) // Индекс объекта в массиве дескрипторов
-             .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-             .setDescriptorCount(1)
-             .setImageInfo(image_info);
-
-        vk_device_->logical_device().updateDescriptorSets({write}, {});
-    }
-
-    void Renderer::update_light_uniforms(const uniforms::LightSettings& uniforms, const uint32_t index) const
-    {
-        assert(vk_ubo_light_sources_->is_mapped());
-        auto& pd = vk_device_->physical_device();
-        vk_ubo_light_sources_->update_mapped(
-            sbo_offset<uniforms::LightSettings>(pd, index),
-            aligned_sbo<uniforms::LightSettings>(pd),
-            &uniforms);
-    }
-
-    void Renderer::update_light_states_unsafe(const std::vector<uint32_t>& ids, const bool active)
-    {
-        assert(vk_ubo_light_indices_->is_mapped());
-
-        // Обновить таблице состояний источников
-        const uint8_t state_val = active ? 1 : 0;
-        for (const auto& id : ids){
-            if (id < light_states_.size()){
-                light_states_[id] = state_val;
-            }
-        }
-
-        // Пересобрать список активных индексов
-        light_active_ids_.clear();
-        for (uint32_t i = 0; i < static_cast<uint32_t>(light_states_.size()); ++i){
-            if (light_states_[i]){
-                light_active_ids_.push_back(i);
-            }
-        }
-
-        // Обновить GPU storage buffer
-        auto* pids = static_cast<uniforms::LightIndices*>(vk_ubo_light_indices_->mapped_ptr());
-        pids->count = static_cast<uint32_t>(light_active_ids_.size());
-        std::fill_n(pids->indices, kMaxLights, 0);
-        std::memcpy(pids->indices, light_active_ids_.data(), light_active_ids_.size() * sizeof(uint32_t));
-    }
-
-    void Renderer::update_light_states(const std::vector<uint32_t>& ids, const bool active)
-    {
-        std::lock_guard lock(light_ids_mutex_);
-        update_light_states_unsafe(ids, active);
-    }
-
-#pragma endregion
-
     /**
      * @brief Обновляет (пересоздаёт) объекты, зависящие от поверхности.
      * @details Вызывается при изменении размеров/параметров поверхности (resize, смена DPI, alt‑tab и т.п.).
@@ -563,32 +428,6 @@ namespace nasral::gfx
 
         // Включить рендеринг
         is_active_ = true;
-    }
-
-    void Renderer::on_res_registry_changed(const evt::Arg& arg)
-    {
-        const auto reason = evt::from_arg<evt::ChangeReason>(arg);
-
-        if (reason == evt::ChangeReason::eInitial)
-        {
-            const auto res_id = engine()->res()->find_project().value_or(res::kInvalidResourceId);
-            auto* res = engine()->res()->get(res_id);
-            const auto* proj = dynamic_cast<res::ProjectFile*>(res);
-
-            assert(res && "Wrong project file resource");
-            assert(res->status() == res::Status::eLoaded && "Project file resource is not loaded");
-            assert(proj && "Project file resource is not a project file");
-
-            // Сформировать список материалов
-            for (const auto& mat_desc : proj->materials()){
-                materials_.emplace_back(MaterialInstance::Ptr(new MaterialInstance(this, mat_desc)));
-            }
-
-            // Список ресурсов готов
-            engine()->events()->send_deferred(
-                evt::Type::eMaterialRegistryChanged,
-                evt::ChangeReason::eInitial);
-        }
     }
 
     const vk::Extent2D& Renderer::rendering_resolution() const noexcept{

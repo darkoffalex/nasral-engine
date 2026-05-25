@@ -1,11 +1,11 @@
 #include "pch.h"
 #include <nasral/gfx/system.h>
-#include <nasral/gfx/renderer.h>
+#include <nasral/gfx/manager.h>
 #include <nasral/engine.h>
 
 namespace nasral::gfx
 {
-    System::System(Renderer* m) : ecs::System<System, Renderer>(m){}
+    System::System(Manager* m) : ecs::System<System, Manager>(m){}
 
     System::~System(){}
 
