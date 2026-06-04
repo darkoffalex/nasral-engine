@@ -16,6 +16,7 @@ namespace nasral::res
     constexpr size_t kMaxResourcePathLength = 64;
     constexpr size_t kMaxResourceCount = 1024;
     constexpr size_t kMinRefsCount = 10;
+    constexpr size_t kResListComponentSize = 10;
 
     constexpr uint32_t kInvalidResourceId = std::numeric_limits<uint32_t>::max();
 

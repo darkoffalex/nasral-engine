@@ -15,14 +15,13 @@ namespace nasral::log
         }
     }
 
-    Logger::~Logger(){
-    }
+    Logger::~Logger() = default;
 
-    void Logger::init(){
+    void Logger::on_init(){
         info("Logger subsystem initialized");
     }
 
-    void Logger::finalize(){
+    void Logger::on_finalize(){
         if (fs_.is_open()){
             fs_.close();
         }

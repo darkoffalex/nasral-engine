@@ -40,7 +40,7 @@ namespace nasral::res
                 ->gfx()
                 ->renderer()
                 ->vk_device()
-                .queue_group(static_cast<size_t>(gfx::Manager::CmdGroupType::eGraphicsAndPresent));
+                .queue_group(static_cast<size_t>(gfx::Renderer::CmdGroupType::eGraphicsAndPresent));
 
             // Получить формат в зависимости от кол-ва байт на пиксель
             const auto desired_format = gfx::get_image_vk_format(

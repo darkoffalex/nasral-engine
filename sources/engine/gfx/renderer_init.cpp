@@ -685,15 +685,15 @@ namespace nasral::gfx
         assert(ul && "Rasterization uniform layout is not initialized");
 
         // Выделить дескрипторный набор для камеры
-        ul->allocate_sets(0,1).front().swap(vk_dset_view_);
+        ul->allocate_sets(0,1).front().swap(vk_descriptor_sets_[UniformDSetType::eViewUBO]);
         // Выделить дескрипторный набор для uniform-буферов объектов (трансформации)
-        ul->allocate_sets(1,1).front().swap(vk_dset_objects_uniforms_);
+        ul->allocate_sets(1,1).front().swap(vk_descriptor_sets_[UniformDSetType::eObjectUBOs]);
         // Выделить дескрипторный набор для uniform-буферов материалов (блики, шероховатость и прочее)
-        ul->allocate_sets(2,1).front().swap(vk_dset_material_uniforms_);
+        ul->allocate_sets(2,1).front().swap(vk_descriptor_sets_[UniformDSetType::eMaterialUBOs]);
         // Выделить дескрипторный набор для текстур материалов (по массиву дескрипторов на каждый вид текстур)
-        ul->allocate_sets(3,1).front().swap(vk_dset_material_textures_);
+        ul->allocate_sets(3,1).front().swap(vk_descriptor_sets_[UniformDSetType::eMaterialTextures]);
         // Выделить дескрипторный набор для источников света
-        ul->allocate_sets(4,1).front().swap(vk_dset_light_sources_);
+        ul->allocate_sets(4,1).front().swap(vk_descriptor_sets_[UniformDSetType::eLightUBOs]);
 
         // Uniform буферы
         {
@@ -710,42 +710,42 @@ namespace nasral::gfx
                 .minStorageBufferOffsetAlignment;
 
             // Выделить uniform буфер для камеры (вид, проекция)
-            vk_ubo_view_ = std::make_unique<vk::utils::Buffer>(
+            vk_uniform_buffers_[UniformBufferType::eView] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
                 size_align(sizeof(uniforms::Camera), ubo_alignment) * kMaxCameras,
                 vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для трансформаций объектов сцены
-            vk_ubo_objects_transforms_ = std::make_unique<vk::utils::Buffer>(
+            vk_uniform_buffers_[UniformBufferType::eObjects] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
                 size_align(sizeof(uniforms::Object), sbo_alignment) * kMaxObjects,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для параметров материала (Blin-Phong)
-            vk_ubo_materials_phong_ = std::make_unique<vk::utils::Buffer>(
+            vk_uniform_buffers_[UniformBufferType::eMaterialsPhong] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
                 size_align(sizeof(uniforms::MaterialPhong), sbo_alignment) * kMaxMaterials,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для параметров материала (PBR)
-            vk_ubo_materials_pbr_ = std::make_unique<vk::utils::Buffer>(
+            vk_uniform_buffers_[UniformBufferType::eMaterialsPBR] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
                 size_align(sizeof(uniforms::MaterialPbr), sbo_alignment) * kMaxMaterials,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для источников света
-            vk_ubo_light_sources_ = std::make_unique<vk::utils::Buffer>(
+            vk_uniform_buffers_[UniformBufferType::eLightSources] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
                 size_align(sizeof(uniforms::LightSettings), sbo_alignment) * kMaxObjects,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
             // Выделить uniform буфер для индексов источников
-            vk_ubo_light_indices_ = std::make_unique<vk::utils::Buffer>(
+            vk_uniform_buffers_[UniformBufferType::eLightSourcesActive] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
                 size_align(sizeof(uniforms::LightIndices), sbo_alignment),
                 vk::BufferUsageFlagBits::eStorageBuffer,
@@ -762,12 +762,12 @@ namespace nasral::gfx
         // Камера (set = 0, binding = 0)
         {
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
-                .setBuffer(vk_ubo_view_->vk_buffer())
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eView]->vk_buffer())
                 .setOffset(0)
                 .setRange(sizeof(uniforms::Camera)));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_dset_view_.get())
+                .setDstSet(vk_descriptor_sets_[UniformDSetType::eViewUBO].get())
                 .setDstBinding(0)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eUniformBuffer)
@@ -778,12 +778,12 @@ namespace nasral::gfx
         // Трансформации объектов (set = 1, binding = 0)
         {
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
-                .setBuffer(vk_ubo_objects_transforms_->vk_buffer())
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eObjects]->vk_buffer())
                 .setOffset(0)
                 .setRange(sizeof(uniforms::Object) * kMaxObjects));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_dset_objects_uniforms_.get())
+                .setDstSet(vk_descriptor_sets_[UniformDSetType::eObjectUBOs].get())
                 .setDstBinding(0)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
@@ -794,12 +794,12 @@ namespace nasral::gfx
         // Параметры Phong материалов (set = 2, binding = 0)
         {
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
-                .setBuffer(vk_ubo_materials_phong_->vk_buffer())
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eMaterialsPhong]->vk_buffer())
                 .setOffset(0)
                 .setRange(sizeof(uniforms::MaterialPhong) * kMaxMaterials));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_dset_material_uniforms_.get())
+                .setDstSet(vk_descriptor_sets_[UniformDSetType::eMaterialUBOs].get())
                 .setDstBinding(0)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
@@ -810,12 +810,12 @@ namespace nasral::gfx
         // Параметры PBR материалов (set = 2, binding = 1)
         {
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
-                .setBuffer(vk_ubo_materials_pbr_->vk_buffer())
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eMaterialsPBR]->vk_buffer())
                 .setOffset(0)
                 .setRange(sizeof(uniforms::MaterialPbr) * kMaxMaterials));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_dset_material_uniforms_.get())
+                .setDstSet(vk_descriptor_sets_[UniformDSetType::eMaterialUBOs].get())
                 .setDstBinding(1)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
@@ -826,12 +826,12 @@ namespace nasral::gfx
         // Источники света (set = 4, binding = 0)
         {
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
-                .setBuffer(vk_ubo_light_sources_->vk_buffer())
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eLightSources]->vk_buffer())
                 .setOffset(0)
                 .setRange(sizeof(uniforms::LightSettings) * kMaxLights));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_dset_light_sources_.get())
+                .setDstSet(vk_descriptor_sets_[UniformDSetType::eLightUBOs].get())
                 .setDstBinding(0)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
@@ -842,12 +842,12 @@ namespace nasral::gfx
         // Индексы активных источников света (set = 4, binding = 1)
         {
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
-                .setBuffer(vk_ubo_light_indices_->vk_buffer())
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eLightSourcesActive]->vk_buffer())
                 .setOffset(0)
                 .setRange(sizeof(uniforms::LightIndices)));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_dset_light_sources_.get())
+                .setDstSet(vk_descriptor_sets_[UniformDSetType::eLightUBOs].get())
                 .setDstBinding(1)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
@@ -859,12 +859,12 @@ namespace nasral::gfx
         vk_device_->logical_device().updateDescriptorSets(writes, {});
 
         // Подготовить uniform буферы к записи (разметка памяти)
-        vk_ubo_view_->map_unsafe();
-        vk_ubo_objects_transforms_->map_unsafe();
-        vk_ubo_materials_phong_->map_unsafe();
-        vk_ubo_materials_pbr_->map_unsafe();
-        vk_ubo_light_sources_->map_unsafe();
-        vk_ubo_light_indices_->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eView]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eObjects]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eMaterialsPhong]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eMaterialsPBR]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eLightSources]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eLightSourcesActive]->map_unsafe();
     }
 
     /**

@@ -33,7 +33,7 @@ namespace nasral::ecs
             value_type operator*() const noexcept{
                 auto* arc = view_->manager_->archetypes_[archetype_idx_].get();
                 const auto& entity_id = arc->entities()[entity_idx_];
-                auto components = arc->get_components<CTs...>(entity_idx_);
+                auto components = arc->components<CTs...>(entity_idx_);
                 return std::tuple<EntityId, CTs&...>{entity_id, std::get<CTs&>(components)...};
             }
 

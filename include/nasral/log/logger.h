@@ -20,9 +20,6 @@ namespace nasral::log
         Logger(const Logger&) = delete;
         Logger& operator=(const Logger&) = delete;
 
-        void init();
-        void finalize();
-
         void log_unsafe(Level level, const std::string& message);
         void log(Level level, const std::string& message);
 
@@ -45,6 +42,10 @@ namespace nasral::log
         void fatal(const std::string& message){
             log(Level::eFatal, message);
         }
+
+    protected:
+        void on_init();
+        void on_finalize();
 
     private:
         std::ofstream fs_;

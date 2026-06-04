@@ -27,6 +27,10 @@ namespace nasral::ecs
         bool operator==(const EntityId& other) const{
             return index == other.index && version == other.version;
         }
+
+        [[nodiscard]] std::string to_string() const{
+            return "[" + std::to_string(index) + "." + std::to_string(version) + "]";
+        }
     };
 
     /**
@@ -34,7 +38,7 @@ namespace nasral::ecs
      * @tparam N Объем контейнера, выделяемого на стеке (для оптимизации кеш-локальности)
      * @details Может также использоваться как часть (поле) компонента (для ссылок на другие Entity)
      */
-    template<std::size_t N>
+    template<std::size_t N = 5>
     class EntityIds
     {
     public:

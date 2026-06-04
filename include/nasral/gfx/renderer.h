@@ -35,7 +35,7 @@ namespace nasral::gfx
         void cmd_bind_material(const handles::Material& handles, uint32_t uniform_idx);
         void cmd_bind_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
         void cmd_draw_geometry(uint32_t index_offset, uint32_t index_count);
-        void cmd_wait_for_frame() const;
+        void cmd_wait_for_all() const;
 
         void request_surface_refresh();
 
@@ -49,6 +49,8 @@ namespace nasral::gfx
         [[nodiscard]] const auto& vk_framebuffer(const size_t index) const noexcept{ return *vk_framebuffers_[index]; }
         [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{ return *vk_texture_samplers_[type]; }
         [[nodiscard]] const auto& vk_uniform_layout(const UniformLayoutType& type) const noexcept{ return *vk_uniform_layouts_[type]; }
+        [[nodiscard]] const auto& vk_uniform_d_set(const UniformDSetType& type) const noexcept{ return *vk_descriptor_sets_[type]; }
+        [[nodiscard]] auto& vk_uniform_buffer(const UniformBufferType& type) const noexcept{ return *vk_uniform_buffers_[type]; }
 
         [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
         [[nodiscard]] float rendering_aspect() const noexcept;
@@ -81,8 +83,6 @@ namespace nasral::gfx
         void refresh_vk_surface();
 
     private:
-        friend class Manager;
-
         // Состояние
         bool is_active_;
         bool frame_in_progress_;
@@ -100,24 +100,12 @@ namespace nasral::gfx
 
         // Макеты конвейеров (для растеризации, пост-процессинга и прочего)
         EnumArray<UniformLayoutType, vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
-
+        // Дескрипторные наборы (камера, трансформации и материалы объектов, текстуры объектов)
+        EnumArray<UniformDSetType, vk::UniqueDescriptorSet> vk_descriptor_sets_;
+        // Uniform буферы объектов (камера, трансформации, материалы, источники света)
+        EnumArray<UniformBufferType, vk::utils::Buffer::Ptr> vk_uniform_buffers_;
         // Семплеры текстур
         EnumArray<TextureSamplerType, vk::UniqueSampler> vk_texture_samplers_;
-
-        // Дескрипторные наборы (камера, трансформации и материалы объектов, текстуры объектов)
-        vk::UniqueDescriptorSet vk_dset_view_;
-        vk::UniqueDescriptorSet vk_dset_objects_uniforms_;
-        vk::UniqueDescriptorSet vk_dset_material_uniforms_;
-        vk::UniqueDescriptorSet vk_dset_material_textures_;
-        vk::UniqueDescriptorSet vk_dset_light_sources_;
-
-        // Uniform буферы объектов (камера, трансформации, материалы, источники света)
-        vk::utils::Buffer::Ptr vk_ubo_view_;
-        vk::utils::Buffer::Ptr vk_ubo_objects_transforms_;
-        vk::utils::Buffer::Ptr vk_ubo_materials_phong_;
-        vk::utils::Buffer::Ptr vk_ubo_materials_pbr_;
-        vk::utils::Buffer::Ptr vk_ubo_light_sources_;
-        vk::utils::Buffer::Ptr vk_ubo_light_indices_;
 
         // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
         size_t frame_count_;
@@ -133,4 +121,4 @@ namespace nasral::gfx
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(gfx::Renderer)
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(gfx::Renderer, "GFX")

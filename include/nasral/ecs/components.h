@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nasral/common/types.h>
-
+#include <nasral/ecs/entity.h>
 namespace nasral::ecs
 {
     struct ActivateComponent{};
@@ -18,5 +18,15 @@ namespace nasral::ecs
     struct NameComponent
     {
         std::string name = {};
+    };
+
+    struct EntityComponent
+    {
+        EntityId id = {};
+    };
+
+    struct EntityListComponent
+    {
+        EntityIds<> ids = {};
     };
 }

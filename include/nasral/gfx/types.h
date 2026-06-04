@@ -1,13 +1,11 @@
 #pragma once
 
-#include <map>
 #include <memory>
 #include <variant>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vulkan/vulkan.hpp>
-
-#include "nasral/common/types.h"
+#include <nasral/common/types.h>
 
 namespace nasral::gfx
 {
@@ -34,6 +32,26 @@ namespace nasral::gfx
         eRasterization,
         ePostProcessing,
         TOTAL
+    };
+
+    enum class UniformDSetType : uint32_t
+    {
+        eViewUBO = 0,
+        eObjectUBOs,
+        eMaterialUBOs,
+        eMaterialTextures,
+        eLightUBOs,
+        TOTAL
+    };
+
+    enum class UniformBufferType : uint32_t
+    {
+        eView = 0,
+        eObjects,
+        eMaterialsPhong,
+        eMaterialsPBR,
+        eLightSources,
+        eLightSourcesActive,
     };
 
     enum class TextureSamplerType : uint32_t

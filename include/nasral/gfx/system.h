@@ -15,14 +15,14 @@ namespace nasral::gfx
         System(const System&) = delete;
         System& operator=(const System&) = delete;
 
-        void init();
-        void update(float delta);
-        void finalize();
+        void on_init();
+        void on_update(float delta);
+        void on_finalize();
 
     protected:
-        void update_materials();
-        void update_objects();
+        void process_materials_update();
+        void process_objects_update();
     };
 }
 
-DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(gfx::System)
+DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(gfx::System, "GFX|ECS")

@@ -1,25 +1,34 @@
 #include "pch.h"
 #include <nasral/ecs/manager.h>
+#include <nasral/ecs/view.h>
 #include <nasral/engine.h>
 
 namespace nasral::ecs
 {
-    Manager::Manager(Engine* e, const Config& config) : Subsystem(e, config)
-    {}
-
-    Manager::~Manager() = default;
-
-    void Manager::init(){
-        entities_.reserve(config().max_entities);
-        free_slots_.reserve(config().max_entities);
-        log_info("ECS manager initialized.");
+    Manager::Manager(Engine* e, const Config& config) : Subsystem(e, config){
+        log_info("Initializing manager...");
     }
 
-    void Manager::finalize(){
-        entities_.clear();
-        free_slots_.clear();
-        archetypes_.clear();
-        log_info("ECS manager finalized.");
+    Manager::~Manager(){
+        log_info("Manager destroyed");
+    }
+
+    void Manager::on_init()
+    {
+        entities_.reserve(config().max_entities);
+        free_slots_.reserve(config().max_entities);
+        log_info("Manager initialized");
+    }
+
+    void Manager::on_update([[maybe_unused]] const float delta)
+    {
+        destroy_pending();
+    }
+
+    void Manager::on_finalize()
+    {
+        destroy_pending();
+        log_info("Manager finalized");
     }
 
     EntityId Manager::spawn(){
@@ -46,6 +55,7 @@ namespace nasral::ecs
                 0
             });
 
+        log_debug("Entity " + entities_.back().id.to_string() + " created.");
         return entities_.back().id;
     }
 
@@ -77,6 +87,7 @@ namespace nasral::ecs
         slot.id.version++;
         slot.mask.reset();
 
+        log_debug("Entity " + entity.to_string() + " destroyed");
         free_slots_.push_back(entity.index);
     }
 
@@ -134,6 +145,13 @@ namespace nasral::ecs
                     return a.get() == previous_arch;
                 }), archetypes_.end());
             }
+        }
+    }
+
+    void Manager::destroy_pending()
+    {
+        for (auto [e, d_tag] : view<DestroyComponent>()){
+            destroy(e);
         }
     }
 }

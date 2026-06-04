@@ -83,19 +83,9 @@ namespace nasral::gfx
 
     Renderer::~Renderer()
     {
-        try
-        {
-            // Остановить рендеринг
-            is_active_ = false;
-
-            // Дождаться завершения кадра
-            cmd_wait_for_frame();
-
-            log_info("Renderer finalized");
-        }
-        catch (...)
-        {
-        }
+        is_active_ = false;
+        cmd_wait_for_all();
+        log_info("Renderer destroyed");
     }
 
 #pragma region render_commands
@@ -193,11 +183,11 @@ namespace nasral::gfx
         // Привязать все необходимые дескрипторы
         cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_l, 0,
             {
-                vk_dset_view_.get(),
-                vk_dset_objects_uniforms_.get(),
-                vk_dset_material_uniforms_.get(),
-                vk_dset_material_textures_.get(),
-                vk_dset_light_sources_.get()
+                vk_descriptor_sets_[UniformDSetType::eViewUBO].get(),
+                vk_descriptor_sets_[UniformDSetType::eObjectUBOs].get(),
+                vk_descriptor_sets_[UniformDSetType::eMaterialUBOs].get(),
+                vk_descriptor_sets_[UniformDSetType::eMaterialTextures].get(),
+                vk_descriptor_sets_[UniformDSetType::eLightUBOs].get()
             },
             {});
     }
@@ -369,7 +359,7 @@ namespace nasral::gfx
         cmd_buffer->drawIndexed(index_count, 1, index_offset, 0, 0);
     }
 
-    void Renderer::cmd_wait_for_frame() const
+    void Renderer::cmd_wait_for_all() const
     {
         vk_device_->logical_device().waitIdle();
     }
@@ -397,7 +387,7 @@ namespace nasral::gfx
         assert(vk_device_ && "Vulkan device is not initialized");
 
         // Ожидать завершения всех команд
-        cmd_wait_for_frame();
+        cmd_wait_for_all();
 
         // Отключить рендеринг и сбросить кадр
         is_active_ = false;

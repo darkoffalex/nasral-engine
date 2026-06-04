@@ -73,7 +73,7 @@ namespace nasral::res
     };
 }
 
-DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(res::Resource)
+DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(res::Resource, "RES")
 
 #define RES_LOG_ERROR(error, msg) do { \
     log_error("Resource [" + id_str() + "][" + type_str() + "] error (" + error_str() + "). " + msg); \

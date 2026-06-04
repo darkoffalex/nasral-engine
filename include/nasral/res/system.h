@@ -1,4 +1,5 @@
 #pragma once
+#include <nasral/ecs/manager.h>
 #include <nasral/ecs/system.h>
 #include <nasral/log/loggable.h>
 
@@ -15,14 +16,15 @@ namespace nasral::res
         System(const System&) = delete;
         System& operator=(const System&) = delete;
 
-        void init();
-        void update(float delta);
-        void finalize();
+        void on_init();
+        void on_update(float delta);
+        void on_finalize();
 
     protected:
-        void request_resources();
-        void release_resources();
+        static void process_requests(ecs::Manager* ecs, Manager* res);
+        static void process_loadings(ecs::Manager* ecs);
+        static void process_releases(ecs::Manager* ecs, Manager* res);
     };
 }
 
-DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(res::System)
+DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(res::System, "RES|ECS")

@@ -56,10 +56,6 @@ namespace nasral::res
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
 
-        void init();
-        void update(float delta);
-        void finalize();
-
         void add(const ResourceDesc& description);
         void remove(const ResourceId& id);
         void remove_all();
@@ -75,7 +71,13 @@ namespace nasral::res
         [[nodiscard]] std::string path(const ResourceId& id, bool full = false) const;
         [[nodiscard]] size_t ref_count(const ResourceId& id) const;
 
+        void on_init();
+        void on_update(float delta);
+        void on_finalize();
+
     protected:
+        void on_project_loaded(const evt::Arg& arg);
+
         void process_slot_requests(Slot& slot);
         static void process_slot_callbacks(Slot& slot);
         static void process_slot_releases(Slot& slot);
@@ -86,8 +88,6 @@ namespace nasral::res
         void request_mandatory();
         void release_mandatory();
         void wait_for_loading() const;
-
-        void on_project_loaded(const evt::Arg& arg);
 
     private:
         /// Фиксированный массив слотов ресурсов (кеш-когерентность)
@@ -105,4 +105,4 @@ namespace nasral::res
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(res::Manager)
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(res::Manager, "RES")

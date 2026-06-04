@@ -54,7 +54,7 @@ namespace nasral::res
             // Группа команд (для команд копирования из staging в целевое)
             auto& cmd_group = renderer
                 ->vk_device()
-                .queue_group(static_cast<size_t>(gfx::Manager::CmdGroupType::eTransfer));
+                .queue_group(static_cast<size_t>(gfx::Renderer::CmdGroupType::eTransfer));
 
             // Вершины
             {

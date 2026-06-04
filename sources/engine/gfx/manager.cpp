@@ -14,12 +14,15 @@ namespace nasral::gfx
         , material_ubo_ids_(kMaxMaterials)
         , light_ubo_ids_(kMaxLights)
         , ecs_system_(std::make_unique<System>(this))
-    {}
+    {
+        log_info("Initializing manager...");
+    }
 
-    Manager::~Manager()
-    = default;
+    Manager::~Manager(){
+        log_info("Manager destroyed");
+    }
 
-    void Manager::init()
+    void Manager::on_init()
     {
         light_active_ids_.resize(kMaxLights);
         light_states_.resize(kMaxLights);
@@ -33,17 +36,21 @@ namespace nasral::gfx
         // Инициализация ECS системы
         ecs_system_->init();
 
-        log_info("Graphics manager initialized.");
+        log_info("Manager initialized");
     }
 
-    void Manager::update([[maybe_unused]] const float delta)
+    void Manager::on_update([[maybe_unused]] const float delta)
     {
         // Обновление ECS системы
         ecs_system_->update(delta);
     }
 
-    void Manager::finalize()
+    void Manager::on_finalize()
     {
+        // Уничтожение рендерера
+        renderer_->cmd_wait_for_all();
+        renderer_.reset();
+
         // Финализация ECS системы
         ecs_system_->finalize();
 
@@ -53,14 +60,16 @@ namespace nasral::gfx
         // Уничтожение регистра материалов
         materials_.clear();
 
-        log_info("Graphics manager finalized");
+        log_info("Manager finalized");
     }
 
     void Manager::update_cam_uniforms(const uniforms::Camera& uniforms, const uint32_t index) const
     {
-        assert(renderer_->vk_ubo_view_->is_mapped());
-        auto& pd = renderer_->vk_device_->physical_device();
-        renderer_->vk_ubo_view_->update_mapped(
+        const auto& pd = renderer()->vk_device().physical_device();
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eView);
+        assert(ubo.is_mapped());
+
+        ubo.update_mapped(
             ubo_offset<uniforms::Camera>(pd, index),
             aligned_ubo<uniforms::Camera>(pd),
             &uniforms);
@@ -68,9 +77,11 @@ namespace nasral::gfx
 
     void Manager::update_obj_uniforms(const uniforms::Object& uniforms, const uint32_t index) const
     {
-        assert(renderer_->vk_ubo_view_->is_mapped());
-        auto& pd = renderer_->vk_device_->physical_device();
-        renderer_->vk_ubo_objects_transforms_->update_mapped(
+        const auto& pd = renderer()->vk_device().physical_device();
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eObjects);
+        assert(ubo.is_mapped());
+
+        ubo.update_mapped(
             sbo_offset<uniforms::Object>(pd, index),
             aligned_sbo<uniforms::Object>(pd),
             &uniforms);
@@ -78,9 +89,11 @@ namespace nasral::gfx
 
     void Manager::update_mat_phong_uniforms(const uniforms::MaterialPhong& uniforms, const uint32_t index) const
     {
-        assert(renderer_->vk_ubo_materials_phong_->is_mapped());
-        auto& pd = renderer_->vk_device_->physical_device();
-        renderer_->vk_ubo_materials_phong_->update_mapped(
+        const auto& pd = renderer()->vk_device().physical_device();
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eObjects);
+        assert(ubo.is_mapped());
+
+        ubo.update_mapped(
             sbo_offset<uniforms::MaterialPhong>(pd, index),
             aligned_sbo<uniforms::MaterialPhong>(pd),
             &uniforms);
@@ -88,42 +101,49 @@ namespace nasral::gfx
 
     void Manager::update_mat_pbr_uniforms(const uniforms::MaterialPbr& uniforms, const uint32_t index) const
     {
-        assert(renderer_->vk_ubo_materials_pbr_->is_mapped());
-        auto& pd = renderer_->vk_device_->physical_device();
-        renderer_->vk_ubo_materials_pbr_->update_mapped(
+        const auto& pd = renderer()->vk_device().physical_device();
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eObjects);
+        assert(ubo.is_mapped());
+
+        ubo.update_mapped(
             sbo_offset<uniforms::MaterialPbr>(pd, index),
             aligned_sbo<uniforms::MaterialPbr>(pd),
             &uniforms);
     }
 
-    void Manager::update_mat_textures(const TextureBindingInfo& info, const uint32_t index)
+    void Manager::update_mat_textures(const TextureBindingInfo& info, const uint32_t index) const
     {
+        const auto& ld = renderer()->vk_device().logical_device();
+        const auto& ds = renderer()->vk_uniform_d_set(UniformDSetType::eMaterialTextures);
+        const auto& ts = renderer()->vk_texture_sampler(info.sampler_type);
+
         assert(index < kMaxMaterials);
         assert(info.texture);
-        assert(renderer_->vk_dset_material_textures_);
+        assert(ds);
 
-        const auto& sampler = renderer_->vk_texture_samplers_[info.sampler_type];
         vk::DescriptorImageInfo image_info{};
-        image_info.setSampler(sampler.get())
+        image_info.setSampler(ts)
                   .setImageView(info.texture.image_view)
                   .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 
         vk::WriteDescriptorSet write{};
-        write.setDstSet(renderer_->vk_dset_material_textures_.get())
+        write.setDstSet(ds)
              .setDstBinding(static_cast<uint32_t>(info.type))
              .setDstArrayElement(index) // Индекс объекта в массиве дескрипторов
              .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
              .setDescriptorCount(1)
              .setImageInfo(image_info);
 
-        renderer_->vk_device_->logical_device().updateDescriptorSets({write}, {});
+        ld.updateDescriptorSets({write}, {});
     }
 
     void Manager::update_light_uniforms(const uniforms::LightSettings& uniforms, const uint32_t index) const
     {
-        assert(renderer_->vk_ubo_light_sources_->is_mapped());
-        auto& pd = renderer_->vk_device_->physical_device();
-        renderer_->vk_ubo_light_sources_->update_mapped(
+        const auto& pd = renderer()->vk_device().physical_device();
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eLightSources);
+        assert(ubo.is_mapped());
+
+        ubo.update_mapped(
             sbo_offset<uniforms::LightSettings>(pd, index),
             aligned_sbo<uniforms::LightSettings>(pd),
             &uniforms);
@@ -131,7 +151,8 @@ namespace nasral::gfx
 
     void Manager::update_light_states_unsafe(const std::vector<uint32_t>& ids, const bool active)
     {
-        assert(renderer_->vk_ubo_light_indices_->is_mapped());
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eLightSourcesActive);
+        assert(ubo.is_mapped());
 
         // Обновить таблице состояний источников
         const uint8_t state_val = active ? 1 : 0;
@@ -150,7 +171,7 @@ namespace nasral::gfx
         }
 
         // Обновить GPU storage buffer
-        auto* pids = static_cast<uniforms::LightIndices*>(renderer_->vk_ubo_light_indices_->mapped_ptr());
+        auto* pids = static_cast<uniforms::LightIndices*>(ubo.mapped_ptr());
         pids->count = static_cast<uint32_t>(light_active_ids_.size());
         std::fill_n(pids->indices, kMaxLights, 0);
         std::memcpy(pids->indices, light_active_ids_.data(), light_active_ids_.size() * sizeof(uint32_t));

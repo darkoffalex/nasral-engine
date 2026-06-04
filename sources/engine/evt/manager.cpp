@@ -4,21 +4,25 @@
 
 namespace nasral::evt
 {
-    Manager::Manager(Engine* e) : Subsystem(e)
-    {}
+    Manager::Manager(Engine* e) : Subsystem(e){
+        log_info("Initializing manager...");
+    }
 
-    Manager::~Manager() = default;
+    Manager::~Manager(){
+        log_info("Manager destroyed");
+    }
 
-    void Manager::init(){
+    void Manager::on_init()
+    {
         for (const Type t : magic_enum::enum_values<Type>()){
             listeners_[t].reserve(kInitialListenersCount);
         }
-
-        log_info("Event manager initialized.");
+        log_info("Manager initialized");
     }
 
-    void Manager::finalize() const{
-        log_info("Event manager finalized.");
+    void Manager::on_finalize() const
+    {
+        log_info("Manager finalized");
     }
 
     ListenerHandle Manager::register_listener_unsafe(const Type type, ListenerCallback callback)

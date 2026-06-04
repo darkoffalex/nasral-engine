@@ -123,6 +123,35 @@ namespace nasral
         }
         return result;
     }
+
+    /**
+     * @brief Инвертированый обход (std::apply) по типам std::tuple (реализация)
+     * @tparam Func Тип функции обратного вызова
+     * @tparam Tuple Тип кортежа
+     * @tparam Is Индексы
+     * @param f Функция обратного вызова
+     * @param t Кортеж
+     * @return Результат вызова в обратном порядке
+     */
+    template <typename Func, typename Tuple, std::size_t... Is>
+    decltype(auto) apply_reverse_impl(Func&& f, Tuple&& t, std::index_sequence<Is...>) {
+        // Вычисляем индексы от (N-1) до 0 и передаем в callable-объект
+        return std::invoke(std::forward<Func>(f), std::get<sizeof...(Is) - 1 - Is>(std::forward<Tuple>(t))...);
+    }
+
+    /**
+     * @brief Инвертированный обход (std::apply) по типам std::tuple
+     * @tparam Func Тип функции обратного вызова
+     * @tparam Tuple Тип кортежа
+     * @param f Функция обратного вызова
+     * @param t Кортеж
+     * @return Результат вызова в обратном порядке
+     */
+    template <typename Func, typename Tuple>
+    decltype(auto) apply_reverse(Func&& f, Tuple&& t) {
+        constexpr auto Size = std::tuple_size_v<std::decay_t<Tuple>>;
+        return apply_reverse_impl(std::forward<Func>(f), std::forward<Tuple>(t), std::make_index_sequence<Size>{});
+    }
 }
 
 #define DECLARE_DETECTOR(method) \

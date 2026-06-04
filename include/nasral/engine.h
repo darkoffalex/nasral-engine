@@ -40,13 +40,19 @@ namespace nasral
         [[nodiscard]] run::Manager* run() const noexcept;
 
     protected:
+        /**
+         * @brief Подсистемы
+         * @details От порядка подсистем в кортеже зависит порядок
+         * инициализации, обновления, финализации.
+         * Финализация происходит в порядке, обратном порядку инициализации.
+         */
         using SubsystemTuple = std::tuple<
             log::Logger::Ptr,
             evt::Manager::Ptr,
+            run::Manager::Ptr,
             ecs::Manager::Ptr,
-            res::Manager::Ptr,
             gfx::Manager::Ptr,
-            run::Manager::Ptr>;
+            res::Manager::Ptr>;
 
         SubsystemTuple subsystems_;
     };

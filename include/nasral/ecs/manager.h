@@ -29,11 +29,7 @@ namespace nasral::ecs
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
 
-        void init();
-        void finalize();
-
         [[nodiscard]] EntityId spawn();
-
         void destroy(const EntityId& entity);
         void destroy_immediate(const EntityId& entity);
 
@@ -61,7 +57,7 @@ namespace nasral::ecs
         template<typename... CTs>
         void remove_components(const EntityId& entity){
             defer([entity](Manager& m){
-                m.remove_components_impl<CTs...>(entity);
+                m.remove_components_immediate<CTs...>(entity);
             });
         }
 
@@ -71,8 +67,13 @@ namespace nasral::ecs
         }
 
         template<typename... CTs>
-        [[nodiscard]] bool has_components(const EntityId& entity) const noexcept{
-            return entities_[entity.index].mask.test(kComponentId<std::decay_t<CTs>>...);
+        [[nodiscard]] bool has_all(const EntityId& entity) const noexcept{
+            return (entities_[entity.index].mask.test(kComponentId<std::decay_t<CTs>>) && ...);
+        }
+
+        template<typename... CTs>
+        [[nodiscard]] bool has_any(const EntityId& entity) const noexcept{
+            return (entities_[entity.index].mask.test(kComponentId<std::decay_t<CTs>>) || ...);
         }
 
         template<typename CT>
@@ -94,11 +95,13 @@ namespace nasral::ecs
         }
 
         template<typename... CTs>
-        View<CTs...> view(const ComponentMask& exclusion = {}){
-            return View<CTs...>(this, exclusion);
-        }
+        View<CTs...> view(const ComponentMask& exclusion = {});
 
-    private:
+        void on_init();
+        void on_update(float delta);
+        void on_finalize();
+
+    protected:
         template<typename... CTs>
         void add_components_impl(const EntityId& entity, CTs&&... components){
             auto& slot = entities_[entity.index];
@@ -118,12 +121,13 @@ namespace nasral::ecs
 
         Archetype* ensure_archetype(const ComponentMask& mask);
         void assign_archetype(EntitySlot& slot, Archetype* archetype);
+        void destroy_pending();
 
-    protected:
+    private:
         std::vector<EntitySlot> entities_;
         std::vector<size_t> free_slots_;
         std::vector<Archetype::Ptr> archetypes_;
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(ecs::Manager)
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(ecs::Manager, "ECS")

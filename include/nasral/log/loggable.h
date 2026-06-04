@@ -29,27 +29,27 @@ namespace nasral::log
     public:
         void log_debug(const std::string& message) const{
             auto* logger = LoggerAccessor<Derived>::get(static_cast<const Derived*>(this));
-            logger->debug(message);
+            logger->debug("[" + std::string(LoggerAccessor<Derived>::kTag) + "] " + message);
         }
 
         void log_info(const std::string& message) const{
             auto* logger = LoggerAccessor<Derived>::get(static_cast<const Derived*>(this));
-            logger->info(message);
+            logger->info("[" + std::string(LoggerAccessor<Derived>::kTag) + "] " + message);
         }
 
         void log_warn(const std::string& message) const{
             auto* logger = LoggerAccessor<Derived>::get(static_cast<const Derived*>(this));
-            logger->warn(message);
+            logger->warn("[" + std::string(LoggerAccessor<Derived>::kTag)+ "] " + message);
         }
 
         void log_error(const std::string& message) const{
             auto* logger = LoggerAccessor<Derived>::get(static_cast<const Derived*>(this));
-            logger->error(message);
+            logger->error("[" + std::string(LoggerAccessor<Derived>::kTag)+ "] " + message);
         }
 
         void log_fatal(const std::string& message) const{
             auto* logger = LoggerAccessor<Derived>::get(static_cast<const Derived*>(this));
-            logger->fatal(message);
+            logger->fatal("[" + std::string(LoggerAccessor<Derived>::kTag) + "] " + message);
         }
     };
 }
@@ -58,7 +58,7 @@ namespace nasral::log
  * @brief Макрос, объявляющий специализацию LoggerAccessor для конкретной подсистемы
  * @param Type Класс конкретной подсистемы (Subsystem)
  */
-#define DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(Type) \
+#define DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(Type, Tag) \
 namespace nasral::log \
 { \
     class Logger; \
@@ -67,6 +67,7 @@ namespace nasral::log \
         static Logger* get(const T* mgr) { \
             return mgr->engine()->logger(); \
         } \
+        static constexpr std::string_view kTag = Tag; \
     }; \
 }
 
@@ -74,7 +75,7 @@ namespace nasral::log \
  * @brief Макрос, объявляющий специализацию LoggerAccessor для объекта подсистемы
  * @param Type Класс конкретного объекта подсистемы (SubsystemObject)
  */
-#define DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(Type) \
+#define DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(Type, Tag) \
 namespace nasral::log \
 { \
     class Logger; \
@@ -83,5 +84,6 @@ namespace nasral::log \
         static Logger* get(const T* obj) { \
             return obj->subsystem()->engine()->logger(); \
         } \
+        static constexpr std::string_view kTag = Tag; \
     }; \
 }

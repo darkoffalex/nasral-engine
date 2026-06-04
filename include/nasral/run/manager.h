@@ -18,9 +18,9 @@ namespace nasral::run
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
 
-        void init();
-        void update(float delta);
-        void finalize();
+        void on_init();
+        void on_update(float delta);
+        void on_finalize();
 
     protected:
         void on_res_registry_changed(const evt::Arg& arg);
@@ -33,4 +33,4 @@ namespace nasral::run
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(run::Manager)
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(run::Manager, "RUN")

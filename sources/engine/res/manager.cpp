@@ -25,15 +25,18 @@ namespace nasral::res
         : Subsystem(e, config)
         , free_slots_(kMaxResourceCount)
         , ecs_system_(std::make_unique<System>(this))
-    {}
+    {
+        log_info("Initializing manager...");
+    }
 
-    Manager::~Manager() = default;
+    Manager::~Manager(){
+        log_info("Manager destroyed");
+    }
 
-    void Manager::init()
+    void Manager::on_init()
     {
         // Информация о каталогах
         const std::string cwd = std::filesystem::current_path().string();
-        log_info("Initializing resource manager...");
         log_info("Current working directory: " + cwd);
         log_info("Content directory: " + config().content_dir + "");
 
@@ -66,10 +69,10 @@ namespace nasral::res
         // Инициализация ECS системы
         ecs_system_->init();
 
-        log_info("Resource manager initialized.");
+        log_info("Manager initialized");
     }
 
-    void Manager::update([[maybe_unused]] const float delta)
+    void Manager::on_update([[maybe_unused]] const float delta)
     {
         // Обновление ECS системы
         ecs_system_->update(delta);
@@ -86,7 +89,7 @@ namespace nasral::res
         }
     }
 
-    void Manager::finalize()
+    void Manager::on_finalize()
     {
         // Финализация ECS системы
         ecs_system_->finalize();
@@ -108,7 +111,7 @@ namespace nasral::res
             }
         }
 
-        log_info("Resource manager finalized");
+        log_info("Manager finalized");
     }
 
     void Manager::add(const ResourceDesc& description)

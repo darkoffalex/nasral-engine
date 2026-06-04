@@ -18,9 +18,6 @@ namespace nasral::evt
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
 
-        void init();
-        void finalize() const;
-
         ListenerHandle register_listener_unsafe(Type type, ListenerCallback callback);
         ListenerHandle register_listener(Type type, ListenerCallback callback);
         void unregister_listener_unsafe(Type type, ListenerHandle handle);
@@ -30,10 +27,13 @@ namespace nasral::evt
         void send_deferred(Type type, const Arg& arg, bool safe = true);
         void send_deferred(Type type, Arg&& arg, bool safe = true);
 
-    protected:
+        void on_init();
+        void on_finalize() const;
+
+    private:
         std::shared_mutex mtx_;
         EnumArray<Type, std::vector<ListenerCallback>> listeners_;
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(evt::Manager)
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(evt::Manager, "EVT")

@@ -19,14 +19,16 @@ namespace nasral::ecs
         DestroyComponent,
         UidComponent,
         NameComponent,
+        EntityComponent,
+        EntityListComponent,
 
         // Ресурсы
-        res::IdComponent,
-        res::IdListComponent<gfx::TextureType>,
+        res::ResourcesComponent,
         res::RequestComponent,
+        res::LoadingComponent,
+        res::LoadedComponent,
         res::ReleaseComponent,
         res::ErrorComponent,
-        res::LoadedComponent,
 
         // Графика
         gfx::MaterialHandlesComponent,

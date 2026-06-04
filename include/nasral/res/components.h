@@ -1,26 +1,27 @@
 #pragma once
 
-#include <nasral/common/types.h>
 #include <nasral/res/types.h>
 
 namespace nasral::res
 {
-    struct IdComponent
+    struct ResourcesComponent
     {
-        ResourceId res_id;
-    };
+        typedef std::array<ResourceId, kResListComponentSize> IdsList;
+        typedef std::array<bool, kResListComponentSize> ActiveList;
+        typedef std::array<Status, kResListComponentSize> StatusList;
 
-    template <typename E>
-    struct IdListComponent
-    {
-        EnumArray<E, ResourceId> res_ids;
+        IdsList ids = {kInvalidResourceId};
+        ActiveList active = {false};
+        StatusList statuses = {Status::eUnloaded};
     };
 
     struct RequestComponent{};
 
+    struct LoadingComponent{};
+
+    struct LoadedComponent{};
+
     struct ReleaseComponent{};
 
     struct ErrorComponent{};
-
-    struct LoadedComponent{};
 }
