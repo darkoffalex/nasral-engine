@@ -46,7 +46,8 @@ namespace nasral::res
 
             void clean();
             void init(const ResourceDesc& desc);
-            void request(std::function<void(Resource*)> callback, bool safe = true);
+            void request(std::function<void(Resource*)> callback);
+            void request_unsafe(std::function<void(Resource*)> callback);
             void release();
         };
 

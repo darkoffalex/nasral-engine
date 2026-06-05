@@ -291,19 +291,22 @@ namespace nasral::res
             slot.resource->status_ != Status::eUnloaded &&
             slot.refs.has_unhandled.load(std::memory_order_acquire))
         {
-            // Вызвать все обработчики загрузки
+            // Захватываем мьютекс. Теперь никто параллельно не сможет пушить в вектор
             std::lock_guard lock(slot.refs.mutex);
-            if (!slot.refs.unhandled.empty()){
-                for (auto& callback : slot.refs.unhandled){
-                    if (callback){
-                        callback(slot.resource.get());
+
+            // Проверяем флаг ЕЩЕ РАЗ внутри мьютекса (Double-Check)
+            if (slot.refs.has_unhandled.load(std::memory_order_relaxed))
+            {
+                slot.refs.has_unhandled.store(false, std::memory_order_release);
+                if (!slot.refs.unhandled.empty()){
+                    for (auto& callback : slot.refs.unhandled){
+                        if (callback){
+                            callback(slot.resource.get());
+                        }
                     }
+                    slot.refs.unhandled.clear();
                 }
             }
-
-            // Очистить список обработчиков
-            slot.refs.has_unhandled.store(false, std::memory_order_release);
-            slot.refs.unhandled.clear();
         }
     }
 
@@ -326,8 +329,13 @@ namespace nasral::res
             if (!slot.loading.task.valid()){
                 slot.loading.in_progress.store(true, std::memory_order_release);
                 slot.resource = make_resource(slot);
-                slot.loading.task = std::async(std::launch::async, [&slot](){
-                    slot.resource->load();
+
+                // В целях гарантии синхронизации получаем голый указатель.
+                // Передаем его по значению в поток (гарантия, что объект создан до запуска потока)
+                Resource* res_ptr = slot.resource.get();
+
+                slot.loading.task = std::async(std::launch::async, [&slot, res_ptr](){
+                    res_ptr->load();
                     slot.loading.in_progress.store(false, std::memory_order_release);
                 });
             }
@@ -336,14 +344,21 @@ namespace nasral::res
 
     void Manager::process_slot_releases(Slot& slot)
     {
-        // Если ссылок нет
-        // Если загрузка не в процессе
-        // Если ресурс еще жив (не выгружен)
+        // 1. Быстрая проверка БЕЗ мьютекса (Чтение атомиков)
         if (slot.refs.count.load(std::memory_order_acquire) == 0 &&
             !slot.loading.in_progress.load(std::memory_order_acquire) &&
             slot.resource)
         {
-            slot.resource.reset();
+            // 2. Счетчик равен 0. Претендуем на удаление. Захватываем мьютекс
+            std::lock_guard lock(slot.refs.mutex);
+
+            // 3. ПОВТОРНАЯ ПРОВЕРКА (Double-Check) уже внутри критической секции.
+            if (slot.refs.count.load(std::memory_order_relaxed) == 0 &&
+                !slot.loading.in_progress.load(std::memory_order_relaxed) &&
+                slot.resource)
+            {
+                slot.resource.reset();
+            }
         }
     }
 
@@ -615,17 +630,17 @@ namespace nasral::res
         loading.task = {};
     }
 
-    void Manager::Slot::request(std::function<void(Resource*)> callback, const bool safe)
+    void Manager::Slot::request(std::function<void(Resource*)> callback)
+    {
+        std::lock_guard lock(refs.mutex);
+        request_unsafe(std::move(callback));
+    }
+
+    void Manager::Slot::request_unsafe(std::function<void(Resource*)> callback)
     {
         assert(used && "Resource slot is not used");
-        refs.count.fetch_add(1, std::memory_order_acquire);
-
-        if (callback && safe){
-            std::lock_guard lock(refs.mutex);
-            refs.unhandled.emplace_back(std::move(callback));
-            refs.has_unhandled.store(true, std::memory_order_release);
-        }
-        else if (callback){
+        refs.count.fetch_add(1, std::memory_order_acq_rel);
+        if (callback){
             refs.unhandled.emplace_back(std::move(callback));
             refs.has_unhandled.store(true, std::memory_order_release);
         }
@@ -634,6 +649,6 @@ namespace nasral::res
     void Manager::Slot::release()
     {
         assert(used && "Resource slot is not used");
-        refs.count.fetch_sub(1, std::memory_order_release);
+        refs.count.fetch_sub(1, std::memory_order_acq_rel);
     }
 }
