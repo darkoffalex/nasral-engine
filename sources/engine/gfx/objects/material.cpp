@@ -6,16 +6,6 @@
 
 namespace nasral::gfx
 {
-    constexpr EnumArray<TextureType, MaterialInstance::ResIndices> kTexResMap = {
-        MaterialInstance::eTexAlbedo,         // key: TextureType::eAlbedoColor
-        MaterialInstance::eTexNormal,         // key: TextureType::eNormal
-        MaterialInstance::eTexRoughSpec,      // key: TextureType::eRoughOrSpec
-        MaterialInstance::eTexHeight,         // key: TextureType::eHeight
-        MaterialInstance::eTexMetalReflect,   // key: TextureType::eMetalOrReflect
-        MaterialInstance::eTexAO,             // key: TextureType::eAO
-        MaterialInstance::eTexEmission        // key: TextureType::eEmission
-    };
-
     MaterialInstance::MaterialInstance(Manager* renderer,
         const MaterialDesc& description)
         : SubsystemObject(renderer)
@@ -41,6 +31,7 @@ namespace nasral::gfx
 
         // Ресурсы текстур
         for (const auto type : magic_enum::enum_values<TextureType>()){
+            if (type == TextureType::TOTAL) continue;
             if (description.texture_paths[type].empty()) continue;
             const auto tex_res_id = res->find(description.texture_paths[type]);
             resources_ids[kTexResMap[type]] = tex_res_id.value_or(res->find_texture_fallback(type).value());
@@ -60,12 +51,14 @@ namespace nasral::gfx
             Components::UniformIndex,
             Components::UniformsDirty,
             Components::TextureDirty,
+            Components::HandlesDirty,
             Components::Resources>(entity_,
                 {description.unique_id},
                 {description.name},
                 {description.base_material_type, {}, description.texture_samplers},
                 {},
                 {gfx->material_ubo_ids().acquire()},
+                {},
                 {},
                 {},
                 {resources_ids, resources_active, {res::Status::eUnloaded}});
@@ -158,7 +151,7 @@ namespace nasral::gfx
         auto& [bt, uniforms_c, samplers] = ecs->get_component<Components::Settings>(entity_);
         uniforms_c = uniforms;
 
-        if (!ecs->has_all<Components::UniformsDirty>(entity_)){
+        if (!ecs->has<Components::UniformsDirty>(entity_)){
             ecs->add_components<Components::UniformsDirty>(entity_, {});
         }
     }
@@ -169,7 +162,7 @@ namespace nasral::gfx
         auto& [bt, uniforms_c, samplers] = ecs->get_component<Components::Settings>(entity_);
         samplers[type] = sampler_type;
 
-        if (!ecs->has_all<Components::TextureDirty>(entity_)){
+        if (!ecs->has<Components::TextureDirty>(entity_)){
             ecs->add_components<Components::TextureDirty>(entity_, {});
         }
     }

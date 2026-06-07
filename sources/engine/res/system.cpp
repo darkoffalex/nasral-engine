@@ -12,13 +12,11 @@ namespace nasral::res
 
     System::~System() = default;
 
-    void System::on_init()
-    {
+    void System::on_init() const{
         log_info("ECS-system initialized");
     }
 
-    void System::on_update([[maybe_unused]] const float delta)
-    {
+    void System::on_update([[maybe_unused]] const float delta) const{
         auto* ecs = subsystem()->engine()->ecs();
         auto* res = subsystem();
 
@@ -27,7 +25,7 @@ namespace nasral::res
         process_releases(ecs, res);
     }
 
-    void System::on_finalize()
+    void System::on_finalize() const
     {
         auto* ecs = subsystem()->engine()->ecs();
         auto* res = subsystem();
@@ -133,7 +131,7 @@ namespace nasral::res
             // Убрать из списка освобождаемых
             ecs->remove_components<LoadedComponent, ReleaseComponent>(e);
 
-            // Выполнить запросы активных ресурсов
+            // Выполнить освобождение активных ресурсов
             for (size_t i = 0; i < kResListComponentSize; ++i){
                 if (resources.ids[i] == kInvalidResourceId) continue;
                 if (!resources.active[i]) continue;

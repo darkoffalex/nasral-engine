@@ -24,8 +24,8 @@ namespace nasral::gfx
 
         void update_cam_uniforms(const uniforms::Camera& uniforms, uint32_t index) const;
         void update_obj_uniforms(const uniforms::Object& uniforms, uint32_t index) const;
-        void update_mat_phong_uniforms(const uniforms::MaterialPhong& uniforms, uint32_t index) const;
-        void update_mat_pbr_uniforms(const uniforms::MaterialPbr& uniforms, uint32_t index) const;
+        void update_mat_uniforms(const uniforms::MaterialPhong& uniforms, uint32_t index) const;
+        void update_mat_uniforms(const uniforms::MaterialPbr& uniforms, uint32_t index) const;
         void update_mat_textures(const TextureBindingInfo& info, uint32_t index) const;
         void update_light_uniforms(const uniforms::LightSettings& uniforms, uint32_t index) const;
         void update_light_states_unsafe(const std::vector<uint32_t>& ids, bool active);

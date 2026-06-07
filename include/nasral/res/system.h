@@ -1,7 +1,10 @@
 #pragma once
-#include <nasral/ecs/manager.h>
 #include <nasral/ecs/system.h>
 #include <nasral/log/loggable.h>
+
+namespace nasral::ecs{
+    class Manager;
+}
 
 namespace nasral::res
 {
@@ -16,9 +19,9 @@ namespace nasral::res
         System(const System&) = delete;
         System& operator=(const System&) = delete;
 
-        void on_init();
-        void on_update(float delta);
-        void on_finalize();
+        void on_init() const;
+        void on_update(float delta) const;
+        void on_finalize() const;
 
     protected:
         static void process_requests(ecs::Manager* ecs, Manager* res);

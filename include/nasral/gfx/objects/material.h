@@ -31,6 +31,16 @@ namespace nasral::gfx
             eTexEmission        = 7,
         };
 
+        static constexpr EnumArray<TextureType, ResIndices> kTexResMap = {
+            eTexAlbedo,         // key: TextureType::eAlbedoColor
+            eTexNormal,         // key: TextureType::eNormal
+            eTexRoughSpec,      // key: TextureType::eRoughOrSpec
+            eTexHeight,         // key: TextureType::eHeight
+            eTexMetalReflect,   // key: TextureType::eMetalOrReflect
+            eTexAO,             // key: TextureType::eAO
+            eTexEmission        // key: TextureType::eEmission
+        };
+
         struct Components
         {
             using Uid = ecs::UidComponent;                                        // Уникальный ID
@@ -40,6 +50,7 @@ namespace nasral::gfx
             using UniformIndex = UniformIndexComponent;                           // Индекс UBO
             using UniformsDirty = DirtyUnformComponent;                           // Нужно обновить UBO
             using TextureDirty = DirtyTexturesComponent;                          // Нужно обновить текстуры
+            using HandlesDirty = DirtyHandlesComponent;                           // Нужно обновить handles
             using Resources = res::ResourcesComponent;                            // Ресурсы материала (для запроса)
             using PendingDestroy = ecs::DestroyComponent;                         // Помечен к удалению
 

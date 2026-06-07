@@ -30,12 +30,12 @@ namespace nasral::run
         log_info("Manager initialized");
     }
 
-    void Manager::on_update([[maybe_unused]] float delta){
-
-        if (state_.all_of(StateFlags::eResourcesReady, StateFlags::eMaterialsReady) && !state_.test(StateFlags::eRunning))
+    void Manager::on_update([[maybe_unused]] float delta)
+    {
+        if (state_.all_of(StateFlags::eResourcesReady, StateFlags::eMaterialsReady) &&
+            !state_.test(StateFlags::eRunning))
         {
             state_.set(StateFlags::eRunning);
-            // TODO: Инициировать загрузку сцены
         }
     }
 

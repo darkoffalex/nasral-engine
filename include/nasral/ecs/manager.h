@@ -67,7 +67,7 @@ namespace nasral::ecs
         }
 
         template<typename... CTs>
-        [[nodiscard]] bool has_all(const EntityId& entity) const noexcept{
+        [[nodiscard]] bool has(const EntityId& entity) const noexcept{
             return (entities_[entity.index].mask.test(kComponentId<std::decay_t<CTs>>) && ...);
         }
 

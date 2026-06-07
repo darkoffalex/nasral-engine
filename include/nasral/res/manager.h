@@ -72,6 +72,11 @@ namespace nasral::res
         [[nodiscard]] std::string path(const ResourceId& id, bool full = false) const;
         [[nodiscard]] size_t ref_count(const ResourceId& id) const;
 
+        template<typename T>
+        T* get(const ResourceId& id){
+            return dynamic_cast<T*>(get(id));
+        }
+
         void on_init();
         void on_update(float delta);
         void on_finalize();

@@ -6,8 +6,8 @@ namespace nasral::gfx
 {
     struct MaterialHandlesComponent
     {
-        handles::Material material;
-        EnumArray<TextureType, handles::Texture> textures;
+        handles::Material material = {};
+        EnumArray<TextureType, handles::Texture> textures = {};
     };
 
     struct MaterialSettingsComponent
@@ -28,6 +28,8 @@ namespace nasral::gfx
     };
 
     struct DirtyUnformComponent{};
+
+    struct DirtyHandlesComponent{};
 
     struct DirtyTexturesComponent{};
 }

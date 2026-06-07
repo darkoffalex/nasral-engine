@@ -36,7 +36,8 @@ namespace nasral::ecs
         gfx::UniformIndexComponent,
         gfx::UniformStateComponent,
         gfx::DirtyUnformComponent,
-        gfx::DirtyTexturesComponent
+        gfx::DirtyTexturesComponent,
+        gfx::DirtyHandlesComponent
     >;
 
     // Проверка типов компонентов на соответствие требования (на этапе компиляции)

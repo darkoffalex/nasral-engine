@@ -87,10 +87,10 @@ namespace nasral::gfx
             &uniforms);
     }
 
-    void Manager::update_mat_phong_uniforms(const uniforms::MaterialPhong& uniforms, const uint32_t index) const
+    void Manager::update_mat_uniforms(const uniforms::MaterialPhong& uniforms, const uint32_t index) const
     {
         const auto& pd = renderer()->vk_device().physical_device();
-        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eObjects);
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eMaterialsPhong);
         assert(ubo.is_mapped());
 
         ubo.update_mapped(
@@ -99,10 +99,10 @@ namespace nasral::gfx
             &uniforms);
     }
 
-    void Manager::update_mat_pbr_uniforms(const uniforms::MaterialPbr& uniforms, const uint32_t index) const
+    void Manager::update_mat_uniforms(const uniforms::MaterialPbr& uniforms, const uint32_t index) const
     {
         const auto& pd = renderer()->vk_device().physical_device();
-        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eObjects);
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eMaterialsPBR);
         assert(ubo.is_mapped());
 
         ubo.update_mapped(

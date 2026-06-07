@@ -2,6 +2,14 @@
 #include <nasral/ecs/system.h>
 #include <nasral/log/loggable.h>
 
+namespace nasral::ecs{
+    class Manager;
+}
+
+namespace nasral::res{
+    class Manager;
+}
+
 namespace nasral::gfx
 {
     class Manager;
@@ -15,13 +23,16 @@ namespace nasral::gfx
         System(const System&) = delete;
         System& operator=(const System&) = delete;
 
-        void on_init();
-        void on_update(float delta);
-        void on_finalize();
+        void on_init() const;
+        void on_update(float delta) const;
+        void on_finalize() const;
 
     protected:
-        void process_materials_update();
-        void process_objects_update();
+        static void process_materials_dirty_ubo(ecs::Manager* ecs, Manager* gfx);
+        static void process_materials_dirty_handles(ecs::Manager* ecs, res::Manager* res);
+        static void process_materials_dirty_textures(ecs::Manager* ecs, Manager* gfx);
+        static void process_objects_dirty_ubo(ecs::Manager* ecs, Manager* gfx);
+        static void process_objects_dirty_handles(ecs::Manager* ecs, res::Manager* res);
     };
 }
 
