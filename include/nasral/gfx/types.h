@@ -104,6 +104,13 @@ namespace nasral::gfx
         TOTAL
     };
 
+    enum class ViewType : uint32_t
+    {
+        ePerspective = 0,
+        eOrthographic,
+        TOTAL
+    };
+
     struct VulkanSurfaceProvider
     {
         typedef std::shared_ptr<VulkanSurfaceProvider> Ptr;

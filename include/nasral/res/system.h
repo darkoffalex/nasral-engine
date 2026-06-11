@@ -24,9 +24,9 @@ namespace nasral::res
         void on_finalize() const;
 
     protected:
-        static void process_requests(ecs::Manager* ecs, Manager* res);
-        static void process_loadings(ecs::Manager* ecs);
-        static void process_releases(ecs::Manager* ecs, Manager* res);
+        static void update_requests(ecs::Manager* ecs, Manager* res);
+        static void update_loadings(ecs::Manager* ecs);
+        static void update_releases(ecs::Manager* ecs, Manager* res);
     };
 }
 

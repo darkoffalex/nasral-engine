@@ -73,7 +73,7 @@ namespace nasral::res
         [[nodiscard]] size_t ref_count(const ResourceId& id) const;
 
         template<typename T>
-        T* get(const ResourceId& id){
+        T* get(const ResourceId& id) const{
             return dynamic_cast<T*>(get(id));
         }
 

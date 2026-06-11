@@ -5,6 +5,7 @@
 #include <nasral/ecs/components.h>
 #include <nasral/gfx/components.h>
 #include <nasral/res/components.h>
+#include <nasral/scn/components.h>
 
 namespace nasral::ecs
 {
@@ -31,13 +32,22 @@ namespace nasral::ecs
         res::ErrorComponent,
 
         // Графика
+        gfx::RenderComponent,
         gfx::MaterialHandlesComponent,
         gfx::MaterialSettingsComponent,
+        gfx::MeshHandlesComponent,
         gfx::UniformIndexComponent,
         gfx::UniformStateComponent,
         gfx::DirtyUnformComponent,
         gfx::DirtyTexturesComponent,
-        gfx::DirtyHandlesComponent
+        gfx::DirtyHandlesComponent,
+
+        // Сцена
+        scn::NodeComponent,
+        scn::SpatialComponent,
+        scn::ViewComponent,
+        scn::MeshComponent,
+        scn::LightComponent
     >;
 
     // Проверка типов компонентов на соответствие требования (на этапе компиляции)

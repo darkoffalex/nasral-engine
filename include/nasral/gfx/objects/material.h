@@ -3,7 +3,6 @@
 #include <nasral/common/subsystem.h>
 #include <nasral/log/loggable.h>
 #include <nasral/gfx/types.h>
-#include <nasral/res/types.h>
 #include <nasral/ecs/entity.h>
 
 #include <nasral/gfx/components.h>
@@ -80,7 +79,7 @@ namespace nasral::gfx
         void set_texture_sampler(TextureType type, TextureSamplerType sampler_type) const;
 
     protected:
-        MaterialInstance(Manager* renderer, const MaterialDesc& description);
+        MaterialInstance(Manager* manager, const MaterialDesc& description);
 
     private:
         ecs::EntityId entity_;

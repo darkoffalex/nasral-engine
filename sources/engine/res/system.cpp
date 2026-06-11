@@ -20,9 +20,9 @@ namespace nasral::res
         auto* ecs = subsystem()->engine()->ecs();
         auto* res = subsystem();
 
-        process_requests(ecs, res);
-        process_loadings(ecs);
-        process_releases(ecs, res);
+        update_requests(ecs, res);
+        update_loadings(ecs);
+        update_releases(ecs, res);
     }
 
     void System::on_finalize() const
@@ -53,7 +53,7 @@ namespace nasral::res
         log_info("ECS-system finalized");
     }
 
-    void System::process_requests(ecs::Manager* ecs, Manager* res)
+    void System::update_requests(ecs::Manager* ecs, Manager* res)
     {
         // Пройти по всем сущностям с компонентами:
         // - Список ресурсов
@@ -87,7 +87,7 @@ namespace nasral::res
         }
     }
 
-    void System::process_loadings(ecs::Manager* ecs)
+    void System::update_loadings(ecs::Manager* ecs)
     {
         // Пройти по всем сущностям с компонентами:
         // - Список ресурсов
@@ -120,7 +120,7 @@ namespace nasral::res
         }
     }
 
-    void System::process_releases(ecs::Manager* ecs, Manager* res)
+    void System::update_releases(ecs::Manager* ecs, Manager* res)
     {
         // Пройти по всем сущностям с компонентами:
         // - Список ресурсов

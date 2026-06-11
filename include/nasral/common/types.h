@@ -87,10 +87,15 @@ namespace nasral
         }
 
         void regenerate(){
+            const auto new_id = generate();
+            data[0] = new_id.data[0];
+            data[1] = new_id.data[1];
+        }
+
+        static UniqueId generate(){
             static std::mt19937_64 rng{std::random_device{}()};
             static std::uniform_int_distribution<uint64_t> dist;
-            data[0] = dist(rng);
-            data[1] = dist(rng);
+            return {dist(rng), dist(rng)};
         }
 
         void set(const uint64_t a, const uint64_t b){

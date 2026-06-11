@@ -6,9 +6,8 @@
 
 namespace nasral::gfx
 {
-    MaterialInstance::MaterialInstance(Manager* renderer,
-        const MaterialDesc& description)
-        : SubsystemObject(renderer)
+    MaterialInstance::MaterialInstance(Manager* manager, const MaterialDesc& description)
+        : SubsystemObject(manager)
         , entity_(ecs::EntityId::invalid())
     {
         // Получить указатели на все подсистемы
@@ -94,8 +93,7 @@ namespace nasral::gfx
         log_info("Material instance unregistered (" + info(false) + ")");
     }
 
-    const ecs::EntityId& MaterialInstance::entity() const
-    {
+    const ecs::EntityId& MaterialInstance::entity() const{
         return entity_;
     }
 

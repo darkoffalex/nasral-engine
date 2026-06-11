@@ -28,11 +28,12 @@ namespace nasral::gfx
         void on_finalize() const;
 
     protected:
-        static void process_materials_dirty_ubo(ecs::Manager* ecs, Manager* gfx);
-        static void process_materials_dirty_handles(ecs::Manager* ecs, res::Manager* res);
-        static void process_materials_dirty_textures(ecs::Manager* ecs, Manager* gfx);
-        static void process_objects_dirty_ubo(ecs::Manager* ecs, Manager* gfx);
-        static void process_objects_dirty_handles(ecs::Manager* ecs, res::Manager* res);
+        static void update_mtl_ubo(ecs::Manager* ecs, const Manager* gfx);
+        static void update_mtl_handles(ecs::Manager* ecs, const res::Manager* res);
+        static void update_mtl_textures(ecs::Manager* ecs, const Manager* gfx);
+        static void update_obj_static_ubo(ecs::Manager* ecs, const Manager* gfx);
+        static void update_obj_dynamic_ubo(ecs::Manager* ecs, const Manager* gfx);
+        static void update_obj_mesh_handles(ecs::Manager* ecs, const res::Manager* res);
     };
 }
 

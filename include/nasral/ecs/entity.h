@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <cstddef>
 #include <array>
 #include <vector>
@@ -38,7 +39,7 @@ namespace nasral::ecs
      * @tparam N Объем контейнера, выделяемого на стеке (для оптимизации кеш-локальности)
      * @details Может также использоваться как часть (поле) компонента (для ссылок на другие Entity)
      */
-    template<std::size_t N = 5>
+    template<std::size_t N = 10>
     class EntityIds
     {
     public:

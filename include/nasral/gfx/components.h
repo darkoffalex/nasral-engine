@@ -4,6 +4,8 @@
 
 namespace nasral::gfx
 {
+    struct RenderComponent{};
+
     struct MaterialHandlesComponent
     {
         handles::Material material = {};
@@ -15,6 +17,11 @@ namespace nasral::gfx
         MaterialBaseType base_type = MaterialBaseType::eDummy;
         uniforms::Material uniforms = {};
         EnumArray<TextureType, TextureSamplerType> samplers = {};
+    };
+
+    struct MeshHandlesComponent
+    {
+        handles::Mesh mesh = {};
     };
 
     struct UniformIndexComponent

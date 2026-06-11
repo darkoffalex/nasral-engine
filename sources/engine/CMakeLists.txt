@@ -10,22 +10,22 @@ add_library(Engine OBJECT
         # События
         evt/manager.cpp
         evt/objects/listener.cpp
-#
+
 #        # Ввод
 #        inp/manager.cpp
 #        inp/provider.cpp
-#
-#        # ECS
+
+        # ECS
         ecs/archetype.cpp
         ecs/manager.cpp
-#
+
         # Среда выполнения
         run/manager.cpp
 
         # Ресурсы
         res/manager.cpp
-        res/objects/resource.cpp
         res/system.cpp
+        res/objects/resource.cpp
         res/objects/file.cpp
         res/objects/project.cpp
         res/objects/shader.cpp
@@ -34,16 +34,17 @@ add_library(Engine OBJECT
         res/objects/material.cpp
         res/objects/project.cpp
         res/objects/scene.cpp
-#
-#        # Рендеринг
+
+        # Рендеринг
         gfx/manager.cpp
         gfx/renderer.cpp
         gfx/renderer_init.cpp
         gfx/objects/material.cpp
         gfx/system.cpp
-#
-#        # Сцена
-#        scn/manager.cpp
+
+        # Сцена
+        scn/manager.cpp
+        scn/objects/node.cpp
 #        scn/system.cpp
 #        scn/io/base_node.cpp
 #        scn/io/spatial_node.cpp

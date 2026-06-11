@@ -6,8 +6,10 @@
 #include <nasral/ecs/view.h>
 #include <nasral/engine.h>
 #include <nasral/res/components.h>
+#include <nasral/scn/components.h>
 #include <nasral/res/objects/material.h>
 #include <nasral/res/objects/texture.h>
+#include <nasral/res/objects/mesh.h>
 
 namespace nasral::gfx
 {
@@ -23,16 +25,16 @@ namespace nasral::gfx
         auto* res = subsystem()->engine()->res();
         auto* gfx = subsystem();
 
-        process_materials_dirty_ubo(ecs, gfx);
-        process_materials_dirty_handles(ecs, res);
-        process_materials_dirty_textures(ecs, gfx);
+        update_mtl_ubo(ecs, gfx);
+        update_mtl_handles(ecs, res);
+        update_mtl_textures(ecs, gfx);
     }
 
     void System::on_finalize() const{
         log_info("ECS-system finalized");
     }
 
-    void System::process_materials_dirty_ubo(ecs::Manager* ecs, Manager* gfx)
+    void System::update_mtl_ubo(ecs::Manager* ecs, const Manager* gfx)
     {
         // Алиасы компонентов
         using Settings  = MaterialSettingsComponent;
@@ -45,15 +47,17 @@ namespace nasral::gfx
         // - Грязный (не обновленный) uniform
         for (auto [e, ms, ui, du_tag] : ecs->view<Settings, UniformId, Dirty>())
         {
+            // Для всех вариаций настроек материала
             std::visit([&, index = ui.index](auto&& uniforms){
                 gfx->update_mat_uniforms(uniforms, index);
             }, ms.uniforms);
 
+            // Обновлено
             ecs->remove_components<Dirty>(e);
         }
     }
 
-    void System::process_materials_dirty_handles(ecs::Manager* ecs, res::Manager* res)
+    void System::update_mtl_handles(ecs::Manager* ecs, const res::Manager* res)
     {
         // Алиасы компонентов
         using Handles   = MaterialHandlesComponent;
@@ -67,7 +71,7 @@ namespace nasral::gfx
         // Пройти по всем сущностям с компонентами:
         // - Handles материала
         // - Список ресурсов
-        // - Грязные (не обновленне) handles
+        // - Грязные (не обновленные) handles
         // - Ресурсы загружены
         for (auto [e, mh, rsc, d_tag, l_tag] : ecs->view<Handles, Resources, Dirty, Loaded>())
         {
@@ -108,11 +112,12 @@ namespace nasral::gfx
                 }
             }
 
+            // Обновлено
             ecs->remove_components<Dirty>(e);
         }
     }
 
-    void System::process_materials_dirty_textures(ecs::Manager* ecs, Manager* gfx)
+    void System::update_mtl_textures(ecs::Manager* ecs, const Manager* gfx)
     {
         // Алиасы компонентов
         using Handles       = MaterialHandlesComponent;
@@ -125,11 +130,12 @@ namespace nasral::gfx
         // - Handles материала
         // - Настройки материала
         // - Uniform index
-        // - Грязные (не обновленне) текстуры
+        // - Грязные (не обновленные) текстуры
         // Где нет компонентов:
-        // - Грязные (не обновленне) handles
+        // - Грязные (не обновленные) handles
         for (auto [e, mh, ms, ui, dt_tag] : ecs->view<Handles, Settings, UniformId, DirtyTextures>(ecs::kMaskOf<DirtyHandles>))
         {
+            // Итерация по типам текстур
             for (const auto type : magic_enum::enum_values<TextureType>()){
                 if (type == TextureType::TOTAL) continue;
 
@@ -140,7 +146,116 @@ namespace nasral::gfx
                 }, ui.index);
             }
 
+            // Обновлено
             ecs->remove_components<DirtyTextures>(e);
+        }
+    }
+
+    void System::update_obj_static_ubo(ecs::Manager* ecs, const Manager* gfx)
+    {
+        // Алиасы компонентов
+        using Spatial   = scn::SpatialComponent;
+        using UniformId = UniformIndexComponent;
+        using Render    = RenderComponent;
+        using Dirty     = DirtyUnformComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Пространственные параметры
+        // - Uniform index
+        // - Рендеринг
+        // - Грязный (не обновленный) UBO
+        for (auto [e, sp, ui, r_tag, d_tag] : ecs->view<Spatial, UniformId, Render, Dirty>())
+        {
+            // Вычислить матрицы
+            uniforms::Object uniforms = {};
+            auto& model = uniforms.model;
+            auto& normals = uniforms.normals;
+            model = glm::translate(model, sp.position);
+            model = glm::rotate(model, glm::radians(sp.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, glm::radians(sp.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(sp.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::scale(model, sp.scale);
+            normals = glm::transpose(glm::inverse(glm::mat3(model)));
+
+            // Обновить матрицы для объекта
+            gfx->update_obj_uniforms(uniforms, ui.index);
+
+            // Обновлено
+            ecs->remove_components<Dirty>(e);
+        }
+    }
+
+
+    void System::update_obj_dynamic_ubo(ecs::Manager* ecs, const Manager* gfx)
+    {
+        // Алиасы компонентов
+        using Spatial   = scn::SpatialComponent;
+        using UniformId = UniformIndexComponent;
+        using State     = UniformStateComponent;
+        using Render    = RenderComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Handles объекта
+        // - Пространственные параметры
+        // - Uniform index
+        // - Состояние UBO
+        for (auto [e, sp, ui, state, r_tag] : ecs->view<Spatial, UniformId, State, Render>())
+        {
+            if (!state.is_dirty) continue;
+
+            // Вычислить матрицы
+            uniforms::Object uniforms = {};
+            auto& model = uniforms.model;
+            auto& normals = uniforms.normals;
+            model = glm::translate(model, sp.position);
+            model = glm::rotate(model, glm::radians(sp.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, glm::radians(sp.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(sp.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::scale(model, sp.scale);
+            normals = glm::transpose(glm::inverse(glm::mat3(model)));
+
+            // Обновить матрицы для объекта
+            gfx->update_obj_uniforms(uniforms, ui.index);
+
+            // Обновлено
+            state.is_dirty = false;
+        }
+    }
+
+    void System::update_obj_mesh_handles(ecs::Manager* ecs, const res::Manager* res)
+    {
+        // Алиасы компонентов
+        using Handles   = MeshHandlesComponent;
+        using Resources = res::ResourcesComponent;
+        using Dirty     = DirtyHandlesComponent;
+        using Loaded    = res::LoadedComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Handles меша
+        // - Список ресурсов
+        // - Грязные (не обновленные) handles
+        // - Ресурсы загружены
+        for (auto [e, mh, rsc, d_tag, l_tag] : ecs->view<Handles, Resources, Dirty, Loaded>())
+        {
+            // Меш должен быть загружен
+            if (kDebugBuild){
+                assert(rsc.active[0]);
+                assert(rsc.ids[0] != res::kInvalidResourceId);
+            }
+
+            // Ресурс материала (должен быть доступен)
+            const auto* mesh_res = res->get<res::Mesh>(rsc.ids[0]);
+            assert(mesh_res != nullptr && "Bad mesh resource");
+
+            // Если загружен - обновить handles, если нет - fallback
+            if (mesh_res->status() == res::Status::eLoaded){
+                mh.mesh = mesh_res->render_handles();
+            }else{
+                // TODO: Fallback
+            }
+
+            // Обновлено
+            ecs->remove_components<Dirty>(e);
         }
     }
 }
