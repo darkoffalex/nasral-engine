@@ -36,7 +36,7 @@ namespace nasral::scn
 
         struct CameraNodeView : SpatialNodeView
         {
-            const gfx::ViewType viewType;
+            const gfx::ViewType view_type;
             const glm::float32_t& fov;
             const glm::float32_t& aspect;
             const glm::float32_t& near;
@@ -45,7 +45,7 @@ namespace nasral::scn
 
         struct LightNodeView : SpatialNodeView
         {
-            const gfx::LightType& type;
+            const gfx::LightType& light_type;
             const glm::float32_t& intensity;
             const glm::float32_t& radius;
             const glm::float32& quadratic;
@@ -54,7 +54,7 @@ namespace nasral::scn
 
         struct MeshNodeView : SpatialNodeView
         {
-            const ecs::EntityIds<gfx::kMaxMaterialsPerMesh> materials;
+            const ecs::EntityIds<gfx::kMaxMaterialsPerMesh>& materials;
         };
 
         using NodeView = std::variant<
@@ -89,6 +89,7 @@ namespace nasral::scn
 
         struct
         {
+            bool dynamic = false;
             gfx::LightType type = gfx::LightType::ePointLight;
             glm::float32_t intensity = 1.0f;
             glm::float32_t radius = 1.0f;
@@ -98,7 +99,9 @@ namespace nasral::scn
 
         struct
         {
+            bool dynamic = false;
             std::vector<UniqueId> materials;
+            std::string mesh_path = {};
         } mesh = {};
     };
 

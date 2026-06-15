@@ -3,6 +3,11 @@
 #include <nasral/common/utils.h>
 #include <nlohmann/detail/meta/detected.hpp>
 
+namespace nasral
+{
+    class Engine;
+}
+
 namespace nasral::ecs
 {
     template<typename Derived, class SubsystemType>
@@ -18,6 +23,7 @@ namespace nasral::ecs
         DECLARE_DETECTOR(on_finalize)
 
         [[nodiscard]] auto* subsystem() const { return subsystem_; }
+        [[nodiscard]] Engine* engine() const { return subsystem_->engine(); }
 
         void init(){
             if constexpr(nlohmann::detail::is_detected<has_on_init_t, Derived>::value){

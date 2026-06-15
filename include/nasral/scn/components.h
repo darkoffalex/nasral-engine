@@ -31,6 +31,7 @@ namespace nasral::scn
     struct MeshComponent
     {
         ecs::EntityIds<gfx::kMaxMaterialsPerMesh> materials = {};
+        std::array<bool, gfx::kMaxMaterialsPerMesh> materials_requested = {false};
     };
 
     struct LightComponent

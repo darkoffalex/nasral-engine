@@ -11,14 +11,9 @@ namespace nasral::scn
         : SubsystemObject(manager)
         , entity_(ecs::EntityId::invalid())
     {
-        // Получить указатель на подсистему ECS
-        auto* ecs = subsystem()->engine()->ecs();
+        entity_ = engine()->ecs()->spawn();
 
-        // Создать Entity
-        entity_ = ecs->spawn();
-
-        // Добавить компоненты
-        ecs->add_components_immediate<
+        engine()->ecs()->add_components_immediate<
             Components::Uid,
             Components::Name,
             Components::Node>(entity_,
@@ -26,13 +21,13 @@ namespace nasral::scn
                 {description.name},
                 {description.type});
 
-        // Информация о добавлении
-        log_info("Scene node spawned (" + Node::info() + ")");
+        log_info("Scene node registered (" + Node::info() + ")");
     }
 
     Node::~Node(){
         auto* ecs = subsystem()->engine()->ecs();
         ecs->add_components<ecs::DestroyComponent>(entity_, {});
+        log_info("Scene node unregistered (" + Node::info() + ")");
     }
 
     const ecs::EntityId& Node::entity() const{
@@ -41,8 +36,7 @@ namespace nasral::scn
 
     data::NodeView Node::data_view() const
     {
-        const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [id, name, node] = ecs->get_components<
+        const auto [id, name, node] = engine()->ecs()->get_components<
                 Components::Uid,
                 Components::Name,
                 Components::Node

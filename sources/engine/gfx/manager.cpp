@@ -22,45 +22,38 @@ namespace nasral::gfx
         log_info("Manager destroyed");
     }
 
-    void Manager::on_init()
+    void Manager::remove_material(const UniqueId& id)
     {
-        light_active_ids_.resize(kMaxLights);
-        light_states_.resize(kMaxLights);
-
-        // Слушать событие формирования списка ресурсов
-        evl_res_reg_ = evt::Listener::reg(
-            engine()->events(),
-            evt::Type::eResourceRegistryChanged,
-            evt::bind(this, &Manager::on_res_registry_changed));
-
-        // Инициализация ECS системы
-        ecs_system_->init();
-
-        log_info("Manager initialized");
+        materials_.erase(std::remove_if(materials_.begin(), materials_.end(), [&](const auto& mat) {
+            return mat->data_view().uid == id;
+        }), materials_.end());
     }
 
-    void Manager::on_update([[maybe_unused]] const float delta)
+    void Manager::remove_material(const ecs::EntityId& id)
     {
-        // Обновление ECS системы
-        ecs_system_->update(delta);
+        materials_.erase(std::remove_if(materials_.begin(), materials_.end(), [&](const auto& mat) {
+            return mat->entity() == id;
+        }), materials_.end());
     }
 
-    void Manager::on_finalize()
+    MaterialInstance* Manager::find_material(const UniqueId& id) const
     {
-        // Уничтожение рендерера
-        renderer_->cmd_wait_for_all();
-        renderer_.reset();
+        for (const auto& mat : materials_){
+            if (mat->data_view().uid == id){
+                return mat.get();
+            }
+        }
+        return nullptr;
+    }
 
-        // Финализация ECS системы
-        ecs_system_->finalize();
-
-        // Отписаться от события формирования списка ресурсов (дизлайк, отписка!)
-        evl_res_reg_.reset();
-
-        // Уничтожение регистра материалов
-        materials_.clear();
-
-        log_info("Manager finalized");
+    MaterialInstance* Manager::find_material(const ecs::EntityId& id) const
+    {
+        for (const auto& mat : materials_){
+            if (mat->entity() == id){
+                return mat.get();
+            }
+        }
+        return nullptr;
     }
 
     void Manager::update_cam_uniforms(const uniforms::Camera& uniforms, const uint32_t index) const
@@ -207,5 +200,48 @@ namespace nasral::gfx
                 evt::Type::eMaterialRegistryChanged,
                 evt::ChangeReason::eInitial);
         }
+    }
+
+    /******************************************************************************************************************/
+
+    void Manager::on_init()
+    {
+        light_active_ids_.resize(kMaxLights);
+        light_states_.resize(kMaxLights);
+
+        // Слушать событие формирования списка ресурсов
+        evl_res_reg_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eResourceRegistryChanged,
+            evt::bind(this, &Manager::on_res_registry_changed));
+
+        // Инициализация ECS системы
+        ecs_system_->init();
+
+        log_info("Manager initialized");
+    }
+
+    void Manager::on_update([[maybe_unused]] const float delta)
+    {
+        // Обновление ECS системы
+        ecs_system_->update(delta);
+    }
+
+    void Manager::on_finalize()
+    {
+        // Уничтожение рендерера
+        renderer_->cmd_wait_for_all();
+        renderer_.reset();
+
+        // Финализация ECS системы
+        ecs_system_->finalize();
+
+        // Отписаться от события формирования списка ресурсов (дизлайк, отписка!)
+        evl_res_reg_.reset();
+
+        // Уничтожение регистра материалов
+        materials_.clear();
+
+        log_info("Manager finalized");
     }
 }

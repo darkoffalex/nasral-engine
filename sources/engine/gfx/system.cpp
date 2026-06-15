@@ -195,10 +195,10 @@ namespace nasral::gfx
         using Render    = RenderComponent;
 
         // Пройти по всем сущностям с компонентами:
-        // - Handles объекта
         // - Пространственные параметры
         // - Uniform index
         // - Состояние UBO
+        // - Рендеринг
         for (auto [e, sp, ui, state, r_tag] : ecs->view<Spatial, UniformId, State, Render>())
         {
             if (!state.is_dirty) continue;

@@ -20,8 +20,7 @@ namespace nasral::gfx
         Components::Resources::ActiveList resources_active{};
 
         // Ресурс материала
-        const auto mat_res_id = res->find(description.base_material_path);
-        if (mat_res_id.has_value()){
+        if (const auto mat_res_id = res->find(description.base_material_path); mat_res_id.has_value()){
             resources_ids[eBaseMaterial] = mat_res_id.value();
             resources_active[eBaseMaterial] = true;
         }else{
@@ -51,7 +50,8 @@ namespace nasral::gfx
             Components::UniformsDirty,
             Components::TextureDirty,
             Components::HandlesDirty,
-            Components::Resources>(entity_,
+            Components::Resources,
+            Components::RefsCount>(entity_,
                 {description.unique_id},
                 {description.name},
                 {description.base_material_type, {}, description.texture_samplers},
@@ -60,7 +60,8 @@ namespace nasral::gfx
                 {},
                 {},
                 {},
-                {resources_ids, resources_active, {res::Status::eUnloaded}});
+                {resources_ids, resources_active, {res::Status::eUnloaded}},
+                {});
 
         // Информация о добавлении
         log_info("Material instance registered (" + info() + ")");
@@ -100,7 +101,7 @@ namespace nasral::gfx
     MaterialInstance::Components::View MaterialInstance::data_view() const
     {
         const auto* ecs = subsystem()->engine()->ecs();
-        const auto& [id, name, settings, res, ubo_id] = ecs->get_components<
+        const auto [id, name, settings, res, ubo_id] = ecs->get_components<
             Components::Uid,
             Components::Name,
             Components::Settings,

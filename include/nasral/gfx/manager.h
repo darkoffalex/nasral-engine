@@ -36,6 +36,11 @@ namespace nasral::gfx
         [[nodiscard]] auto& material_ubo_ids(){ return material_ubo_ids_; }
         [[nodiscard]] auto& light_ubo_ids(){ return light_ubo_ids_; }
 
+        void remove_material(const UniqueId& id);
+        void remove_material(const ecs::EntityId& id);
+        [[nodiscard]] MaterialInstance* find_material(const UniqueId& id) const;
+        [[nodiscard]] MaterialInstance* find_material(const ecs::EntityId& id) const;
+
         void on_init();
         void on_update(float delta);
         void on_finalize();

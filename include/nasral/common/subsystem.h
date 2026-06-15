@@ -145,6 +145,7 @@ namespace nasral
     {
     public:
         [[nodiscard]] SubsystemType* subsystem() const { return subsystem_; }
+        [[nodiscard]] Engine* engine() const { return subsystem_->engine(); }
 
     protected:
         explicit SubsystemObject(SubsystemType* subsystem)

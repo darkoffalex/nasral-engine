@@ -7,15 +7,6 @@ namespace nasral::run
     /**
      * @brief Состояние среды выполнения
      */
-    // enum class State : uint32_t
-    // {
-    //     eIdle = 0,
-    //     eRunning,
-    //     ePaused,
-    //     eStopped,
-    //     TOTAL
-    // };
-
     enum class StateFlags : uint32_t
     {
         eRunning = 0,

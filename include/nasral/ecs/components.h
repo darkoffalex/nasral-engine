@@ -2,6 +2,7 @@
 
 #include <nasral/common/types.h>
 #include <nasral/ecs/entity.h>
+
 namespace nasral::ecs
 {
     struct ActivateComponent{};
@@ -9,6 +10,8 @@ namespace nasral::ecs
     struct DeactivateComponent{};
 
     struct DestroyComponent{};
+
+    struct RefsChangedComponent {};
 
     struct UidComponent
     {
@@ -28,5 +31,10 @@ namespace nasral::ecs
     struct EntityListComponent
     {
         EntityIds<> ids = {};
+    };
+
+    struct RefsCountComponent
+    {
+        uint32_t count = 0;
     };
 }

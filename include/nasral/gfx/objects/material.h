@@ -44,7 +44,7 @@ namespace nasral::gfx
         {
             using Uid = ecs::UidComponent;                                        // Уникальный ID
             using Name = ecs::NameComponent;                                      // Название конкретного instance
-            using Handles = MaterialHandlesComponent;                             // Хендлы материала (pipeline, images)
+            using Handles = MaterialHandlesComponent;                             // Handles материала (pipeline, images)
             using Settings = MaterialSettingsComponent;                           // Настройки материала
             using UniformIndex = UniformIndexComponent;                           // Индекс UBO
             using UniformsDirty = DirtyUnformComponent;                           // Нужно обновить UBO
@@ -52,6 +52,8 @@ namespace nasral::gfx
             using HandlesDirty = DirtyHandlesComponent;                           // Нужно обновить handles
             using Resources = res::ResourcesComponent;                            // Ресурсы материала (для запроса)
             using PendingDestroy = ecs::DestroyComponent;                         // Помечен к удалению
+            using RefsCount = ecs::RefsCountComponent;                            // Счетчик ссылок (для узлов сцены)
+            using RefsChanged = ecs::RefsChangedComponent;                        // Ссылки изменились
 
             struct View
             {

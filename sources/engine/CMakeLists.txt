@@ -18,6 +18,7 @@ add_library(Engine OBJECT
         # ECS
         ecs/archetype.cpp
         ecs/manager.cpp
+        ecs/utils.cpp
 
         # Среда выполнения
         run/manager.cpp
@@ -45,6 +46,9 @@ add_library(Engine OBJECT
         # Сцена
         scn/manager.cpp
         scn/objects/node.cpp
+        scn/objects/spatial.cpp
+        scn/objects/camera.cpp
+        scn/objects/mesh.cpp
 #        scn/system.cpp
 #        scn/io/base_node.cpp
 #        scn/io/spatial_node.cpp

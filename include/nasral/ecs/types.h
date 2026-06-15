@@ -22,6 +22,8 @@ namespace nasral::ecs
         NameComponent,
         EntityComponent,
         EntityListComponent,
+        RefsCountComponent,
+        RefsChangedComponent,
 
         // Ресурсы
         res::ResourcesComponent,

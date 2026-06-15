@@ -321,9 +321,10 @@ namespace nasral::res
         {
             // Если остался объект задачи с прошлого раза
             if (slot.loading.task.valid() &&
-                slot.loading.task.wait_for(std::chrono::seconds(0)) == std::future_status::ready){
+                slot.loading.task.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+            {
                 slot.loading.task = std::future<void>();
-                }
+            }
 
             // Если задача загрузки отсутствует - создать объект ресурса и инициировать загрузку в отдельном потоке
             if (!slot.loading.task.valid()){
@@ -334,7 +335,7 @@ namespace nasral::res
                 // Передаем его по значению в поток (гарантия, что объект создан до запуска потока)
                 Resource* res_ptr = slot.resource.get();
 
-                slot.loading.task = std::async(std::launch::async, [&slot, res_ptr](){
+                slot.loading.task = std::async(std::launch::async, [&slot, res_ptr]{
                     res_ptr->load();
                     slot.loading.in_progress.store(false, std::memory_order_release);
                 });
