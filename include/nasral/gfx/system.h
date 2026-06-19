@@ -2,14 +2,6 @@
 #include <nasral/ecs/system.h>
 #include <nasral/log/loggable.h>
 
-namespace nasral::ecs{
-    class Manager;
-}
-
-namespace nasral::res{
-    class Manager;
-}
-
 namespace nasral::gfx
 {
     class Manager;
@@ -26,14 +18,18 @@ namespace nasral::gfx
         void on_init() const;
         void on_update(float delta) const;
         void on_finalize() const;
+        void on_render() const;
 
     protected:
-        static void update_mtl_ubo(ecs::Manager* ecs, const Manager* gfx);
-        static void update_mtl_handles(ecs::Manager* ecs, const res::Manager* res);
-        static void update_mtl_textures(ecs::Manager* ecs, const Manager* gfx);
-        static void update_obj_static_ubo(ecs::Manager* ecs, const Manager* gfx);
-        static void update_obj_dynamic_ubo(ecs::Manager* ecs, const Manager* gfx);
-        static void update_obj_mesh_handles(ecs::Manager* ecs, const res::Manager* res);
+        void update_mtl_ubo() const;
+        void update_mtl_handles() const;
+        void update_mtl_textures() const;
+        void update_obj_static_ubo() const;
+        void update_obj_dynamic_ubo() const;
+        void update_obj_mesh_handles() const;
+        void update_cam_ubo() const;
+
+        void render_meshes() const;
     };
 }
 

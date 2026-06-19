@@ -4,6 +4,7 @@
 #include <nasral/log/loggable.h>
 #include <nasral/scn/types.h>
 #include <nasral/scn/objects/node.h>
+#include <nasral/evt/objects/listener.h>
 
 namespace nasral::scn
 {
@@ -18,12 +19,22 @@ namespace nasral::scn
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
 
-        void on_init() const;
+        void on_init();
         void on_update(float delta);
-        void on_finalize() const;
+        void on_finalize();
+
+        void spawn(const NodeDesc& desc);
+        void remove(const Node* node);
+        void remove(const UniqueId& id);
+        [[nodiscard]] Node* find(const UniqueId& id) const;
+
+    protected:
+        void on_session_start(const evt::Arg& arg);
+        void load_initial_scene(const std::string& path);
 
     private:
         std::vector<Node::Ptr> nodes_;
+        evt::Listener::Ptr evl_session_start_;
     };
 }
 

@@ -23,7 +23,7 @@ namespace nasral::evt
      * @brief Извлечение параметра нужного типа из варианта аргумента
      * @tparam T Желаемый тип
      * @param arg Вариант аргумента
-     * @return Optional значение (std::nullopt если нет подходящего типа)
+     * @return Optional значение (std::nullopt, если нет подходящего типа)
      */
     template <typename T>
     std::optional<T> from_arg(const Arg& arg) {

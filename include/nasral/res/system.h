@@ -24,10 +24,10 @@ namespace nasral::res
         void on_finalize() const;
 
     protected:
-        static void update_requests(ecs::Manager* ecs, Manager* res);
-        static void update_loadings(ecs::Manager* ecs);
-        static void update_releases(ecs::Manager* ecs, Manager* res);
-        static void update_references(ecs::Manager* ecs);
+        void update_requests() const;
+        void update_loadings() const;
+        void update_releases() const;
+        void update_references() const;
     };
 }
 

@@ -22,6 +22,8 @@ namespace nasral::run
         void on_update(float delta);
         void on_finalize();
 
+        [[nodiscard]] const auto& state() const noexcept { return state_; }
+
     protected:
         void on_res_registry_changed(const evt::Arg& arg);
         void on_mat_registry_changed(const evt::Arg& arg);

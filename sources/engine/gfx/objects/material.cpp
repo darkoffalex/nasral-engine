@@ -12,8 +12,8 @@ namespace nasral::gfx
     {
         // Получить указатели на все подсистемы
         auto* gfx = subsystem();
-        auto* ecs = subsystem()->engine()->ecs();
-        const auto* res = subsystem()->engine()->res();
+        auto* ecs = engine()->ecs();
+        const auto* res = engine()->res();
 
         // Активные ресурсы
         Components::Resources::IdsList resources_ids{};

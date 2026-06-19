@@ -21,6 +21,7 @@ namespace nasral::ecs
         DECLARE_DETECTOR(on_init)
         DECLARE_DETECTOR(on_update)
         DECLARE_DETECTOR(on_finalize)
+        DECLARE_DETECTOR(on_render)
 
         [[nodiscard]] auto* subsystem() const { return subsystem_; }
         [[nodiscard]] Engine* engine() const { return subsystem_->engine(); }
@@ -40,6 +41,12 @@ namespace nasral::ecs
         void finalize(){
             if constexpr (nlohmann::detail::is_detected<has_on_finalize_t, Derived>::value){
                 static_cast<Derived*>(this)->on_finalize();
+            }
+        }
+
+        void render(){
+            if constexpr (nlohmann::detail::is_detected<has_on_render_t, Derived>::value){
+                static_cast<Derived*>(this)->on_render();
             }
         }
 

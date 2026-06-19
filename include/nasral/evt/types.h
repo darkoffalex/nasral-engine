@@ -19,7 +19,10 @@ namespace nasral::evt
         eResourceRegistryChanged,
         // Регистр материалов обновлен (в RAM)
         eMaterialRegistryChanged,
-
+        // Сеанс движка запущен
+        eSessionStarted,
+        // Основная сцена загружена
+        eRootSceneLoaded,
         // Событие пользователя (пользовательская логика)
         eUserEvent,
         TOTAL
@@ -60,4 +63,5 @@ namespace nasral::evt
 
     constexpr ListenerHandle    kInvalidListener = static_cast<ListenerHandle>(-1);
     constexpr size_t            kInitialListenersCount = 32;
+    constexpr uint32_t          kNullArg = 0;
 }

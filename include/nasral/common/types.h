@@ -42,17 +42,17 @@ namespace nasral
         }
 
         template <typename... Args>
-        [[nodiscard]] constexpr bool any_of(const Args... args) const {
+        [[nodiscard]] constexpr bool has_any(const Args... args) const {
             return (test(static_cast<E>(args)) || ...);
         }
 
         template <typename... Args>
-        [[nodiscard]] constexpr bool all_of(const Args... args) const {
+        [[nodiscard]] constexpr bool has(const Args... args) const {
             return (test(static_cast<E>(args)) && ...);
         }
 
         template <typename... Args>
-        [[nodiscard]] constexpr bool none_of(const Args... args) const {
+        [[nodiscard]] constexpr bool has_no(const Args... args) const {
             return !(test(static_cast<E>(args)) || ...);
         }
 

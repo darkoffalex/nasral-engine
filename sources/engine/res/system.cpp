@@ -17,13 +17,10 @@ namespace nasral::res
     }
 
     void System::on_update([[maybe_unused]] const float delta) const{
-        auto* ecs = engine()->ecs();
-        auto* res = subsystem();
-
-        update_requests(ecs, res);
-        update_loadings(ecs);
-        update_releases(ecs, res);
-        // update_references(ecs);
+        update_requests();
+        update_loadings();
+        update_releases();
+        update_references();
     }
 
     void System::on_finalize() const
@@ -54,17 +51,17 @@ namespace nasral::res
         log_info("ECS-system finalized");
     }
 
-    void System::update_requests(ecs::Manager* ecs, Manager* res)
+    void System::update_requests() const
     {
         // Пройти по всем сущностям с компонентами:
         // - Список ресурсов
         // - Запрос ресурсов
-        for (auto [e, resources, req_tag] : ecs->view<ResourcesComponent, RequestComponent>())
+        for (auto [e, resources, req_tag] : engine()->ecs()->view<ResourcesComponent, RequestComponent>())
         {
             // Убрать из списка запросов
-            ecs->remove_components<RequestComponent>(e);
+            engine()->ecs()->remove_components<RequestComponent>(e);
             // Добавить в список загружаемых
-            ecs->add_components<LoadingComponent>(e, {});
+            engine()->ecs()->add_components<LoadingComponent>(e, {});
 
             // Выполнить запросы активных ресурсов
             for (size_t i = 0; i < kResListComponentSize; ++i)
@@ -78,9 +75,12 @@ namespace nasral::res
                     continue;
                 }
 
-                res->request(resources.ids[i], [ecs, res, entity = e, i](const Resource* resource)
+                engine()->res()->request(resources.ids[i], [entity = e, i](const Resource* resource)
                 {
-                    assert(res != nullptr);
+                    assert(resource != nullptr);
+                    const auto* ecs = resource->engine()->ecs();
+                    auto* res = resource->subsystem();
+
                     // Если entity уничтожена - освободить ресурс (предотвращение висячих ссылок)
                     if (!ecs->is_valid(entity)){
                         res->release(resource->id());
@@ -95,14 +95,16 @@ namespace nasral::res
         }
     }
 
-    void System::update_loadings(ecs::Manager* ecs)
+    void System::update_loadings() const
     {
         // Пройти по всем сущностям с компонентами:
         // - Список ресурсов
         // - Загружается
         // И без компонентов:
         // - Загружен
-        for (auto [e, resources, l_tag] : ecs->view<ResourcesComponent, LoadingComponent>(ecs::kMaskOf<LoadedComponent>))
+        for (auto [e, resources, l_tag] : engine()->ecs()->view<
+            ResourcesComponent,
+            LoadingComponent>(ecs::kMaskOf<LoadedComponent>))
         {
             // Проверить готовность и ошибки
             bool all_done = true;
@@ -118,26 +120,29 @@ namespace nasral::res
 
             // После готовности убрать из "загружаемых" и переместить в соответствующие списки
             if (all_done){
-                ecs->remove_components<LoadingComponent>(e);
+                engine()->ecs()->remove_components<LoadingComponent>(e);
                 if (has_error){
-                    ecs->add_components<LoadedComponent, ErrorComponent>(e, {}, {});
+                    engine()->ecs()->add_components<LoadedComponent, ErrorComponent>(e, {}, {});
                 }else{
-                    ecs->add_components<LoadedComponent>(e, {});
+                    engine()->ecs()->add_components<LoadedComponent>(e, {});
                 }
             }
         }
     }
 
-    void System::update_releases(ecs::Manager* ecs, Manager* res)
+    void System::update_releases() const
     {
         // Пройти по всем сущностям с компонентами:
         // - Список ресурсов
         // - Загружен
         // - Освободить
-        for (auto [e, resources, l_tag, r_tag] : ecs->view<ResourcesComponent, LoadedComponent, ReleaseComponent>())
+        for (auto [e, resources, l_tag, r_tag] : engine()->ecs()->view<
+            ResourcesComponent,
+            LoadedComponent,
+            ReleaseComponent>())
         {
             // Убрать из списка освобождаемых
-            ecs->remove_components<LoadedComponent, ReleaseComponent>(e);
+            engine()->ecs()->remove_components<LoadedComponent, ReleaseComponent>(e);
 
             // Выполнить освобождение активных ресурсов
             for (size_t i = 0; i < kResListComponentSize; ++i){
@@ -146,13 +151,13 @@ namespace nasral::res
 
                 if (resources.statuses[i] != Status::eUnloaded){
                     resources.statuses[i] = Status::eUnloaded;
-                    res->release(resources.ids[i]);
+                    engine()->res()->release(resources.ids[i]);
                 }
             }
         }
     }
 
-    void System::update_references(ecs::Manager* ecs)
+    void System::update_references() const
     {
         // Пройти по всем сущностям с компонентами:
         // - Список ресурсов
@@ -162,18 +167,18 @@ namespace nasral::res
         // - Запросить
         // - Освободить
         // - Загружается
-        for (auto [e, res, refs, rc_tag] : ecs->view<
+        for (auto [e, res, refs, rc_tag] : engine()->ecs()->view<
             ResourcesComponent,
             ecs::RefsCountComponent,
             ecs::RefsChangedComponent>(ecs::kMaskOf<RequestComponent, ReleaseComponent, LoadingComponent>))
         {
             if (refs.count == 0){
-                if (ecs->has<LoadedComponent>(e)){
-                    ecs->add_components<ReleaseComponent>(e, {});
+                if (engine()->ecs()->has<LoadedComponent>(e)){
+                    engine()->ecs()->add_components<ReleaseComponent>(e, {});
                 }
             }else{
-                if (!ecs->has<LoadedComponent>(e)){
-                    ecs->add_components<RequestComponent>(e, {});
+                if (!engine()->ecs()->has<LoadedComponent>(e)){
+                    engine()->ecs()->add_components<RequestComponent>(e, {});
                 }
             }
         }

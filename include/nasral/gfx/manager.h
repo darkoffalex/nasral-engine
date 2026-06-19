@@ -32,6 +32,8 @@ namespace nasral::gfx
         void update_light_states(const std::vector<uint32_t>& ids, bool active);
 
         [[nodiscard]] Renderer* renderer() const noexcept{ return renderer_.get(); }
+        [[nodiscard]] System* ecs_system() const noexcept{ return ecs_system_.get(); }
+
         [[nodiscard]] auto& object_ubo_ids(){ return object_ubo_ids_; }
         [[nodiscard]] auto& material_ubo_ids(){ return material_ubo_ids_; }
         [[nodiscard]] auto& light_ubo_ids(){ return light_ubo_ids_; }
@@ -44,6 +46,7 @@ namespace nasral::gfx
         void on_init();
         void on_update(float delta);
         void on_finalize();
+        void on_render() const;
 
     protected:
         void on_res_registry_changed(const evt::Arg& arg);

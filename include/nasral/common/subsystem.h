@@ -27,6 +27,7 @@ namespace nasral
         DECLARE_DETECTOR(on_init)
         DECLARE_DETECTOR(on_update)
         DECLARE_DETECTOR(on_finalize)
+        DECLARE_DETECTOR(on_render)
 
         [[nodiscard]] Engine* engine() const { return engine_; }
         [[nodiscard]] const Config& config() const { return config_; }
@@ -46,6 +47,12 @@ namespace nasral
         void finalize(){
             if constexpr (nlohmann::detail::is_detected<has_on_finalize_t, Derived>::value){
                 static_cast<Derived*>(this)->on_finalize();
+            }
+        }
+
+        void render(){
+            if constexpr (nlohmann::detail::is_detected<has_on_render_t, Derived>::value){
+                static_cast<Derived*>(this)->on_render();
             }
         }
 
@@ -90,6 +97,7 @@ namespace nasral
         DECLARE_DETECTOR(on_init)
         DECLARE_DETECTOR(on_update)
         DECLARE_DETECTOR(on_finalize)
+        DECLARE_DETECTOR(on_render)
 
         [[nodiscard]] Engine* engine() const { return engine_; }
 
@@ -108,6 +116,12 @@ namespace nasral
         void finalize(){
             if constexpr (nlohmann::detail::is_detected<has_on_finalize_t, Derived>::value){
                 static_cast<Derived*>(this)->on_finalize();
+            }
+        }
+
+        void render(){
+            if constexpr (nlohmann::detail::is_detected<has_on_render_t, Derived>::value){
+                static_cast<Derived*>(this)->on_render();
             }
         }
 

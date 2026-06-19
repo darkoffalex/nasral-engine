@@ -107,5 +107,6 @@ namespace nasral::scn
 
     struct Config
     {
+        uint32_t initial_node_count = 100;
     };
 }

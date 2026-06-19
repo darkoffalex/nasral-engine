@@ -23,6 +23,8 @@ namespace nasral
                         s = std::make_unique<gfx::Manager>(this, config.gfx);
                     } else if constexpr (std::is_same_v<SubsystemPtr, res::Manager::Ptr>) {
                         s = std::make_unique<res::Manager>(this, config.res);
+                    } else if constexpr (std::is_same_v<SubsystemPtr, scn::Manager::Ptr>) {
+                        s = std::make_unique<scn::Manager>(this, config.scn);
                     }
                     if (s) {
                         s->init();
@@ -94,6 +96,9 @@ namespace nasral
                 }
             }(systems.get()));
         }, subsystems_);
+
+        // Рендеринг
+        gfx()->render();
     }
 
     log::Logger* Engine::logger() const noexcept{
@@ -118,5 +123,9 @@ namespace nasral
 
     run::Manager* Engine::run() const noexcept{
         return std::get<run::Manager::Ptr>(subsystems_).get();
+    }
+
+    scn::Manager* Engine::scn() const noexcept{
+        return std::get<scn::Manager::Ptr>(subsystems_).get();
     }
 }

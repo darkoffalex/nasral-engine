@@ -4,9 +4,13 @@
     {"type": "eShader", "path": "materials/dummy/shader.vert.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/dummy/shader.frag.spv", "load_params": {}},
 
-    {"type": "eMaterial", "path": "materials/vertex-colored/material.json", "load_params": {}},
-    {"type": "eShader", "path": "materials/vertex-colored/shader.vert.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/vertex-colored/shader.frag.spv", "load_params": {}},
+    {"type": "eMaterial", "path": "materials/colored/material.json", "load_params": {}},
+    {"type": "eShader", "path": "materials/colored/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/colored/shader.frag.spv", "load_params": {}},
+
+    {"type": "eMaterial", "path": "materials/texruted/material.json", "load_params": {}},
+    {"type": "eShader", "path": "materials/texruted/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/texruted/shader.frag.spv", "load_params": {}},
 
     {"type": "eMaterial", "path": "materials/phong/material.json", "load_params": {}},
     {"type": "eShader", "path": "materials/phong/shader.vert.spv", "load_params": {}},
@@ -32,9 +36,15 @@
   "materials": [
     {
       "uid" : [0,1],
+      "name": "Colored",
+      "base_material_path" : "materials/colored/material.json",
+      "base_material_type" : "eColored"
+    },
+    {
+      "uid" : [0,2],
       "name": "ChairUnlit",
-      "base_material_path" : "materials/vertex-colored/material.json",
-      "base_material_type" : "eVertexColored",
+      "base_material_path" : "materials/texruted/material.json",
+      "base_material_type" : "eTextured",
       "textures": [{
         "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v0",
@@ -42,7 +52,7 @@
       }]
     },
     {
-      "uid" : [0,2],
+      "uid" : [0,3],
       "name": "ChairPhong",
       "base_material_path" : "materials/phong/material.json",
       "base_material_type" : "ePhong",
@@ -61,10 +71,10 @@
       }]
     },
     {
-      "uid" : [0,3],
+      "uid" : [0,4],
       "name": "ChairPBR",
       "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePbr",
+      "base_material_type" : "ePBR",
       "textures": [{
         "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v1",

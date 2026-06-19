@@ -1,5 +1,5 @@
 {
-  "base_type" : "ePbr",
+  "base_type" : "ePBR",
   "shaders" : [
     {
       "stage" : "vertex",

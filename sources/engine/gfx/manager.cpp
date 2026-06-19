@@ -244,4 +244,19 @@ namespace nasral::gfx
 
         log_info("Manager finalized");
     }
+
+    void Manager::on_render() const
+    {
+        if (!renderer()->is_active()) return;
+        if (engine()->run()->state().has_no(run::StateFlags::eRunning)) return;
+
+        // Начало кадра, привязка необходимых дескрипторов Vulkan
+        renderer()->cmd_begin_frame();
+
+        // ECS обход сцены для рендеринга
+        ecs_system()->render();
+
+        // Завершение кадра, показ результата
+        renderer()->cmd_end_frame();
+    }
 }
