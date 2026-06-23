@@ -42,6 +42,7 @@ add_library(Engine OBJECT
         gfx/renderer_init.cpp
         gfx/objects/material.cpp
         gfx/system.cpp
+        gfx/utils.cpp
 
         # Сцена
         scn/manager.cpp
@@ -49,7 +50,7 @@ add_library(Engine OBJECT
         scn/objects/spatial.cpp
         scn/objects/camera.cpp
         scn/objects/mesh.cpp
-#        scn/system.cpp
+        scn/system.cpp
 #        scn/io/base_node.cpp
 #        scn/io/spatial_node.cpp
 #        scn/io/camera_node.cpp

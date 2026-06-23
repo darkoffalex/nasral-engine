@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nasral/common/subsystem.h>
+#include <nasral/scn/system.h>
 #include <nasral/log/loggable.h>
 #include <nasral/scn/types.h>
 #include <nasral/scn/objects/node.h>
@@ -20,7 +21,7 @@ namespace nasral::scn
         Manager& operator=(const Manager&) = delete;
 
         void on_init();
-        void on_update(float delta);
+        void on_update(float delta) const;
         void on_finalize();
 
         void spawn(const NodeDesc& desc);
@@ -33,8 +34,12 @@ namespace nasral::scn
         void load_initial_scene(const std::string& path);
 
     private:
+        // Список узлов
         std::vector<Node::Ptr> nodes_;
+        // Слушатель события начала сеанса
         evt::Listener::Ptr evl_session_start_;
+        // ECS-система
+        System::Ptr ecs_system_;
     };
 }
 

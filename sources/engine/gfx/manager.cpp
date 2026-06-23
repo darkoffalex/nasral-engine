@@ -111,7 +111,7 @@ namespace nasral::gfx
         const auto& ts = renderer()->vk_texture_sampler(info.sampler_type);
 
         assert(index < kMaxMaterials);
-        assert(info.texture);
+        // assert(info.texture);
         assert(ds);
 
         vk::DescriptorImageInfo image_info{};

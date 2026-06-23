@@ -38,10 +38,11 @@ namespace nasral::res
                 return std::nullopt;
             }
 
+            const auto index_count = static_cast<uint32_t>(indices.size());
             return std::optional{Mesh::Data{
                 std::move(vertices),
                 std::move(indices),
-                {{0, static_cast<uint32_t>(indices.size()), 0}}
+                {{0, index_count, 0}}
             }};
         }
     };

@@ -15,6 +15,7 @@
 namespace nasral::gfx
 {
     System::System(Manager* m) : ecs::System<System, Manager>(m){}
+
     System::~System() = default;
 
     void System::on_init() const{
@@ -43,7 +44,7 @@ namespace nasral::gfx
 
     void System::on_render() const
     {
-        //render_meshes();
+        render_meshes();
     }
 
     void System::update_mtl_ubo() const
@@ -154,6 +155,7 @@ namespace nasral::gfx
             // Итерация по типам текстур
             for (const auto type : magic_enum::enum_values<TextureType>()){
                 if (type == TextureType::TOTAL) continue;
+                if (!mh.textures[type]) continue;
 
                 engine()->gfx()->update_mat_textures({
                     type,
@@ -349,7 +351,7 @@ namespace nasral::gfx
                 log_warn("Missing render handles for renderable mesh entity " + e.to_string());
             }
 
-            if (!mesh.materials.empty()){
+            if (mesh.materials.empty()){
                 log_warn("Missing materials for renderable mesh entity" + e.to_string());
             }
 

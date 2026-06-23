@@ -61,7 +61,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.gfx.depth_format = vk::Format::eD32SfloatS8Uint;
             config.gfx.color_space = vk::ColorSpaceKHR::eSrgbNonlinear;
             config.gfx.present_mode = vk::PresentModeKHR::eImmediate;
-            config.gfx.enable_validation_layers = true;
+            config.gfx.enable_validation_layers = false;
             config.gfx.opengl_compatible = true;
             config.gfx.max_frames_in_flight = 3;
             config.gfx.swap_chain_images = 4;

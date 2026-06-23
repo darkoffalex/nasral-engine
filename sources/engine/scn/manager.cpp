@@ -9,7 +9,10 @@
 
 namespace nasral::scn
 {
-    Manager::Manager(Engine* e, const Config& config): Subsystem(e, config){
+    Manager::Manager(Engine* e, const Config& config)
+        : Subsystem(e, config)
+        , ecs_system_(std::make_unique<System>(this))
+    {
         nodes_.reserve(config.initial_node_count);
         log_info("Initializing manager...");
     }
@@ -18,21 +21,25 @@ namespace nasral::scn
         log_info("Manager destroyed");
     }
 
-    void Manager::on_init(){
-
+    void Manager::on_init()
+    {
         evl_session_start_ = evt::Listener::reg(
             engine()->events(),
             evt::Type::eSessionStarted,
             evt::bind(this, &Manager::on_session_start));
 
+        ecs_system_->init();
+
         log_info("Manager initialized");
     }
 
-    void Manager::on_update([[maybe_unused]] float delta){
-
+    void Manager::on_update(const float delta) const
+    {
+        ecs_system_->update(delta);
     }
 
     void Manager::on_finalize(){
+        ecs_system_->finalize();
         evl_session_start_.reset();
         log_info("Manager finalized");
     }
@@ -102,7 +109,6 @@ namespace nasral::scn
     {
         log_info("Loading initial scene...");
 
-        /*
         // Описание камеры
         NodeDesc camera_desc = {};
         camera_desc.type = NodeType::eCamera;
@@ -125,10 +131,9 @@ namespace nasral::scn
         mesh_desc.unique_id = UniqueId::generate();
         mesh_desc.spatial.position = {0.0f, 0.0f, 0.0f};
         mesh_desc.spatial.scale = {1.0f, 1.0f, 1.0f};
-        mesh_desc.spatial.rotation = {0.0f, 0.0f, 0.0f};
+        mesh_desc.spatial.rotation = {45.0f, 45.0f, 0.0f};
         mesh_desc.mesh.mesh_path = res::kBuiltinMeshCube;
         mesh_desc.mesh.materials = {UniqueId{0,1}};
         spawn(mesh_desc);
-        */
     }
 }

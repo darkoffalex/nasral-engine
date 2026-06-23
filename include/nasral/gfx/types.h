@@ -26,6 +26,11 @@ namespace nasral::gfx
         glm::vec4 color;
     };
 
+    typedef std::tuple<
+        std::vector<Vertex>,
+        std::vector<uint32_t>
+    > GeometryData;
+
     enum class UniformLayoutType : uint32_t
     {
         eDummy = 0,
