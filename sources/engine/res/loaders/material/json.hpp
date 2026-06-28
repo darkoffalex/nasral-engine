@@ -18,7 +18,10 @@ namespace nasral::res
             {
                 std::ifstream file(path.data());
                 if (!file.is_open()){
-                    throw std::runtime_error("Failed to open file");
+                    throw std::filesystem::filesystem_error(
+                        "Failed to open file",
+                        path,
+                        std::make_error_code(std::errc::no_such_file_or_directory));
                 }
 
                 nlohmann::json json;
@@ -66,6 +69,10 @@ namespace nasral::res
             }
             catch ([[maybe_unused]] const nlohmann::json::exception& e){
                 set_error(Error::eBadFormat);
+                return std::nullopt;
+            }
+            catch ([[maybe_unused]] const std::filesystem::filesystem_error& e){
+                set_error(Error::eCannotOpenFile);
                 return std::nullopt;
             }
             catch ([[maybe_unused]] std::exception& e){

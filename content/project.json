@@ -8,9 +8,9 @@
     {"type": "eShader", "path": "materials/colored/shader.vert.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/colored/shader.frag.spv", "load_params": {}},
 
-    {"type": "eMaterial", "path": "materials/texruted/material.json", "load_params": {}},
-    {"type": "eShader", "path": "materials/texruted/shader.vert.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/texruted/shader.frag.spv", "load_params": {}},
+    {"type": "eMaterial", "path": "materials/textured/material.json", "load_params": {}},
+    {"type": "eShader", "path": "materials/textured/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/textured/shader.frag.spv", "load_params": {}},
 
     {"type": "eMaterial", "path": "materials/phong/material.json", "load_params": {}},
     {"type": "eShader", "path": "materials/phong/shader.vert.spv", "load_params": {}},
@@ -21,6 +21,12 @@
     {"type": "eShader", "path": "materials/pbr/shader.vert.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/pbr/shader.geom.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/pbr/shader.frag.spv", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_diff.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_disp.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_nor_gl.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_spec.png", "load_params": {}},
 
     {"type": "eTexture", "path": "textures/chair/chair_ao_1k.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/chair/chair_diff_1k.png:v0", "load_params": {}},
@@ -42,8 +48,19 @@
     },
     {
       "uid" : [0,2],
+      "name": "Textured",
+      "base_material_path" : "materials/textured/material.json",
+      "base_material_type" : "eTextured",
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/tiles_01/tiles_diff.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,3],
       "name": "ChairUnlit",
-      "base_material_path" : "materials/texruted/material.json",
+      "base_material_path" : "materials/textured/material.json",
       "base_material_type" : "eTextured",
       "textures": [{
         "type" : "eAlbedoColor",
@@ -52,7 +69,7 @@
       }]
     },
     {
-      "uid" : [0,3],
+      "uid" : [0,4],
       "name": "ChairPhong",
       "base_material_path" : "materials/phong/material.json",
       "base_material_type" : "ePhong",
@@ -71,7 +88,7 @@
       }]
     },
     {
-      "uid" : [0,4],
+      "uid" : [0,5],
       "name": "ChairPBR",
       "base_material_path" : "materials/pbr/material.json",
       "base_material_type" : "ePBR",

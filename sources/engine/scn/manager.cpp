@@ -134,7 +134,7 @@ namespace nasral::scn
         mesh_desc.spatial.scale = {1.0f, 1.0f, 1.0f};
         mesh_desc.spatial.rotation = {0.0f, 0.0f, 0.0f};
         mesh_desc.mesh.mesh_path = res::kBuiltinMeshCube;
-        mesh_desc.mesh.materials = {UniqueId{0,1}};
+        mesh_desc.mesh.materials = {UniqueId{0,2}};
         spawn(mesh_desc);
     }
 }
