@@ -1,5 +1,7 @@
 #include "pch.h"
 #include <nasral/scn/system.h>
+#include <nasral/scn/utils.h>
+#include <nasral/inp/manager.h>
 #include <nasral/scn/components.h>
 #include <nasral/res/components.h>
 #include <nasral/ecs/view.h>
@@ -15,8 +17,9 @@ namespace nasral::scn
         log_info("ECS-system initialized");
     }
 
-    void System::on_update([[maybe_unused]] float delta) const{
+    void System::on_update(const float delta) const{
         update_resource_requests();
+        update_cam_input(delta);
     }
 
     void System::on_finalize() const{
@@ -25,7 +28,7 @@ namespace nasral::scn
 
     void System::update_resource_requests() const
     {
-        // TODO: Реализовать логигу отбрасывания узлов
+        // TODO: Реализовать логику отбрасывания узлов
         // Временное решение.
         // Система запрашивает ресурсы узлов сцены по надобности.
         // Сейчас запрашиваются ресурсы всех узлов.
@@ -48,6 +51,52 @@ namespace nasral::scn
         for (auto [e, n, res] : engine()->ecs()->view<Node, Resources>(ecs::kMaskOf<Request, Loading, Loaded>))
         {
             engine()->ecs()->add_components<Request>(e, {});
+        }
+    }
+
+    void System::update_cam_input(const float delta) const
+    {
+        // Алиасы компонентов
+        using Node       = NodeComponent;
+        using Camera     = ViewComponent;
+        using Spatial    = SpatialComponent;
+        using Uniform    = gfx::UniformStateComponent;
+
+        // Пройти по всем камерам
+        for (auto [e, n, spatial, cam, uniform] : engine()->ecs()->view<Node, Spatial, Camera, Uniform>())
+        {
+            if (uniform.is_dirty) continue;
+
+            auto movement = engine()->inp()->get_movement_vector(
+                inp::KeyCode::eA,
+                inp::KeyCode::eD,
+                inp::KeyCode::eW,
+                inp::KeyCode::eS,
+                inp::KeyCode::eSpace,
+                inp::KeyCode::eC);
+
+            if (engine()->inp()->is_mouse_btn_pressed(inp::MouseButton::eLeft))
+            {
+                constexpr float rot_speed = 0.1f;
+                spatial.rotation.y += engine()->inp()->mouse_delta().x * -rot_speed;
+                spatial.rotation.x += engine()->inp()->mouse_delta().y * -rot_speed;
+                uniform.is_dirty = true;
+            }
+
+            if (glm::length2(movement) > 0.0f)
+            {
+                constexpr float move_speed = 2.5f;
+
+                glm::vec3 oriented_movement = calc_rot_movement(
+                    {movement.x, movement.z},
+                    spatial.rotation);
+
+                spatial.position += (oriented_movement + glm::vec3(0.0f, movement.y, 0.0f))
+                    * move_speed
+                    * delta;
+
+                uniform.is_dirty = true;
+            }
         }
     }
 }

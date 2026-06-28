@@ -7,6 +7,7 @@
 #include <nasral/gfx/manager.h>
 #include <nasral/run/manager.h>
 #include <nasral/scn/manager.h>
+#include <nasral/inp/manager.h>
 
 namespace nasral
 {
@@ -18,6 +19,7 @@ namespace nasral
         gfx::Config gfx = {};
         run::Config run = {};
         scn::Config scn = {};
+        inp::Config inp = {};
     };
 
     class Engine
@@ -41,6 +43,7 @@ namespace nasral
         [[nodiscard]] gfx::Manager* gfx() const noexcept;
         [[nodiscard]] run::Manager* run() const noexcept;
         [[nodiscard]] scn::Manager* scn() const noexcept;
+        [[nodiscard]] inp::Manager* inp() const noexcept;
 
     protected:
         /**
@@ -56,7 +59,8 @@ namespace nasral
             ecs::Manager::Ptr,
             gfx::Manager::Ptr,
             res::Manager::Ptr,
-            scn::Manager::Ptr>;
+            scn::Manager::Ptr,
+            inp::Manager::Ptr>;
 
         SubsystemTuple subsystems_;
     };

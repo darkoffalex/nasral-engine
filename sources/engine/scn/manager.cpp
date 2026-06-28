@@ -35,6 +35,7 @@ namespace nasral::scn
 
     void Manager::on_update(const float delta) const
     {
+        if (engine()->run()->state().has_no(run::StateFlags::eRunning)) return;
         ecs_system_->update(delta);
     }
 
@@ -131,7 +132,7 @@ namespace nasral::scn
         mesh_desc.unique_id = UniqueId::generate();
         mesh_desc.spatial.position = {0.0f, 0.0f, 0.0f};
         mesh_desc.spatial.scale = {1.0f, 1.0f, 1.0f};
-        mesh_desc.spatial.rotation = {45.0f, 45.0f, 0.0f};
+        mesh_desc.spatial.rotation = {0.0f, 0.0f, 0.0f};
         mesh_desc.mesh.mesh_path = res::kBuiltinMeshCube;
         mesh_desc.mesh.materials = {UniqueId{0,1}};
         spawn(mesh_desc);

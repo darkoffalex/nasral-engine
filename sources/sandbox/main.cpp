@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "utils/fps_counter.hpp"
 #include "utils/surface_provider.hpp"
-// #include "utils/input_provider.hpp"
+#include "utils/input_provider.hpp"
 
 #include <nasral/engine.h>
 
@@ -67,8 +67,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.gfx.swap_chain_images = 4;
 
             // Ввод
-            // config.inp.provider = std::make_shared<utils::GlfwInputProvider>(window);
-            // config.inp.default_sensitivity = 1.0f;
+            config.inp.provider = std::make_shared<utils::GlfwInputProvider>(window);
+            config.inp.default_sensitivity = 1.0f;
         }
 
         // Инициализировать движок

@@ -27,13 +27,18 @@ namespace nasral::run
             evt::Type::eResourceRegistryChanged,
             evt::bind(this, &Manager::on_res_registry_changed));
 
+        evl_bindings_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eInputSettingsChanged,
+            evt::bind(this, &Manager::on_key_bindings_changed));
+
         log_info("Manager initialized");
     }
 
     void Manager::on_update([[maybe_unused]] float delta)
     {
         // Если регистр ресурсов и материалов сформирован, и если сеанс еще не начат
-        if (state_.has(StateFlags::eResourcesReady, StateFlags::eMaterialsReady) &&
+        if (state_.has(StateFlags::eResourcesReady, StateFlags::eMaterialsReady, StateFlags::eKeuBindingsReady) &&
             state_.has_no(StateFlags::eRunning))
         {
             // Смена состояния (запущено)
@@ -47,6 +52,7 @@ namespace nasral::run
     void Manager::on_finalize(){
         evl_mat_reg_.reset();
         evl_res_reg_.reset();
+        evl_bindings_.reset();
         log_info("Manager finalized");
     }
 
@@ -70,6 +76,19 @@ namespace nasral::run
             {
                 state_.set(StateFlags::eMaterialsReady);
                 log_info("Material registry initialized");
+            }
+        default:{}
+        }
+    }
+
+    void Manager::on_key_bindings_changed(const evt::Arg& arg)
+    {
+        switch (evt::from_arg<evt::ChangeReason>(arg).value_or(evt::ChangeReason::eInitial))
+        {
+        case evt::ChangeReason::eInitial:
+            {
+                state_.set(StateFlags::eKeuBindingsReady);
+                log_info("Key bindings initialized");
             }
         default:{}
         }

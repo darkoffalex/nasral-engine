@@ -27,11 +27,13 @@ namespace nasral::run
     protected:
         void on_res_registry_changed(const evt::Arg& arg);
         void on_mat_registry_changed(const evt::Arg& arg);
+        void on_key_bindings_changed(const evt::Arg& arg);
 
     private:
         EnumMask<StateFlags> state_;
         evt::Listener::Ptr evl_res_reg_;
         evt::Listener::Ptr evl_mat_reg_;
+        evt::Listener::Ptr evl_bindings_;
     };
 }
 

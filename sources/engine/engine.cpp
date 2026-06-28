@@ -25,6 +25,8 @@ namespace nasral
                         s = std::make_unique<res::Manager>(this, config.res);
                     } else if constexpr (std::is_same_v<SubsystemPtr, scn::Manager::Ptr>) {
                         s = std::make_unique<scn::Manager>(this, config.scn);
+                    } else if constexpr (std::is_same_v<SubsystemPtr, inp::Manager::Ptr>) {
+                        s = std::make_unique<inp::Manager>(this, config.inp);
                     }
                     if (s) {
                         s->init();
@@ -127,5 +129,9 @@ namespace nasral
 
     scn::Manager* Engine::scn() const noexcept{
         return std::get<scn::Manager::Ptr>(subsystems_).get();
+    }
+
+    inp::Manager* Engine::inp() const noexcept{
+        return std::get<inp::Manager::Ptr>(subsystems_).get();
     }
 }

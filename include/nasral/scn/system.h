@@ -21,6 +21,7 @@ namespace nasral::scn
 
     protected:
         void update_resource_requests() const;
+        void update_cam_input(float delta) const;
     };
 }
 

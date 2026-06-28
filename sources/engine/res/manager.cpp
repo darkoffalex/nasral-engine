@@ -580,7 +580,7 @@ namespace nasral::res
         const auto* proj = dynamic_cast<ProjectFile*>(res);
 
         assert(res && "Wrong project file resource");
-        assert(res->status_ == Status::eLoaded && "Project file resource is not loaded");
+        assert(res->status() == Status::eLoaded && "Project file resource is not loaded");
         assert(proj && "Project file resource is not a project file");
 
         // Сформировать список ресурсов

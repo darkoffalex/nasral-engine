@@ -16,6 +16,8 @@ namespace nasral::res
             data.initial_scene = "";
             data.resources = {};
             data.materials = {};
+            data.action_bindings = {};
+            data.mouse_sensitivity = 0.0f;
 
             set_error(Error::eNone);
             return std::optional{std::move(data)};

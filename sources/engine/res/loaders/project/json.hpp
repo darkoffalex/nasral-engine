@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 #include <nasral/res/objects/project.h>
 #include <nasral/gfx/types.h>
+#include <nasral/inp/types.h>
 
 namespace nasral::res
 {
@@ -26,12 +27,31 @@ namespace nasral::res
                 nlohmann::json json;
                 file >> json;
 
+                // Регистр ресурсов
                 for (const auto& res_entry : json.at("resources")){
                     data.resources.push_back(parse_resource_entry(res_entry));
                 }
 
+                // Регистр материалов
                 for (const auto& mat_entry : json.at("materials")){
                     data.materials.push_back(parse_material_entry(mat_entry));
+                }
+
+                // Настройки ввода
+                if (json.contains("input"))
+                {
+                    const auto& input_node = json.at("input");
+
+                    // Чувствительность
+                    if (input_node.contains("mouse_sensitivity")){
+                        data.mouse_sensitivity = input_node.at("mouse_sensitivity").get<float>();
+                    }
+
+                    // Привязки клавиш (действия)
+                    for (const auto& binding_entry : input_node.at("key_bindings"))
+                    {
+                        data.action_bindings.push_back(parse_key_binding_entry(binding_entry));
+                    }
                 }
 
                 data.initial_scene = json.at("initial_scene").get<std::string>();
@@ -52,6 +72,32 @@ namespace nasral::res
         }
 
     private:
+        static inp::ActionDesc parse_key_binding_entry(const nlohmann::json& entry)
+        {
+            inp::ActionDesc binding = {};
+            binding.name = entry.at("action").get<std::string>();
+
+            for (const auto& key_entry : entry.at("keys").get<std::vector<std::string>>())
+            {
+                if (key_entry.find("key:") != std::string::npos)
+                {
+                    auto key_str = key_entry.substr(key_entry.find(":") + 1);
+                    if (auto key_e = magic_enum::enum_cast<inp::KeyCode>(key_str); key_e.has_value()){
+                        binding.bindings.emplace_back(key_e.value());
+                    }
+                }
+                else if (key_entry.find("mouse:") != std::string::npos)
+                {
+                    auto btn_str = key_entry.substr(key_entry.find(":") + 1);
+                    if (auto btn_e = magic_enum::enum_cast<inp::MouseButton>(btn_str); btn_e.has_value()){
+                        binding.bindings.emplace_back(btn_e.value());
+                    }
+                }
+            }
+
+            return binding;
+        }
+
         static ResourceDesc parse_resource_entry(const nlohmann::json& entry)
         {
             const auto type_str = entry.at("type").get<std::string>();

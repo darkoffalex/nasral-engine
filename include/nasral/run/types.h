@@ -13,6 +13,7 @@ namespace nasral::run
         ePaused,
         eResourcesReady,
         eMaterialsReady,
+        eKeuBindingsReady,
         TOTAL
     };
 

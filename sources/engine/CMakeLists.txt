@@ -11,9 +11,9 @@ add_library(Engine OBJECT
         evt/manager.cpp
         evt/objects/listener.cpp
 
-#        # Ввод
-#        inp/manager.cpp
-#        inp/provider.cpp
+        # Ввод
+        inp/manager.cpp
+        inp/provider.cpp
 
         # ECS
         ecs/archetype.cpp
@@ -51,11 +51,6 @@ add_library(Engine OBJECT
         scn/objects/camera.cpp
         scn/objects/mesh.cpp
         scn/system.cpp
-#        scn/io/base_node.cpp
-#        scn/io/spatial_node.cpp
-#        scn/io/camera_node.cpp
-#        scn/io/light_node.cpp
-#        scn/io/mesh_node.cpp
 )
 add_default_configurations(Engine demo_app)
 

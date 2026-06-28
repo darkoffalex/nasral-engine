@@ -19,6 +19,8 @@ namespace nasral::evt
         eResourceRegistryChanged,
         // Регистр материалов обновлен (в RAM)
         eMaterialRegistryChanged,
+        // Параметры ввода обновлены (в RAM)
+        eInputSettingsChanged,
         // Сеанс движка запущен
         eSessionStarted,
         // Основная сцена загружена
