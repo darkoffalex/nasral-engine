@@ -79,15 +79,17 @@ namespace nasral::scn
         using Spatial    = SpatialComponent;
         using Uniform    = gfx::UniformStateComponent;
 
-        // Пройти по всем камерам
-        for (auto [e, n, spatial, cam, uniform] : engine()->ecs()->view<
+        // Найти первую камеру
+        const auto first_cam = engine()->ecs()->view<
             Node,
             Spatial,
             Camera,
-            Uniform>())
-        {
-            if (uniform.is_dirty) continue;
+            Uniform>().begin();
 
+        // Внести изменения (если еще не внесены)
+        if (auto [e, n, spatial, cam, uniform] = *first_cam; !uniform.is_dirty)
+        {
+            // Вектор перемещения (управление с клавиатуры)
             auto movement = engine()->inp()->get_movement_vector(
                 inp::KeyCode::eA,
                 inp::KeyCode::eD,
@@ -96,6 +98,7 @@ namespace nasral::scn
                 inp::KeyCode::eSpace,
                 inp::KeyCode::eC);
 
+            // При зажатой ЛКМ обновлять поворот
             if (engine()->inp()->is_mouse_btn_pressed(inp::MouseButton::eLeft))
             {
                 constexpr float rot_speed = 0.1f;
@@ -104,6 +107,7 @@ namespace nasral::scn
                 uniform.is_dirty = true;
             }
 
+            // Если есть перемещения (при вводе с клавиатуры) - обновлять положение
             if (glm::length2(movement) > 0.0f)
             {
                 constexpr float move_speed = 2.5f;
