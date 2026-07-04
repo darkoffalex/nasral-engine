@@ -4,6 +4,7 @@
 #include <nasral/scn/objects/node.h>
 #include <nasral/scn/objects/mesh.h>
 #include <nasral/scn/objects/camera.h>
+#include <nasral/scn/objects/light.h>
 #include <nasral/evt/utils.h>
 #include <nasral/engine.h>
 
@@ -40,8 +41,9 @@ namespace nasral::scn
     }
 
     void Manager::on_finalize(){
-        ecs_system_->finalize();
         evl_session_start_.reset();
+        nodes_.clear();
+        ecs_system_->finalize();
         log_info("Manager finalized");
     }
 
@@ -61,8 +63,8 @@ namespace nasral::scn
         case NodeType::eMesh:
             nodes_.emplace_back(Node::Ptr(new Mesh(this, desc)));
             break;
-        case NodeType::eSprite:
         case NodeType::eLight:
+            nodes_.emplace_back(Node::Ptr(new Light(this, desc)));
         default:
             break;
         }
@@ -126,15 +128,55 @@ namespace nasral::scn
         spawn(camera_desc);
 
         // Описание меша
-        NodeDesc mesh_desc = {};
-        mesh_desc.type = NodeType::eMesh;
-        mesh_desc.name = "Cube";
-        mesh_desc.unique_id = UniqueId::generate();
-        mesh_desc.spatial.position = {0.0f, 0.0f, 0.0f};
-        mesh_desc.spatial.scale = {1.0f, 1.0f, 1.0f};
-        mesh_desc.spatial.rotation = {0.0f, 0.0f, 0.0f};
-        mesh_desc.mesh.mesh_path = res::kBuiltinMeshCube;
-        mesh_desc.mesh.materials = {UniqueId{0,2}};
-        spawn(mesh_desc);
+        NodeDesc m1, m2 = {};
+        m1.type = NodeType::eMesh;
+        m1.name = "Quad1";
+        m1.unique_id = UniqueId::generate();
+        m1.spatial.position = {-1.0f, 0.0f, 0.0f};
+        m1.spatial.scale = {1.0f, 1.0f, 1.0f};
+        m1.spatial.rotation = {0.0f, 0.0f, 0.0f};
+        m1.mesh.mesh_path = res::kBuiltinMeshQuad;
+        m1.mesh.materials = {UniqueId{0,3}};
+        m2.type = NodeType::eMesh;
+        m2.name = "Quad2";
+        m2.unique_id = UniqueId::generate();
+        m2.spatial.position = {1.0f, 0.0f, 0.0f};
+        m2.spatial.scale = {1.0f, 1.0f, 1.0f};
+        m2.spatial.rotation = {0.0f, 0.0f, 0.0f};
+        m2.mesh.mesh_path = res::kBuiltinMeshQuad;
+        m2.mesh.materials = {UniqueId{0,4}};
+        spawn(m1);
+        spawn(m2);
+
+        // Описание источников света
+        NodeDesc l1, l2 = {};
+        l1.type = NodeType::eLight;
+        l1.name = "Light1";
+        l1.unique_id = UniqueId::generate();
+        l1.spatial.position = {-1.0f, 0.0f, 2.0f};
+        l1.spatial.scale = {1.0f, 1.0f, 1.0f};
+        l1.spatial.rotation = {0.0f, 0.0f, 0.0f};
+        l1.light.dynamic = false;
+        l1.light.is_active = true;
+        l1.light.radius = 1.0f;
+        l1.light.type = gfx::LightType::ePointLight;
+        l1.light.color = glm::vec4(1.0f);
+        l1.light.intensity = 0.5f;
+        l1.light.quadratic = 0.1f;
+        l2.type = NodeType::eLight;
+        l2.name = "Light2";
+        l2.unique_id = UniqueId::generate();
+        l2.spatial.position = {1.0f, 0.0f, 2.0f};
+        l2.spatial.scale = {1.0f, 1.0f, 1.0f};
+        l2.spatial.rotation = {0.0f, 0.0f, 0.0f};
+        l2.light.dynamic = false;
+        l2.light.is_active = true;
+        l2.light.radius = 1.0f;
+        l2.light.type = gfx::LightType::ePointLight;
+        l2.light.color = glm::vec4(1.0f);
+        l2.light.intensity = 0.5f;
+        l2.light.quadratic = 0.1f;
+        spawn(l1);
+        spawn(l2);
     }
 }

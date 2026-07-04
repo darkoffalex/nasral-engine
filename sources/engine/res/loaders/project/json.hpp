@@ -168,6 +168,48 @@ namespace nasral::res
                     .value_or(gfx::MaterialBaseType::eDummy);
             }
 
+            // Обработка настроек
+            if (entry.contains("settings"))
+            {
+                const auto& settings = entry.at("settings");
+                if (desc.base_material_type == gfx::MaterialBaseType::ePhong)
+                {
+                    if (settings.contains("color")) {
+                        const auto& c = settings.at("color").get<std::vector<float>>();
+                        if (c.size() >= 4) desc.phong_settings.color = glm::vec4(c[0], c[1], c[2], c[3]);
+                    }
+                    if (settings.contains("ambient")) {
+                        const auto& a = settings.at("ambient").get<std::vector<float>>();
+                        if (a.size() >= 4) desc.phong_settings.ambient = glm::vec4(a[0], a[1], a[2], a[3]);
+                    }
+                    if (settings.contains("shininess")) {
+                        desc.phong_settings.shininess = settings.at("shininess").get<float>();
+                    }
+                    if (settings.contains("specular")) {
+                        desc.phong_settings.specular = settings.at("specular").get<float>();
+                    }
+                }
+                else if (desc.base_material_type == gfx::MaterialBaseType::ePBR)
+                {
+                    if (settings.contains("color")) {
+                        const auto& c = settings.at("color").get<std::vector<float>>();
+                        if (c.size() >= 4) desc.pbr_settings.color = glm::vec4(c[0], c[1], c[2], c[3]);
+                    }
+                    if (settings.contains("roughness")) {
+                        desc.pbr_settings.roughness = settings.at("roughness").get<float>();
+                    }
+                    if (settings.contains("metallic")) {
+                        desc.pbr_settings.metallic = settings.at("metallic").get<float>();
+                    }
+                    if (settings.contains("ao")) {
+                        desc.pbr_settings.ao = settings.at("ao").get<float>();
+                    }
+                    if (settings.contains("emission")) {
+                        desc.pbr_settings.emission = settings.at("emission").get<float>();
+                    }
+                }
+            }
+
             // Обработка текстур (заполнение EnumArray)
             if (entry.contains("textures") && entry.at("textures").is_array())
             {

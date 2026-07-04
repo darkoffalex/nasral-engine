@@ -61,7 +61,8 @@ namespace nasral::scn
             DummyNodeView,
             SpatialNodeView,
             CameraNodeView,
-            MeshNodeView
+            MeshNodeView,
+            LightNodeView
         >;
     }
 
@@ -90,6 +91,7 @@ namespace nasral::scn
         struct
         {
             bool dynamic = false;
+            bool is_active = true;
             gfx::LightType type = gfx::LightType::ePointLight;
             glm::float32_t intensity = 1.0f;
             glm::float32_t radius = 1.0f;

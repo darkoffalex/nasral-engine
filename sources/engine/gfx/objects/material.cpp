@@ -10,17 +10,12 @@ namespace nasral::gfx
         : SubsystemObject(manager)
         , entity_(ecs::EntityId::invalid())
     {
-        // Получить указатели на все подсистемы
-        auto* gfx = subsystem();
-        auto* ecs = engine()->ecs();
-        const auto* res = engine()->res();
-
         // Активные ресурсы
         Components::Resources::IdsList resources_ids{};
         Components::Resources::ActiveList resources_active{};
 
         // Ресурс материала
-        if (const auto mat_res_id = res->find(description.base_material_path); mat_res_id.has_value()){
+        if (const auto mat_res_id = engine()->res()->find(description.base_material_path); mat_res_id.has_value()){
             resources_ids[eBaseMaterial] = mat_res_id.value();
             resources_active[eBaseMaterial] = true;
         }else{
@@ -30,18 +25,45 @@ namespace nasral::gfx
         // Ресурсы текстур
         for (const auto type : magic_enum::enum_values<TextureType>()){
             if (type == TextureType::TOTAL) continue;
-            if (description.texture_paths[type].empty()) continue;
-            const auto tex_res_id = res->find(description.texture_paths[type]);
-            resources_ids[kTexResMap[type]] = tex_res_id.value_or(res->find_texture_fallback(type).value());
-            resources_active[kTexResMap[type]] = true;
+
+            if (description.texture_paths[type].empty())
+            {
+                resources_ids[kTexResMap[type]] = engine()->res()->find_texture_fallback(type).value_or(res::kInvalidResourceId);
+                resources_active[kTexResMap[type]] = true;
+            }
+            else
+            {
+                const auto tex_res_id = engine()->res()->find(description.texture_paths[type]);
+                resources_ids[kTexResMap[type]] = tex_res_id.value_or(engine()->res()->find_texture_fallback(type).value_or(res::kInvalidResourceId));
+                resources_active[kTexResMap[type]] = true;
+            }
         }
 
 
         // Создать Entity
-        entity_ = ecs->spawn();
+        entity_ = engine()->ecs()->spawn();
+
+        // Настройки материала
+        uniforms::Material settings = {};
+        if (description.base_material_type == MaterialBaseType::ePhong){
+            settings = uniforms::MaterialPhong{
+                description.phong_settings.color,
+                description.phong_settings.ambient,
+                description.phong_settings.shininess,
+                description.phong_settings.specular
+            };
+        }else if (description.base_material_type == MaterialBaseType::ePBR){
+            settings = uniforms::MaterialPbr{
+                description.pbr_settings.color,
+                description.pbr_settings.roughness,
+                description.pbr_settings.metallic,
+                description.pbr_settings.ao,
+                description.pbr_settings.emission
+            };
+        }
 
         // Добавить компоненты
-        ecs->add_components_immediate<
+        engine()->ecs()->add_components_immediate<
             Components::Uid,
             Components::Name,
             Components::Settings,
@@ -54,9 +76,9 @@ namespace nasral::gfx
             Components::RefsCount>(entity_,
                 {description.unique_id},
                 {description.name},
-                {description.base_material_type, {}, description.texture_samplers},
+                {description.base_material_type, settings, description.texture_samplers},
                 {},
-                {gfx->material_ubo_ids().acquire()},
+                {engine()->gfx()->material_ubo_ids().acquire()},
                 {},
                 {},
                 {},
@@ -69,26 +91,18 @@ namespace nasral::gfx
 
     MaterialInstance::~MaterialInstance()
     {
-        // Подсистемы
-        auto* ecs = subsystem()->engine()->ecs();
-        auto* gfx = subsystem();
-
-        // Освободить uniform ID
-        const auto& [ubo_id] = ecs->get_component<Components::UniformIndex>(entity_);
-        gfx->material_ubo_ids().release(ubo_id);
-
         // Если есть загруженные ресурсы на момент уничтожения объекта:
         // - Добавить в список освобождаемых
         // - Добавить в список уничтожаемых
-        if (ecs->has_any<res::LoadedComponent, res::LoadingComponent>(entity_))
+        if (engine()->ecs()->has_any<res::LoadedComponent, res::LoadingComponent>(entity_))
         {
-            ecs->add_components<res::ReleaseComponent, ecs::DestroyComponent>(entity_, {}, {});
+            engine()->ecs()->add_components_immediate<res::ReleaseComponent, ecs::DestroyComponent>(entity_, {}, {});
         }
         // Если нет загруженных ресурсов на момент уничтожения:
         // - Добавить в список уничтожаемых
         else
         {
-            ecs->add_components<ecs::DestroyComponent>(entity_, {});
+            engine()->ecs()->add_components_immediate<ecs::DestroyComponent>(entity_, {});
         }
 
         log_info("Material instance unregistered (" + info(false) + ")");

@@ -22,14 +22,25 @@ namespace nasral::gfx
         void on_render() const;
 
     protected:
+        // Материалы
         void update_mtl_ubo() const;
         void update_mtl_handles() const;
         void update_mtl_textures() const;
+        void update_mtl_destroy() const;
+
+        // Объекты (UBO)
         void update_obj_static_ubo() const;
         void update_obj_dynamic_ubo() const;
         void update_obj_mesh_handles() const;
+
+        // Источники света (UBO)
+        void update_light_static_ubo() const;
+        void update_light_dynamic_ubo() const;
+
+        // Камеры (UBO)
         void update_cam_ubo() const;
 
+        // Рендеринг
         void render_meshes() const;
     };
 }

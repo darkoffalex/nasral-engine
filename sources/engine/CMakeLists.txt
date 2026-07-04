@@ -50,6 +50,7 @@ add_library(Engine OBJECT
         scn/objects/spatial.cpp
         scn/objects/camera.cpp
         scn/objects/mesh.cpp
+        scn/objects/light.cpp
         scn/system.cpp
 )
 add_default_configurations(Engine demo_app)

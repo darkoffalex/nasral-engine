@@ -22,7 +22,7 @@ namespace nasral::scn
         resources_c.active[0] = true;
         resources_c.statuses[0] = res::Status::eUnloaded;
 
-        // Материалы (найти entities)
+        // Материалы (получить ECS-entities материалов)
         Components::Mesh mesh_c = {};
         for (auto& m_uid : description.mesh.materials){
             const auto* mat = engine()->gfx()->find_material(m_uid);
@@ -50,9 +50,9 @@ namespace nasral::scn
         // По динамическим объектам итерируемся всегда и проверяем не нужно ли пересчитать матрицы (dirty == true)
         // По статическим итерируемся лишь в том случае, если есть компонент DirtyUniform (редкие изменения)
         if (description.mesh.dynamic){
-            engine()->ecs()->add_components<Components::UniformState>(entity(), {true});
+            engine()->ecs()->add_components_immediate<Components::UniformState>(entity(), {true});
         }else{
-            engine()->ecs()->add_components<Components::DirtyUniform>(entity(), {});
+            engine()->ecs()->add_components_immediate<Components::DirtyUniform>(entity(), {});
         }
     }
 
@@ -67,7 +67,7 @@ namespace nasral::scn
         }
 
         // Освобождение ресурсов
-        engine()->ecs()->add_components<res::ReleaseComponent>(entity(), {});
+        engine()->ecs()->add_components_immediate<res::ReleaseComponent>(entity(), {});
     }
 
     data::NodeView Mesh::data_view() const
@@ -93,7 +93,7 @@ namespace nasral::scn
 
     Node::Ptr Mesh::clone() const
     {
-        const auto data = std::get<data::MeshNodeView>(Spatial::data_view());
+        const auto data = std::get<data::MeshNodeView>(Mesh::data_view());
         return Node::Ptr{new Mesh(subsystem(), {
             UniqueId::generate(),
             data.type,

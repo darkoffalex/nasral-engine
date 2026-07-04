@@ -28,17 +28,23 @@ namespace nasral::gfx
         update_mtl_ubo();
         update_mtl_handles();
         update_mtl_textures();
+        update_mtl_destroy();
 
         // Объекты
         update_obj_static_ubo();
         update_obj_dynamic_ubo();
         update_obj_mesh_handles();
 
+        // Источники света
+        update_light_static_ubo();
+        update_light_dynamic_ubo();
+
         // Камеры
         update_cam_ubo();
     }
 
     void System::on_finalize() const{
+        update_mtl_destroy();
         log_info("ECS-system finalized");
     }
 
@@ -169,6 +175,24 @@ namespace nasral::gfx
         }
     }
 
+    void System::update_mtl_destroy() const
+    {
+        // Алиасы компонентов
+        using Material  = MaterialSettingsComponent;
+        using UniformId = UniformIndexComponent;
+        using Destroy   = ecs::DestroyComponent;
+
+        // Пройти по всем сущностям с компонентами
+        // - Параметры материала
+        // - Uniform index
+        // - Уничтожение
+        // Внимание: ожидается, что в конце полной итерации update сущность удаляется (что предотвратит повторную обработку)
+        for (auto [e, ms, ui, d_tag] : engine()->ecs()->view<Material, UniformId, Destroy>())
+        {
+            engine()->gfx()->material_ubo_ids().release(ui.index);
+        }
+    }
+
     void System::update_obj_static_ubo() const
     {
         // Алиасы компонентов
@@ -274,6 +298,74 @@ namespace nasral::gfx
 
             // Обновлено
             engine()->ecs()->remove_components<Dirty>(e);
+        }
+    }
+
+    void System::update_light_static_ubo() const
+    {
+        // Алиасы компонентов
+        using Spatial   = scn::SpatialComponent;
+        using Light     = scn::LightComponent;
+        using UniformId = UniformIndexComponent;
+        using Dirty     = DirtyUnformComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        for (auto [e, sp, l, ui, d_tag] : engine()->ecs()->view<Spatial, Light, UniformId, Dirty>())
+        {
+            // Параметры источника
+            uniforms::LightSettings uniforms = {};
+            uniforms.position = {sp.position.x, sp.position.y, sp.position.z, 1.0f};
+            uniforms.direction = {sp.rotation.x, sp.rotation.y, sp.rotation.z, 0.0f};
+            uniforms.color = l.color;
+            uniforms.type = static_cast<uint32_t>(l.type);
+            uniforms.intensity = l.intensity;
+            uniforms.quadratic = l.quadratic;
+            uniforms.radius = l.radius;
+
+            // TODO: Вычислить матрицу пространства источника (для потенциальной реализации теней)
+
+            // Обновить параметры источника
+            engine()->gfx()->update_light_uniforms(uniforms, ui.index);
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
+        }
+    }
+
+    void System::update_light_dynamic_ubo() const
+    {
+        // Алиасы компонентов
+        using Spatial   = scn::SpatialComponent;
+        using Light     = scn::LightComponent;
+        using UniformId = UniformIndexComponent;
+        using State     = UniformStateComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Пространственные параметры
+        // - Источник света
+        // - Uniform index
+        // - Состояние UBO
+        for (auto [e, sp, l, ui, state] : engine()->ecs()->view<Spatial, Light, UniformId, State>())
+        {
+            if (!state.is_dirty) continue;
+
+            // Параметры источника
+            uniforms::LightSettings uniforms = {};
+            uniforms.position  = {sp.position.x, sp.position.y, sp.position.z, 1.0f};
+            uniforms.direction = {sp.rotation.x, sp.rotation.y, sp.rotation.z, 0.0f};
+            uniforms.color     = l.color;
+            uniforms.type      = static_cast<uint32_t>(l.type);
+            uniforms.intensity = l.intensity;
+            uniforms.quadratic = l.quadratic;
+            uniforms.radius    = l.radius;
+
+            // TODO: Вычислить матрицу пространства источника (для потенциальной реализации теней)
+
+            // Обновить параметры источника
+            engine()->gfx()->update_light_uniforms(uniforms, ui.index);
+
+            // Обновлено
+            state.is_dirty = false;
         }
     }
 

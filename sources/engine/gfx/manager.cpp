@@ -229,18 +229,18 @@ namespace nasral::gfx
 
     void Manager::on_finalize()
     {
-        // Уничтожение рендерера
-        renderer_->cmd_wait_for_all();
-        renderer_.reset();
-
-        // Финализация ECS системы
-        ecs_system_->finalize();
-
         // Отписаться от события формирования списка ресурсов (дизлайк, отписка!)
         evl_res_reg_.reset();
 
         // Уничтожение регистра материалов
         materials_.clear();
+
+        // Финализация ECS системы
+        ecs_system_->finalize();
+
+        // Уничтожение рендерера
+        renderer_->cmd_wait_for_all();
+        renderer_.reset();
 
         log_info("Manager finalized");
     }

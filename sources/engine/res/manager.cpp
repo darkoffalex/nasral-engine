@@ -226,9 +226,11 @@ namespace nasral::res
         case gfx::TextureType::eNormal:
             return find(kBuiltinTexNormPixel.data());
         case gfx::TextureType::eMetalOrReflect:
+        case gfx::TextureType::eEmission:
             return find(kBuiltinTexBlackPixel.data());
         case gfx::TextureType::eHeight:
         case gfx::TextureType::eRoughOrSpec:
+        case gfx::TextureType::eAO:
             return find(kBuiltinTexWhitePixel.data());
         default:
             return std::nullopt;

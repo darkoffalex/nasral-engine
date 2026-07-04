@@ -234,6 +234,23 @@ namespace nasral::gfx
         std::string base_material_path = {};
         EnumArray<TextureType, std::string> texture_paths;
         EnumArray<TextureType, TextureSamplerType> texture_samplers;
+
+        struct
+        {
+            glm::vec4 color = glm::vec4(1.0f);
+            glm::vec4 ambient = glm::vec4(0.05f);
+            glm::float32 shininess = 32.0f;
+            glm::float32 specular = 1.0f;
+        } phong_settings = {};
+
+        struct
+        {
+            glm::vec4 color = glm::vec4(1.0f);
+            glm::float32 roughness = 1.0f;
+            glm::float32 metallic = 0.0f;
+            glm::float32 ao = 1.0f;
+            glm::float32 emission = 0.0f;
+        } pbr_settings = {};
     };
 
     struct Config

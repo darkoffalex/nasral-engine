@@ -9,7 +9,11 @@
 
 namespace nasral::scn
 {
-    System::System(Manager* m) : ecs::System<System, Manager>(m){}
+    System::System(Manager* m) : ecs::System<System, Manager>(m)
+    {
+        activate_lights_.reserve(gfx::kMaxLights);
+        deactivate_lights_.reserve(gfx::kMaxLights);
+    }
 
     System::~System() = default;
 
@@ -17,12 +21,25 @@ namespace nasral::scn
         log_info("ECS-system initialized");
     }
 
-    void System::on_update(const float delta) const{
+    void System::on_update(const float delta)
+    {
+        // Запросы ресурсов у узлов
         update_resource_requests();
+
+        // Обработка ввода
         update_cam_input(delta);
+
+        // Состояние источников света (активация/деактивация)
+        update_light_states();
+
+        // Уничтожение узлов
+        update_mesh_destroy();
+        update_light_destroy();
     }
 
     void System::on_finalize() const{
+        update_mesh_destroy();
+        update_light_destroy();
         log_info("ECS-system finalized");
     }
 
@@ -63,7 +80,11 @@ namespace nasral::scn
         using Uniform    = gfx::UniformStateComponent;
 
         // Пройти по всем камерам
-        for (auto [e, n, spatial, cam, uniform] : engine()->ecs()->view<Node, Spatial, Camera, Uniform>())
+        for (auto [e, n, spatial, cam, uniform] : engine()->ecs()->view<
+            Node,
+            Spatial,
+            Camera,
+            Uniform>())
         {
             if (uniform.is_dirty) continue;
 
@@ -97,6 +118,90 @@ namespace nasral::scn
 
                 uniform.is_dirty = true;
             }
+        }
+    }
+
+    void System::update_mesh_destroy() const
+    {
+        // Алиасы компонентов
+        using Node      = NodeComponent;
+        using Mesh      = MeshComponent;
+        using UniformId = gfx::UniformIndexComponent;
+        using Destroy   = ecs::DestroyComponent;
+
+        // Пройти по всем mesh-ам, помеченным к удалению.
+        // Предполагается, что в конце update-итерации сущность будет удалена (повторной обработки не случится)
+        for (auto [e, n, m, ui, d_tag] : engine()->ecs()->view<
+            Node,
+            Mesh,
+            UniformId,
+            Destroy>())
+        {
+            engine()->gfx()->object_ubo_ids().release(ui.index);
+        }
+    }
+
+    void System::update_light_destroy() const
+    {
+        // Алиасы компонентов
+        using Node      = NodeComponent;
+        using Light     = LightComponent;
+        using UniformId = gfx::UniformIndexComponent;
+        using Destroy   = ecs::DestroyComponent;
+
+        // Пройти по всем источникам света, помеченным к удалению.
+        // Предполагается, что в конце update-итерации сущность будет удалена (повторной обработки не случится)
+        for (auto [e, n, l, ui, d_tag] : engine()->ecs()->view<
+            Node,
+            Light,
+            UniformId,
+            Destroy>())
+        {
+            engine()->gfx()->light_ubo_ids().release(ui.index);
+        }
+    }
+
+    void System::update_light_states()
+    {
+        // Алиасы компонентов
+        using Node       = NodeComponent;
+        using Light      = LightComponent;
+        using UniformId  = gfx::UniformIndexComponent;
+        using Activate   = ecs::ActivateComponent;
+        using Deactivate = ecs::DeactivateComponent;
+
+        // Пройти по источникам, которые необходимо активировать, и сформировать список
+        activate_lights_.clear();
+        for (auto [e, n, l, ui, a_tag] : engine()->ecs()->view<
+            Node,
+            Light,
+            UniformId,
+            Activate>())
+        {
+            activate_lights_.push_back(ui.index);
+            engine()->ecs()->remove_components<Activate>(e);
+        }
+
+        // Активировать источники (если они есть)
+        if (!activate_lights_.empty()){
+            engine()->gfx()->update_light_states_unsafe(activate_lights_, true);
+        }
+
+        // Пройтись по источникам, которые необходимо деактивировать, и сформировать список
+        deactivate_lights_.clear();
+        for (auto [e, n, l, ui, d_tag] : engine()->ecs()->view<
+            Node,
+            Light,
+            UniformId,
+            Deactivate>())
+        {
+            deactivate_lights_.push_back(ui.index);
+            engine()->ecs()->remove_components<Deactivate>(e);
+        }
+
+        // Деактивировать источники (если они есть)
+        if (!deactivate_lights_.empty()){
+            engine()->gfx()->update_light_states_unsafe(deactivate_lights_, false);
         }
     }
 }

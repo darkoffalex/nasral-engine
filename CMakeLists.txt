@@ -46,6 +46,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
 # Статическое связывание с runtime библиотекой
 option(STATIC_RUNTIME "Use static runtime linking" OFF)
 
+# Для MSVC статическая линковка включается глобально (дя
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    if(STATIC_RUNTIME)
+        set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    else()
+        set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:DebugDLL>")
+    endif()
+endif()
+
 # Определить архитектуру/разрядность
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(ARCH_NAME "x64")
@@ -67,11 +76,6 @@ function(add_default_configurations TARGET_NAME TARGET_BIN_NAME)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         target_compile_definitions(${TARGET_NAME} PRIVATE "-DNOMINMAX")
         target_compile_options(${TARGET_NAME} PRIVATE /W3 /permissive- /fp:fast)
-        if(STATIC_RUNTIME)
-            set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-        else()
-            set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:DebugDLL>")
-        endif()
 
     # Для GNU/MinGW/Clang
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
