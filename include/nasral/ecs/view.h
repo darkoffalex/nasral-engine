@@ -31,10 +31,7 @@ namespace nasral::ecs
             }
 
             value_type operator*() const noexcept{
-                auto* arc = view_->manager_->archetypes_[archetype_idx_].get();
-                const auto& entity_id = arc->entities()[entity_idx_];
-                auto components = arc->components<CTs...>(entity_idx_);
-                return std::tuple<EntityId, CTs&...>{entity_id, std::get<CTs&>(components)...};
+                return dereference_impl(std::index_sequence_for<CTs...>{});
             }
 
             Iterator& operator++(){
@@ -70,6 +67,7 @@ namespace nasral::ecs
                     const auto& archetype = view_->manager_->archetypes_[archetype_idx_];
                     if ((archetype->mask() & filter) == filter && (archetype->mask() & view_->exclusion_) == 0){
                         if (entity_idx_ < archetype->entities().size()){
+                            current_pools_ = std::make_tuple(&archetype->template component_pool<CTs>()...);
                             return;
                         }
                     }
@@ -80,10 +78,21 @@ namespace nasral::ecs
                 *this = Iterator{};
             }
 
+            template<std::size_t... Is>
+            value_type dereference_impl(std::index_sequence<Is...>) const noexcept {
+                auto* arc = view_->manager_->archetypes_[archetype_idx_].get();
+                const auto& entity_id = arc->entities()[entity_idx_];
+                return std::tuple<EntityId, CTs&...>{
+                    entity_id,
+                    (*std::get<Is>(current_pools_))[entity_idx_]...
+                };
+            }
+
         protected:
             const View* view_ = nullptr;
             size_t archetype_idx_ = 0;
             size_t entity_idx_ = 0;
+            std::tuple<std::vector<CTs>*...> current_pools_;
         };
 
         explicit View(Manager* manager, const ComponentMask& exclusion = {}): manager_(manager), exclusion_(exclusion){}

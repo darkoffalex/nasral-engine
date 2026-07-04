@@ -56,6 +56,12 @@ namespace nasral::ecs
             return std::tie(component<CTs>(index)...);
         }
 
+        template<typename ComponentType>
+        [[nodiscard]] std::vector<ComponentType>& component_pool(){
+            const auto cmp_idx = kComponentId<ComponentType>;
+            return std::get<std::vector<ComponentType>>(pools_[cmp_idx]);
+        }
+
     private:
         [[nodiscard]] std::optional<size_t> entity_index(const EntityId& entity) const noexcept;
 
