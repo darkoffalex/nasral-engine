@@ -126,6 +126,9 @@ namespace nasral::res
 
             staging_image->unmap();
 
+            // Генерируем ли mip-уровни (если mip уровни генерируются, изображение не нужно подготавливать к показу не надо)
+            const bool generate_mips = image_->mip_levels() > 1 && (lp ? lp->generate_mipmaps : false);
+
             // Копировать данные из временного изображения в целевое
             staging_image->copy_to(*image_
                 , cmd_group
@@ -134,10 +137,10 @@ namespace nasral::res
                 , vk::ImageAspectFlagBits::eColor
                 , 1
                 , 1
-                , true);
+                , !generate_mips);
 
             // Генерация мип-уровней
-            if (image_->mip_levels() > 1 && (lp ? lp->generate_mipmaps : false)){
+            if (generate_mips){
                 image_->generate_mipmaps(cmd_group
                     , vk::Extent3D{data->width, data->height, 1}
                     , vk::ImageAspectFlagBits::eColor

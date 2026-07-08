@@ -404,7 +404,7 @@ namespace vk::utils
                 // Применить барьеры для обоих изображений
                 const std::array<vk::ImageMemoryBarrier, 2> barriers = {src_barrier, dst_barrier};
                 cmd_buffer->pipelineBarrier(
-                    vk::PipelineStageFlagBits::eAllCommands,
+                    vk::PipelineStageFlagBits::eHost,
                     vk::PipelineStageFlagBits::eTransfer,
                     {}, 0, nullptr, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data());
 
@@ -528,7 +528,7 @@ namespace vk::utils
                             .setLayerCount(layer_count));
 
                 // Перевести базовый мип-уровень в eTransferSrcOptimal (если не сделано ранее)
-                barrier.setOldLayout(vk::ImageLayout::eUndefined)
+                barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
                     .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
                     .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
                     .setDstAccessMask(vk::AccessFlagBits::eTransferRead);
