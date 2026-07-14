@@ -130,30 +130,30 @@ namespace nasral::scn
         // Описание меша
         NodeDesc m1, m2 = {};
         m1.type = NodeType::eMesh;
-        m1.name = "Quad1";
+        m1.name = "Chair1";
         m1.unique_id = UniqueId::generate();
-        m1.spatial.position = {-1.0f, 0.0f, 0.0f};
-        m1.spatial.scale = {1.0f, 1.0f, 1.0f};
+        m1.spatial.position = {-0.6f, 0.0f, 0.0f};
+        m1.spatial.scale = {1.5f, 1.5f, 1.5f};
         m1.spatial.rotation = {0.0f, 0.0f, 0.0f};
-        m1.mesh.mesh_path = res::kBuiltinMeshQuad;
-        m1.mesh.materials = {UniqueId{0,3}};
+        m1.mesh.mesh_path = "meshes/chair/chair.obj";
+        m1.mesh.materials = {UniqueId{0,6}};
         m2.type = NodeType::eMesh;
-        m2.name = "Quad2";
+        m2.name = "Chair2";
         m2.unique_id = UniqueId::generate();
-        m2.spatial.position = {1.0f, 0.0f, 0.0f};
-        m2.spatial.scale = {1.0f, 1.0f, 1.0f};
+        m2.spatial.position = {0.6f, 0.0f, 0.0f};
+        m2.spatial.scale = {1.5f, 1.5f, 1.5f};
         m2.spatial.rotation = {0.0f, 0.0f, 0.0f};
-        m2.mesh.mesh_path = res::kBuiltinMeshQuad;
-        m2.mesh.materials = {UniqueId{0,4}};
+        m2.mesh.mesh_path = "meshes/chair/chair.obj";
+        m2.mesh.materials = {UniqueId{0,7}};
         spawn(m1);
         spawn(m2);
 
         // Описание источников света
-        NodeDesc l1, l2 = {};
+        NodeDesc l1, l2, l3 = {};
         l1.type = NodeType::eLight;
         l1.name = "Light1";
         l1.unique_id = UniqueId::generate();
-        l1.spatial.position = {-1.0f, 0.0f, 2.0f};
+        l1.spatial.position = {-1.0f, 0.3f, 2.0f};
         l1.spatial.scale = {1.0f, 1.0f, 1.0f};
         l1.spatial.rotation = {0.0f, 0.0f, 0.0f};
         l1.light.dynamic = false;
@@ -161,12 +161,13 @@ namespace nasral::scn
         l1.light.radius = 1.0f;
         l1.light.type = gfx::LightType::ePointLight;
         l1.light.color = glm::vec4(1.0f);
-        l1.light.intensity = 0.5f;
+        l1.light.intensity = 1.0f;
         l1.light.quadratic = 0.1f;
+
         l2.type = NodeType::eLight;
         l2.name = "Light2";
         l2.unique_id = UniqueId::generate();
-        l2.spatial.position = {1.0f, 0.0f, 2.0f};
+        l2.spatial.position = {1.0f, 0.3f, 2.0f};
         l2.spatial.scale = {1.0f, 1.0f, 1.0f};
         l2.spatial.rotation = {0.0f, 0.0f, 0.0f};
         l2.light.dynamic = false;
@@ -174,9 +175,25 @@ namespace nasral::scn
         l2.light.radius = 1.0f;
         l2.light.type = gfx::LightType::ePointLight;
         l2.light.color = glm::vec4(1.0f);
-        l2.light.intensity = 0.5f;
+        l2.light.intensity = 1.0f;
         l2.light.quadratic = 0.1f;
+
+        l3.type = NodeType::eLight;
+        l3.name = "Light3";
+        l3.unique_id = UniqueId::generate();
+        l3.spatial.position = {0.0f, -0.3f, 2.0f};
+        l3.spatial.scale = {1.0f, 1.0f, 1.0f};
+        l3.spatial.rotation = {0.0f, 0.0f, 0.0f};
+        l3.light.dynamic = false;
+        l3.light.is_active = true;
+        l3.light.radius = 1.0f;
+        l3.light.type = gfx::LightType::ePointLight;
+        l3.light.color = glm::vec4(1.0f);
+        l3.light.intensity = 1.0f;
+        l3.light.quadratic = 0.1f;
+
         spawn(l1);
         spawn(l2);
+        spawn(l3);
     }
 }

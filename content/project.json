@@ -90,7 +90,7 @@
       "base_material_type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
-        "roughness": 0.25,
+        "roughness": 0.35,
         "metallic": 0.0,
         "ao": 1.0,
         "emission": 0.0
@@ -127,7 +127,7 @@
       "base_material_type" : "ePhong",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
-        "ambient": [0.2, 0.2, 0.2, 1.0],
+        "ambient": [0.0, 0.0, 0.0, 1.0],
         "shininess": 32.0,
         "specular": 1.0
       },
