@@ -329,6 +329,23 @@ namespace vk::utils
                 });
         }
 
+        /**
+         * @brief Ограничить разрешение возможностями поверхности
+         * @param extent Требуемое разрешение
+         * @param surface Поверхность
+         * @return Ограниченные значения
+         */
+        [[nodiscard]] Extent2D clamp_swapchain_extent(const Extent2D& extent, const SurfaceKHR& surface) const
+        {
+            assert(physical_device_);
+            const auto caps = physical_device_.getSurfaceCapabilitiesKHR(surface);
+            auto result = extent;
+
+            result.width = std::clamp(result.width,caps.minImageExtent.width,caps.maxImageExtent.width);
+            result.height = std::clamp(result.height,caps.minImageExtent.height,caps.maxImageExtent.height);
+            return result;
+        }
+
     private:
         /**
          * @brief Выбирает подходящее физическое устройство

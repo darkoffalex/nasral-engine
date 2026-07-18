@@ -31,6 +31,7 @@ namespace nasral::scn
 
     protected:
         void on_session_start(const evt::Arg& arg);
+        void on_display_surface_changed(const evt::Arg& arg) const;
         void load_initial_scene(const std::string& path);
 
     private:
@@ -38,6 +39,8 @@ namespace nasral::scn
         std::vector<Node::Ptr> nodes_;
         // Слушатель события начала сеанса
         evt::Listener::Ptr evl_session_start_;
+        // Слешатель события смены размернов поверхности
+        evt::Listener::Ptr evl_sfc_chg_;
         // ECS-система
         System::Ptr ecs_system_;
     };

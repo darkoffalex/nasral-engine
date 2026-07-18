@@ -38,6 +38,13 @@ namespace nasral::inp
         prev_mouse_pos_ = mouse_position();
         prev_keyboard_states_ = config().provider->keyboard_states();
         prev_mouse_states_ = config().provider->mouse_states();
+
+        if (config().provider->consume_surface_resized())
+        {
+            engine()->events()->send(
+                evt::Type::eDisplaySurfaceChanged,
+                evt::ChangeReason::eResized);
+        }
     }
 
     void Manager::on_finalize()

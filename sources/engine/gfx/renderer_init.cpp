@@ -283,8 +283,32 @@ namespace nasral::gfx
 
         // Проверка поддержки нужного кол-ва изображений
         const auto surface_capabilities = vk_device_->physical_device().getSurfaceCapabilitiesKHR(*vk_surface_);
-        if (config().swap_chain_images > surface_capabilities.maxImageCount){
-            throw std::runtime_error("Surface does not support requested number of swap chain images");
+        uint32_t swap_chain_image_count = config().swap_chain_images;
+        if (swap_chain_image_count < surface_capabilities.minImageCount){
+            swap_chain_image_count = surface_capabilities.minImageCount;
+        }
+        if (surface_capabilities.maxImageCount != 0 &&
+            swap_chain_image_count > surface_capabilities.maxImageCount)
+        {
+            swap_chain_image_count = surface_capabilities.maxImageCount;
+        }
+
+        // Выбор composite alpha
+        auto composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+        if (!(surface_capabilities.supportedCompositeAlpha & composite_alpha))
+        {
+            if (surface_capabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::ePreMultiplied){
+                composite_alpha = vk::CompositeAlphaFlagBitsKHR::ePreMultiplied;
+            }
+            else if (surface_capabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::ePostMultiplied){
+                composite_alpha = vk::CompositeAlphaFlagBitsKHR::ePostMultiplied;
+            }
+            else if (surface_capabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::eInherit){
+                composite_alpha = vk::CompositeAlphaFlagBitsKHR::eInherit;
+            }
+            else{
+                throw std::runtime_error("Surface does not support any known composite alpha mode");
+            }
         }
 
         // Проверка поддержки нужного режима представления (показа)
@@ -314,14 +338,16 @@ namespace nasral::gfx
         // Инициализация swap chain
         auto create_info = vk::SwapchainCreateInfoKHR()
         .setSurface(vk_surface_.get())
-        .setMinImageCount(config().swap_chain_images)
+        .setPresentMode(config().present_mode)
+        .setMinImageCount(swap_chain_image_count)
         .setImageFormat(surface_format.format)
         .setImageColorSpace(surface_format.colorSpace)
-        .setImageExtent(surface_capabilities.currentExtent)
+        .setImageExtent(vk_device_->clamp_swapchain_extent(config().surface_provider->framebuffer_extent(), *vk_surface_))
         .setImageArrayLayers(1)
         .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
         .setImageSharingMode(same_family ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent)
         .setPreTransform(surface_capabilities.currentTransform)
+        .setCompositeAlpha(composite_alpha)
         .setClipped(true)
         .setOldSwapchain(old_swap_chain);
 
@@ -354,9 +380,6 @@ namespace nasral::gfx
         const auto swap_chain_images = vk_device_->logical_device().getSwapchainImagesKHR(*vk_swap_chain_);
         assert(!swap_chain_images.empty());
 
-        // Получить размеры кадрового буфера
-        const auto swap_chain_extent = vk_device_->physical_device().getSurfaceCapabilitiesKHR(*vk_surface_).currentExtent;
-
         // Проход по изображениям swap-chain
         for (const auto& sci : swap_chain_images)
         {
@@ -383,7 +406,7 @@ namespace nasral::gfx
             vk_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
                 vk_device_.get(),
                 vk_render_pass_.get(),
-                swap_chain_extent,
+                vk_device_->clamp_swapchain_extent(config().surface_provider->framebuffer_extent(), *vk_surface_),
                 attachments));
         }
     }

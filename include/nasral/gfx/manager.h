@@ -50,6 +50,7 @@ namespace nasral::gfx
 
     protected:
         void on_res_registry_changed(const evt::Arg& arg);
+        void on_display_surface_changed(const evt::Arg& arg) const;
 
     private:
         // Рендерер
@@ -65,8 +66,9 @@ namespace nasral::gfx
         std::vector<uint8_t> light_states_;
         std::mutex light_ids_mutex_;
 
-        // Слушатель события загрузки проекта
+        // Слушатели событий (загрузка проекта, смена размеров поверхности отображения)
         evt::Listener::Ptr evl_res_reg_;
+        evt::Listener::Ptr evl_sfc_chg_;
 
         // Глобальный реестр материалов (общий для проекта)
         std::vector<MaterialInstance::Ptr> materials_;

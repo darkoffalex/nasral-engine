@@ -3,6 +3,7 @@
 #include <nasral/gfx/utils.h>
 #include <nasral/evt/utils.h>
 #include <nasral/res/objects/project.h>
+#include <nasral/inp/provider.h>
 #include <nasral/engine.h>
 
 namespace nasral::gfx
@@ -202,6 +203,16 @@ namespace nasral::gfx
         }
     }
 
+    void Manager::on_display_surface_changed(const evt::Arg& arg) const
+    {
+        const auto reason = evt::from_arg<evt::ChangeReason>(arg);
+
+        if (reason == evt::ChangeReason::eResized)
+        {
+            renderer()->request_surface_refresh();
+        }
+    }
+
     /******************************************************************************************************************/
 
     void Manager::on_init()
@@ -214,6 +225,12 @@ namespace nasral::gfx
             engine()->events(),
             evt::Type::eResourceRegistryChanged,
             evt::bind(this, &Manager::on_res_registry_changed));
+
+        // Слушать событие изменения поверхности отображения
+        evl_sfc_chg_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eDisplaySurfaceChanged,
+            evt::bind(this, &Manager::on_display_surface_changed));
 
         // Инициализация ECS системы
         ecs_system_->init();
@@ -229,8 +246,9 @@ namespace nasral::gfx
 
     void Manager::on_finalize()
     {
-        // Отписаться от события формирования списка ресурсов (дизлайк, отписка!)
+        // Отписаться от событий
         evl_res_reg_.reset();
+        evl_sfc_chg_.reset();
 
         // Уничтожение регистра материалов
         materials_.clear();

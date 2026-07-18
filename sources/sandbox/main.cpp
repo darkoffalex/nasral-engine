@@ -20,8 +20,23 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
     try
     {
         // Инициализация GLFW
+        // glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
         if (glfwInit() != GLFW_TRUE){
             throw std::runtime_error("Failed to initialize GLFW");
+        }
+
+        // Вывод используемого backend для GLFW
+        switch (const int glfw_platform = glfwGetPlatform())
+        {
+        case GLFW_PLATFORM_WAYLAND:
+            std::cout << "GLFW platform: Wayland" << std::endl;
+            break;
+        case GLFW_PLATFORM_X11:
+            std::cout << "GLFW platform: X11 / XWayland" << std::endl;
+            break;
+        default:
+            std::cout << "GLFW platform: " << glfw_platform << std::endl;
+            break;
         }
 
         // Для Vulkan не нужны hints
@@ -60,7 +75,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.gfx.color_format = vk::Format::eB8G8R8A8Unorm;
             config.gfx.depth_format = vk::Format::eD32SfloatS8Uint;
             config.gfx.color_space = vk::ColorSpaceKHR::eSrgbNonlinear;
-            config.gfx.present_mode = vk::PresentModeKHR::eImmediate;
+            config.gfx.present_mode = vk::PresentModeKHR::eFifoLatestReady;
             config.gfx.enable_validation_layers = false;
             config.gfx.opengl_compatible = true;
             config.gfx.max_frames_in_flight = 3;
@@ -97,9 +112,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
 
         // Завершение работы с движком
         engine.finalize();
-
-        // Завершение работы с GLFW
-        glfwTerminate();
     }
     catch (const std::exception& e)
     {
@@ -107,5 +119,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
         return EXIT_FAILURE;
     }
 
+    // Завершение работы с GLFW
+    glfwTerminate();
+
+    // Выход
     return EXIT_SUCCESS;
 }

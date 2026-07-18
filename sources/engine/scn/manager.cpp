@@ -6,6 +6,7 @@
 #include <nasral/scn/objects/camera.h>
 #include <nasral/scn/objects/light.h>
 #include <nasral/evt/utils.h>
+#include <nasral/ecs/view.h>
 #include <nasral/engine.h>
 
 namespace nasral::scn
@@ -29,6 +30,12 @@ namespace nasral::scn
             evt::Type::eSessionStarted,
             evt::bind(this, &Manager::on_session_start));
 
+        // Слушать событие изменения поверхности отображения
+        evl_sfc_chg_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eDisplaySurfaceChanged,
+            evt::bind(this, &Manager::on_display_surface_changed));
+
         ecs_system_->init();
 
         log_info("Manager initialized");
@@ -42,6 +49,7 @@ namespace nasral::scn
 
     void Manager::on_finalize(){
         evl_session_start_.reset();
+        evl_sfc_chg_.reset();
         nodes_.clear();
         ecs_system_->finalize();
         log_info("Manager finalized");
@@ -106,6 +114,30 @@ namespace nasral::scn
 
         // Загрузка начальной сцены
         load_initial_scene(proj_res->initial_scene());
+    }
+
+    void Manager::on_display_surface_changed(const evt::Arg& arg) const
+    {
+        // Алиасы компонентов
+        using Node       = NodeComponent;
+        using Camera     = ViewComponent;
+        using Spatial    = SpatialComponent;
+        using Uniform    = gfx::UniformStateComponent;
+
+        const auto reason = evt::from_arg<evt::ChangeReason>(arg);
+        if (reason == evt::ChangeReason::eResized)
+        {
+            // Найти первую камеру
+            const auto first_cam = engine()->ecs()->view<
+                Node,
+                Spatial,
+                Camera,
+                Uniform>().begin();
+
+            // Отметить, что данные обновлены
+            auto [e, n, spatial, cam, uniform] = *first_cam;
+            uniform.is_dirty = true;
+        }
     }
 
     void Manager::load_initial_scene([[maybe_unused]] const std::string& path)

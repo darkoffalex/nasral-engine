@@ -17,6 +17,8 @@ cmake_layout
 
 [options]
 glfw*:shared=False
+glfw*:with_wayland=True
+glfw*:with_x11=True
 imgui*:shared=False
 
 [imports]

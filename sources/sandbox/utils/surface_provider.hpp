@@ -29,6 +29,18 @@ namespace utils
             return extensions_;
         }
 
+        vk::Extent2D framebuffer_extent() override
+        {
+            int width = 0;
+            int height = 0;
+            glfwGetFramebufferSize(window_, &width, &height);
+
+            return {
+                static_cast<uint32_t>(std::max(width, 0)),
+                static_cast<uint32_t>(std::max(height, 0))
+            };
+        }
+
     private:
         GLFWwindow* window_;
         std::vector<const char*> extensions_;

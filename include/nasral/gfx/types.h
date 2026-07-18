@@ -122,6 +122,7 @@ namespace nasral::gfx
         virtual ~VulkanSurfaceProvider() = default;
         virtual VkSurfaceKHR create_surface(const vk::Instance& instance) = 0;
         virtual const std::vector<const char*>& extensions() = 0;
+        virtual vk::Extent2D framebuffer_extent() = 0;
     };
 
     typedef vk::UniqueHandle<vk::DebugReportCallbackEXT, vk::detail::DispatchLoaderDynamic> VkDebugReportCallback;

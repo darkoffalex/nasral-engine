@@ -25,6 +25,8 @@ namespace nasral::evt
         eSessionStarted,
         // Основная сцена загружена
         eRootSceneLoaded,
+        // Поверхность отображения изменилась
+        eDisplaySurfaceChanged,
         // Событие пользователя (пользовательская логика)
         eUserEvent,
         TOTAL
@@ -40,6 +42,9 @@ namespace nasral::evt
         eRemoved,
         eUpdated,
         eRebuilt,
+        eResized,
+        eMaximized,
+        eMinimized,
         TOTAL
     };
 
