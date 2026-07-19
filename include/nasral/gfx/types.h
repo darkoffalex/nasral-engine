@@ -265,6 +265,7 @@ namespace nasral::gfx
         vk::Format depth_format = vk::Format::eD32SfloatS8Uint;             // Формат вложений глубины и трафарета
         vk::ColorSpaceKHR color_space = vk::ColorSpaceKHR::eSrgbNonlinear;  // Цветовое пространство
         vk::PresentModeKHR present_mode = vk::PresentModeKHR::eFifo;        // Режим представления
+        vk::CompositeAlphaFlagBitsKHR composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque; // Альфа-смешивание для поверхности
         bool opengl_compatible = true;                                      // Совместимость данных с OpenGL
         bool enable_validation_layers = false;                              // Использовать слои валидации
         uint32_t max_frames_in_flight = 2;                                  // Кол-во единовременно обрабатываемых кадров

@@ -6,16 +6,15 @@
 #include <nasral/scn/objects/camera.h>
 #include <nasral/scn/objects/light.h>
 #include <nasral/evt/utils.h>
-#include <nasral/ecs/view.h>
 #include <nasral/engine.h>
 
 namespace nasral::scn
 {
     Manager::Manager(Engine* e, const Config& config)
         : Subsystem(e, config)
+        , main_camera_(nullptr)
         , ecs_system_(std::make_unique<System>(this))
     {
-        nodes_.reserve(config.initial_node_count);
         log_info("Initializing manager...");
     }
 
@@ -55,7 +54,7 @@ namespace nasral::scn
         log_info("Manager finalized");
     }
 
-    void Manager::spawn(const NodeDesc& desc)
+    Node* Manager::spawn(const NodeDesc& desc)
     {
         switch (desc.type)
         {
@@ -73,9 +72,12 @@ namespace nasral::scn
             break;
         case NodeType::eLight:
             nodes_.emplace_back(Node::Ptr(new Light(this, desc)));
-        default:
             break;
+        default:
+            return nullptr;
         }
+
+        return nodes_.back().get();
     }
 
     void Manager::remove(const Node* node){
@@ -100,6 +102,16 @@ namespace nasral::scn
         return nullptr;
     }
 
+    Node* Manager::find(const std::string& name) const
+    {
+        for (const auto& n : nodes_){
+            if (const auto dv = std::get<data::DummyNodeView>(n->data_view()); dv.name == name){
+                return n.get();
+            }
+        }
+        return nullptr;
+    }
+
     void Manager::on_session_start([[maybe_unused]] const evt::Arg& arg)
     {
         // Получить ресурс файла проекта
@@ -118,25 +130,11 @@ namespace nasral::scn
 
     void Manager::on_display_surface_changed(const evt::Arg& arg) const
     {
-        // Алиасы компонентов
-        using Node       = NodeComponent;
-        using Camera     = ViewComponent;
-        using Spatial    = SpatialComponent;
-        using Uniform    = gfx::UniformStateComponent;
-
         const auto reason = evt::from_arg<evt::ChangeReason>(arg);
         if (reason == evt::ChangeReason::eResized)
         {
-            // Найти первую камеру
-            const auto first_cam = engine()->ecs()->view<
-                Node,
-                Spatial,
-                Camera,
-                Uniform>().begin();
-
-            // Отметить, что данные обновлены
-            auto [e, n, spatial, cam, uniform] = *first_cam;
-            uniform.is_dirty = true;
+            if (main_camera_ == nullptr) return;
+            main_camera_->invalidate_ubo();
         }
     }
 
@@ -157,7 +155,7 @@ namespace nasral::scn
         camera_desc.camera.aspect = 1.0f;
         camera_desc.camera.near = 0.1f;
         camera_desc.camera.far = 1000.0f;
-        spawn(camera_desc);
+        main_camera_ = dynamic_cast<Camera*>(spawn(camera_desc));
 
         // Описание меша
         NodeDesc m1, m2 = {};

@@ -294,21 +294,8 @@ namespace nasral::gfx
         }
 
         // Выбор composite alpha
-        auto composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-        if (!(surface_capabilities.supportedCompositeAlpha & composite_alpha))
-        {
-            if (surface_capabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::ePreMultiplied){
-                composite_alpha = vk::CompositeAlphaFlagBitsKHR::ePreMultiplied;
-            }
-            else if (surface_capabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::ePostMultiplied){
-                composite_alpha = vk::CompositeAlphaFlagBitsKHR::ePostMultiplied;
-            }
-            else if (surface_capabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::eInherit){
-                composite_alpha = vk::CompositeAlphaFlagBitsKHR::eInherit;
-            }
-            else{
-                throw std::runtime_error("Surface does not support any known composite alpha mode");
-            }
+        if (!(surface_capabilities.supportedCompositeAlpha & config().composite_alpha)){
+            throw std::runtime_error("Composite alpha mode is not supported by surface");
         }
 
         // Проверка поддержки нужного режима представления (показа)
@@ -347,7 +334,7 @@ namespace nasral::gfx
         .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
         .setImageSharingMode(same_family ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent)
         .setPreTransform(surface_capabilities.currentTransform)
-        .setCompositeAlpha(composite_alpha)
+        .setCompositeAlpha(config().composite_alpha)
         .setClipped(true)
         .setOldSwapchain(old_swap_chain);
 

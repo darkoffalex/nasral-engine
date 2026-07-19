@@ -1,10 +1,12 @@
 #pragma once
 
+#include <list>
 #include <nasral/common/subsystem.h>
 #include <nasral/scn/system.h>
 #include <nasral/log/loggable.h>
 #include <nasral/scn/types.h>
 #include <nasral/scn/objects/node.h>
+#include <nasral/scn/objects/camera.h>
 #include <nasral/evt/objects/listener.h>
 
 namespace nasral::scn
@@ -24,10 +26,11 @@ namespace nasral::scn
         void on_update(float delta) const;
         void on_finalize();
 
-        void spawn(const NodeDesc& desc);
+        Node* spawn(const NodeDesc& desc);
         void remove(const Node* node);
         void remove(const UniqueId& id);
         [[nodiscard]] Node* find(const UniqueId& id) const;
+        [[nodiscard]] Node* find(const std::string& name) const;
 
     protected:
         void on_session_start(const evt::Arg& arg);
@@ -36,10 +39,12 @@ namespace nasral::scn
 
     private:
         // Список узлов
-        std::vector<Node::Ptr> nodes_;
+        std::list<Node::Ptr> nodes_;
+        // Основная камера
+        Camera* main_camera_;
         // Слушатель события начала сеанса
         evt::Listener::Ptr evl_session_start_;
-        // Слешатель события смены размернов поверхности
+        // Слушатель события смены размеров поверхности
         evt::Listener::Ptr evl_sfc_chg_;
         // ECS-система
         System::Ptr ecs_system_;
