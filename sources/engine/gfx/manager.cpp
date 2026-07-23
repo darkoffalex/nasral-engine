@@ -203,14 +203,9 @@ namespace nasral::gfx
         }
     }
 
-    void Manager::on_display_surface_changed(const evt::Arg& arg) const
+    void Manager::on_display_surface_changed([[maybe_unused]] const evt::Arg& arg) const
     {
-        const auto reason = evt::from_arg<evt::ChangeReason>(arg);
-
-        if (reason == evt::ChangeReason::eResized)
-        {
-            renderer()->request_surface_refresh();
-        }
+        renderer()->request_surface_refresh();
     }
 
     /******************************************************************************************************************/

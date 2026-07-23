@@ -56,6 +56,11 @@ namespace nasral::ecs
                 return !(*this == other);
             }
 
+            explicit operator bool() const noexcept
+            {
+                return *this != Iterator{};
+            }
+
         private:
             void advance_archetype(){
                 if (!view_ || archetype_idx_ >= view_->manager_->archetypes_.size()){

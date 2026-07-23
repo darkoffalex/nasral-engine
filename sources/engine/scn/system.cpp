@@ -86,6 +86,9 @@ namespace nasral::scn
             Camera,
             Uniform>().begin();
 
+        // Если нет - выход
+        if (!first_cam) return;
+
         // Внести изменения (если еще не внесены)
         if (auto [e, n, spatial, cam, uniform] = *first_cam; !uniform.is_dirty)
         {

@@ -37,7 +37,9 @@
     {"type": "eTexture", "path": "textures/chair/chair_rough_1k.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/chair/chair_spec_1k.png", "load_params": {}},
 
-    {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}}
+    {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+
+    {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}}
   ],
 
   "materials": [
@@ -190,5 +192,5 @@
     ]
   },
 
-  "initial_scene": ""
+  "initial_scene": "scenes/chairs.json"
 }

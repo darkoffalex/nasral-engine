@@ -1,6 +1,7 @@
 #include "pch.h"
 #include <nasral/scn/manager.h>
 #include <nasral/res/objects/project.h>
+#include <nasral/res/objects/scene.h>
 #include <nasral/scn/objects/node.h>
 #include <nasral/scn/objects/mesh.h>
 #include <nasral/scn/objects/camera.h>
@@ -102,8 +103,7 @@ namespace nasral::scn
         return nullptr;
     }
 
-    Node* Manager::find(const std::string& name) const
-    {
+    Node* Manager::find(const std::string& name) const{
         for (const auto& n : nodes_){
             if (const auto dv = std::get<data::DummyNodeView>(n->data_view()); dv.name == name){
                 return n.get();
@@ -128,102 +128,52 @@ namespace nasral::scn
         load_initial_scene(proj_res->initial_scene());
     }
 
-    void Manager::on_display_surface_changed(const evt::Arg& arg) const
+    void Manager::on_display_surface_changed([[maybe_unused]] const evt::Arg& arg) const
     {
-        const auto reason = evt::from_arg<evt::ChangeReason>(arg);
-        if (reason == evt::ChangeReason::eResized)
-        {
-            if (main_camera_ == nullptr) return;
-            main_camera_->invalidate_ubo();
-        }
+        if (main_camera_ == nullptr) return;
+        main_camera_->invalidate_ubo();
     }
 
     void Manager::load_initial_scene([[maybe_unused]] const std::string& path)
     {
         log_info("Loading initial scene...");
 
-        // Описание камеры
-        NodeDesc camera_desc = {};
-        camera_desc.type = NodeType::eCamera;
-        camera_desc.name = "Main camera";
-        camera_desc.unique_id = UniqueId::generate();
-        camera_desc.spatial.position = {0.0f, 0.0f, 2.0f};
-        camera_desc.spatial.scale = {1.0f, 1.0f, 1.0f};
-        camera_desc.spatial.rotation = {0.0f, 0.0f, 0.0f};
-        camera_desc.camera.type = gfx::ViewType::ePerspective;
-        camera_desc.camera.fov = 90.0f;
-        camera_desc.camera.aspect = 1.0f;
-        camera_desc.camera.near = 0.1f;
-        camera_desc.camera.far = 1000.0f;
-        main_camera_ = dynamic_cast<Camera*>(spawn(camera_desc));
+        // Найти ID ресурса сцены
+        const auto scene_rid = engine()->res()->find(path).value_or(res::kInvalidResourceId);
+        if (scene_rid == res::kInvalidResourceId){
+            log_error("Initial scene ["+path+"] not found");
+            throw std::runtime_error("Initial scene ["+path+"] not found");
+        }
 
-        // Описание меша
-        NodeDesc m1, m2 = {};
-        m1.type = NodeType::eMesh;
-        m1.name = "Chair1";
-        m1.unique_id = UniqueId::generate();
-        m1.spatial.position = {-0.6f, 0.0f, 0.0f};
-        m1.spatial.scale = {1.5f, 1.5f, 1.5f};
-        m1.spatial.rotation = {0.0f, 0.0f, 0.0f};
-        m1.mesh.mesh_path = "meshes/chair/chair.obj";
-        m1.mesh.materials = {UniqueId{0,6}};
-        m2.type = NodeType::eMesh;
-        m2.name = "Chair2";
-        m2.unique_id = UniqueId::generate();
-        m2.spatial.position = {0.6f, 0.0f, 0.0f};
-        m2.spatial.scale = {1.5f, 1.5f, 1.5f};
-        m2.spatial.rotation = {0.0f, 0.0f, 0.0f};
-        m2.mesh.mesh_path = "meshes/chair/chair.obj";
-        m2.mesh.materials = {UniqueId{0,7}};
-        spawn(m1);
-        spawn(m2);
+        // Запрос ресурса, инициализация сцены (распаковка) после загрузки
+        engine()->res()->request(scene_rid, [&](res::Resource* res)
+        {
+            // Ресурс сцены
+            const auto* scene = dynamic_cast<res::Scene*>(res);
+            assert(scene && "Initial scene is not a scene");
 
-        // Описание источников света
-        NodeDesc l1, l2, l3 = {};
-        l1.type = NodeType::eLight;
-        l1.name = "Light1";
-        l1.unique_id = UniqueId::generate();
-        l1.spatial.position = {-1.0f, 0.3f, 2.0f};
-        l1.spatial.scale = {1.0f, 1.0f, 1.0f};
-        l1.spatial.rotation = {0.0f, 0.0f, 0.0f};
-        l1.light.dynamic = false;
-        l1.light.is_active = true;
-        l1.light.radius = 1.0f;
-        l1.light.type = gfx::LightType::ePointLight;
-        l1.light.color = glm::vec4(1.0f);
-        l1.light.intensity = 1.0f;
-        l1.light.quadratic = 0.1f;
+            // Проверка статуса
+            if (scene->status() != res::Status::eLoaded)
+            {
+                log_error("Failed to load initial scene ["+path+"]");
+                throw std::runtime_error("Failed to load initial scene ["+path+"]");
+            }
 
-        l2.type = NodeType::eLight;
-        l2.name = "Light2";
-        l2.unique_id = UniqueId::generate();
-        l2.spatial.position = {1.0f, 0.3f, 2.0f};
-        l2.spatial.scale = {1.0f, 1.0f, 1.0f};
-        l2.spatial.rotation = {0.0f, 0.0f, 0.0f};
-        l2.light.dynamic = false;
-        l2.light.is_active = true;
-        l2.light.radius = 1.0f;
-        l2.light.type = gfx::LightType::ePointLight;
-        l2.light.color = glm::vec4(1.0f);
-        l2.light.intensity = 1.0f;
-        l2.light.quadratic = 0.1f;
+            // Создать узлы
+            for (const auto& node_desc : scene->nodes())
+            {
+                // Добавление узла
+                auto* spawned = spawn(node_desc);
 
-        l3.type = NodeType::eLight;
-        l3.name = "Light3";
-        l3.unique_id = UniqueId::generate();
-        l3.spatial.position = {0.0f, -0.3f, 2.0f};
-        l3.spatial.scale = {1.0f, 1.0f, 1.0f};
-        l3.spatial.rotation = {0.0f, 0.0f, 0.0f};
-        l3.light.dynamic = false;
-        l3.light.is_active = true;
-        l3.light.radius = 1.0f;
-        l3.light.type = gfx::LightType::ePointLight;
-        l3.light.color = glm::vec4(1.0f);
-        l3.light.intensity = 1.0f;
-        l3.light.quadratic = 0.1f;
+                // Первая попавшаяся камера - главная
+                if (node_desc.type == NodeType::eCamera && main_camera_ == nullptr){
+                    main_camera_ = dynamic_cast<Camera*>(spawned);
+                    assert(main_camera_ != nullptr && "Main camera is not a camera");
+                }
+            }
 
-        spawn(l1);
-        spawn(l2);
-        spawn(l3);
+            // Ресурс сцены более не нужен в RAM
+            engine()->res()->release(res->id());
+        });
     }
 }

@@ -10,6 +10,15 @@ constexpr int kWindowHeight = 720;
 constexpr auto kWindowTitle = "Sandbox";
 
 /**
+ * Заставить выбрать конкретный бекенд GLFW. Возможные варианты:
+ * - GLFW_PLATFORM_NULL (авто)
+ * - GLFW_PLATFORM_WAYLAND (Linux/Wayland)
+ * - GLFW_PLATFORM_X11 (Linux/X11)
+ * - GLFW_PLATFORM_WIN32 (Windows)
+ */
+constexpr int kForceGlfwPlatform = GLFW_PLATFORM_NULL;
+
+/**
  * Точка входа
  * @param argc Кол-во аргументов
  * @param argv Аргументы
@@ -20,7 +29,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
     try
     {
         // Инициализация GLFW
-        // glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
+        if constexpr (kForceGlfwPlatform != GLFW_PLATFORM_NULL){
+            glfwInitHint(GLFW_PLATFORM, kForceGlfwPlatform);
+        }
+
         if (glfwInit() != GLFW_TRUE){
             throw std::runtime_error("Failed to initialize GLFW");
         }
@@ -33,6 +45,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             break;
         case GLFW_PLATFORM_X11:
             std::cout << "GLFW platform: X11 / XWayland" << std::endl;
+            break;
+        case GLFW_PLATFORM_WIN32:
+            std::cout << "GLFW platform: Windows" << std::endl;
             break;
         default:
             std::cout << "GLFW platform: " << glfw_platform << std::endl;

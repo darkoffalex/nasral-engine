@@ -16,8 +16,8 @@
 #include "res/loaders/mesh/assimp.hpp"
 #include "res/loaders/mesh/builtin.hpp"
 #include "res/loaders/material/json.hpp"
-// #include "res/loaders/scene/json.hpp"
-// #include "res/loaders/scene/builtin.hpp"
+#include "res/loaders/scene/json.hpp"
+#include "res/loaders/scene/builtin.hpp"
 
 namespace nasral::res
 {
@@ -373,7 +373,7 @@ namespace nasral::res
      * @return Указатель (unique) на загрузчика
      */
     template<typename T>
-    typename Resource::Loader<typename T::Data>::Ptr make_res_loader(const Manager::Slot& slot, Manager* manager)
+    static typename Resource::Loader<typename T::Data>::Ptr make_res_loader(const Manager::Slot& slot, Manager* manager)
     {
         using Ret = typename Resource::Loader<typename T::Data>::Ptr;
 
@@ -402,6 +402,12 @@ namespace nasral::res
         else if constexpr (std::is_same_v<T, Material>){
             assert(slot.info.type == Type::eMaterial);
             return Ret{std::make_unique<MaterialJsonLoader>(manager)};
+        }
+        else if constexpr (std::is_same_v<T, Scene>){
+            assert(slot.info.type == Type::eScene);
+            return slot.info.path.is_builtin()
+                ? Ret{std::make_unique<SceneBuiltinLoader>(manager)}
+                : Ret{std::make_unique<SceneJsonLoader>(manager)};
         }
 
         assert(false && "Unsupported resource type");
@@ -461,6 +467,13 @@ namespace nasral::res
                     auto id = find(slot.info.path.view());
                     assert(id.has_value() && "Resource not found");
                     res = std::make_unique<Material>(this, id.value(), make_res_loader<Material>(slot, this));
+                    break;
+                }
+            case Type::eScene:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value() && "Resource not found");
+                    res = std::make_unique<Scene>(this, id.value(), make_res_loader<Scene>(slot, this));
                     break;
                 }
             default:
