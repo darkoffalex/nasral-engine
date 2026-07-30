@@ -457,6 +457,7 @@ namespace nasral::gfx
                 const auto& surface = mh.mesh.surfaces[i];
                 // Найти соответствующий экземпляр материала
                 const auto& mat_e = mesh.materials[i];
+                // const auto& mat_e = mesh.materials[surface.material_index-1];
 
                 // Если меш еще не ссылался на entity материала - сослаться (запрос готовности)
                 if (!mesh.materials_requested[i]){

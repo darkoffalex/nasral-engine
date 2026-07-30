@@ -1,0 +1,44 @@
+# Blender 5.2.0 LTS MTL File: 'None'
+# www.blender.org
+
+newmtl Floor
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.500000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+map_Kd ../../textures/hallway/floor_base_color.png
+map_bump -bm 1.000000 ../../textures/hallway/floor_normal.png
+
+newmtl room-01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.500000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+map_Kd ../../textures/hallway/room-01_base_color.png
+map_bump -bm 1.000000 ../../textures/hallway/room-01_normal.png
+
+newmtl room-02
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.500000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+map_Kd ../../textures/hallway/room-02_base_color.png
+map_bump -bm 1.000000 ../../textures/hallway/room-02_normal.png

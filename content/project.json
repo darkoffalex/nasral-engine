@@ -37,9 +37,27 @@
     {"type": "eTexture", "path": "textures/chair/chair_rough_1k.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/chair/chair_spec_1k.png", "load_params": {}},
 
-    {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eTexture", "path": "textures/hallway/floor_base_color.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/floor_base_color.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/floor_metallic.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/floor_normal.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/floor_roughness.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_base_color.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_base_color.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_metallic.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_normal.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_roughness.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_base_color.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_base_color.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_metallic.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_normal.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_roughness.png", "load_params": {}},
 
-    {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}}
+    {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/hallway/hallway.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+
+    {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}},
+    {"type": "eScene", "path": "scenes/hallway.json", "load_params": {}}
   ],
 
   "materials": [
@@ -153,9 +171,9 @@
       "base_material_path" : "materials/pbr/material.json",
       "base_material_type" : "ePBR",
       "settings": {
-        "color": [1.0, 1.0, 1.0, 1.0],
+        "color": [1.2, 1.2, 1.2, 1.0],
         "roughness": 1.0,
-        "metallic": 0.0,
+        "metallic": 1.0,
         "ao": 1.0,
         "emission": 0.0
       },
@@ -176,6 +194,96 @@
         "path" : "textures/chair/chair_rough_1k.png",
         "filter" : "eLinear"
       }]
+    },
+    {
+      "uid" : [0,8],
+      "name": "HallwayFloor",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/hallway/floor_base_color.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/hallway/floor_normal.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eMetalOrReflect",
+        "path" : "textures/hallway/floor_metallic.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/hallway/floor_roughness.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,9],
+      "name": "HallwayRoom01",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/hallway/room-01_base_color.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/hallway/room-01_normal.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eMetalOrReflect",
+        "path" : "textures/hallway/room-01_metallic.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/hallway/room-01_roughness.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,10],
+      "name": "HallwayRoom02",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/hallway/room-02_base_color.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/hallway/room-02_normal.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eMetalOrReflect",
+        "path" : "textures/hallway/room-02_metallic.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/hallway/room-02_roughness.png",
+        "filter" : "eLinear"
+      }]
     }
   ],
 
@@ -192,5 +300,5 @@
     ]
   },
 
-  "initial_scene": "scenes/chairs.json"
+  "initial_scene": "scenes/hallway.json"
 }

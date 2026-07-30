@@ -31,8 +31,27 @@ namespace nasral::res
 
             int width = 0, height = 0, channels = 0;
             stbi_set_flip_vertically_on_load(true);
-            unsigned char* bytes = stbi_load(file_path.data(), &width, &height, &channels, STBI_rgb_alpha);
-            std::vector pixels(bytes, bytes + width * height * channels);
+
+            // Узнаем информацию об изображении до распаковки
+            if (!stbi_info(file_path.data(), &width, &height, &channels)) {
+                set_error(Error::eCannotOpenFile);
+                return std::nullopt;
+            }
+
+            // Vulkan часто не поддерживает 24-битные форматы (3 канала),
+            // поэтому принудительно расширяем RGB до RGBA.
+            // Одноканальные и двухканальные текстуры оставляем как есть.
+            const int desired_channels = (channels == 3) ? 4 : channels;
+
+            // Загружаем с нужным количеством каналов
+            unsigned char* bytes = stbi_load(file_path.data(), &width, &height, &channels, desired_channels);
+            if (!bytes) {
+                set_error(Error::eCannotOpenFile);
+                return std::nullopt;
+            }
+
+            // Вектор должен использовать desired_channels, т.к. именно такой размер вернул stbi_load
+            std::vector pixels(bytes, bytes + width * height * desired_channels);
             stbi_image_free(bytes);
 
             set_error(Error::eNone);
