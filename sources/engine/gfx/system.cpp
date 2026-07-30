@@ -187,7 +187,7 @@ namespace nasral::gfx
         // - Uniform index
         // - Уничтожение
         // Внимание: ожидается, что в конце полной итерации update сущность удаляется (что предотвратит повторную обработку)
-        for (auto [e, ms, ui, d_tag] : engine()->ecs()->view<Material, UniformId, Destroy>())
+        for (const auto& [e, ms, ui, d_tag] : engine()->ecs()->view<Material, UniformId, Destroy>())
         {
             engine()->gfx()->material_ubo_ids().release(ui.index);
         }
@@ -206,7 +206,7 @@ namespace nasral::gfx
         // - Uniform index
         // - Рендеринг
         // - Грязный (не обновленный) UBO
-        for (auto [e, sp, ui, r_tag, d_tag] : engine()->ecs()->view<Spatial, UniformId, Render, Dirty>())
+        for (const auto& [e, sp, ui, r_tag, d_tag] : engine()->ecs()->view<Spatial, UniformId, Render, Dirty>())
         {
             // Вычислить матрицы
             uniforms::Object uniforms = {};

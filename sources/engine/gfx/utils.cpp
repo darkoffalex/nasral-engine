@@ -146,8 +146,8 @@ namespace nasral::gfx
 
     GeometryData gen_sphere_geometry(
         const float radius,
-        const size_t segments,
-        const size_t rings,
+        const uint32_t segments,
+        const uint32_t rings,
         const bool clockwise,
         const glm::vec4& color)
     {
@@ -157,13 +157,13 @@ namespace nasral::gfx
         indices.reserve(segments * rings * 6);
 
         // Генерация вершин
-        for (size_t j = 0; j <= rings; ++j) {
+        for (uint32_t j = 0; j <= rings; ++j) {
             constexpr float pi = 3.14159265359f;
             const float phi = pi * static_cast<float>(j) / static_cast<float>(rings); // Зенит (0 to π)
             const float sin_phi = std::sin(phi);
             const float cos_phi = std::cos(phi);
 
-            for (size_t i = 0; i <= segments; ++i) {
+            for (uint32_t i = 0; i <= segments; ++i) {
                 const float theta = 2.0f * pi * static_cast<float>(i) / static_cast<float>(segments); // Азимут (0 to 2π)
                 const float sin_theta = std::sin(theta);
                 const float cos_theta = std::cos(theta);
@@ -188,8 +188,8 @@ namespace nasral::gfx
         }
 
         // Генерация индексов
-        for (size_t j = 0; j < rings; ++j) {
-            for (size_t i = 0; i < segments; ++i) {
+        for (uint32_t j = 0; j < rings; ++j) {
+            for (uint32_t i = 0; i < segments; ++i) {
                 uint32_t i0 = j * (segments + 1) + i;
                 uint32_t i1 = i0 + 1;
                 uint32_t i2 = (j + 1) * (segments + 1) + i;

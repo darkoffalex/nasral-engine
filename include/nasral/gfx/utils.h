@@ -41,8 +41,8 @@ namespace nasral::gfx
 
     GeometryData gen_sphere_geometry(
         float radius = 0.5f,
-        size_t segments = 32,
-        size_t rings = 16,
+        uint32_t segments = 32,
+        uint32_t rings = 16,
         bool clockwise = true,
         const glm::vec4& color = glm::vec4(1.0f));
 
