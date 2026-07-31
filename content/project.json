@@ -1,0 +1,298 @@
+{
+  "resources": [
+    {"type": "eMaterial", "path": "materials/dummy/material.json", "load_params": {}},
+    {"type": "eShader", "path": "materials/dummy/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/dummy/shader.frag.spv", "load_params": {}},
+
+    {"type": "eMaterial", "path": "materials/colored/material.json", "load_params": {}},
+    {"type": "eShader", "path": "materials/colored/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/colored/shader.frag.spv", "load_params": {}},
+
+    {"type": "eMaterial", "path": "materials/textured/material.json", "load_params": {}},
+    {"type": "eShader", "path": "materials/textured/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/textured/shader.frag.spv", "load_params": {}},
+
+    {"type": "eMaterial", "path": "materials/phong/material.json", "load_params": {}},
+    {"type": "eShader", "path": "materials/phong/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/phong/shader.geom.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/phong/shader.frag.spv", "load_params": {}},
+
+    {"type": "eMaterial", "path": "materials/pbr/material.json", "load_params": {}},
+    {"type": "eShader", "path": "materials/pbr/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/pbr/shader.geom.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/pbr/shader.frag.spv", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_diff.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_diff.png:v2", "load_params": {"srgb": true, "generate_mipmaps": false}},
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_disp.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_nor_gl.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles_01/tiles_spec.png", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/chair/chair_diff_1k.png:v0", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair/chair_diff_1k.png:v1", "load_params": {"srgb": true, "generate_mipmaps": false}},
+    {"type": "eTexture", "path": "textures/chair/chair_nor_gl_1k.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair/chair_rough_1k.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair/chair_ao_1k.png", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/hallway/floor_base_color.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/floor_base_color.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/floor_metallic.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/floor_normal.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/floor_roughness.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_base_color.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_base_color.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_metallic.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_normal.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-01_roughness.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_base_color.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_base_color.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_metallic.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_normal.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/hallway/room-02_roughness.png", "load_params": {}},
+
+    {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/hallway/hallway.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+
+    {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}},
+    {"type": "eScene", "path": "scenes/hallway.json", "load_params": {}}
+  ],
+
+  "materials": [
+    {
+      "uid" : [0,1],
+      "name": "Colored",
+      "base_material_path" : "materials/colored/material.json",
+      "base_material_type" : "eColored"
+    },
+    {
+      "uid" : [0,2],
+      "name": "Textured",
+      "base_material_path" : "materials/textured/material.json",
+      "base_material_type" : "eTextured",
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/tiles_01/tiles_diff.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,3],
+      "name": "TilesPhong",
+      "base_material_path" : "materials/phong/material.json",
+      "base_material_type" : "ePhong",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "ambient": [0.0, 0.0, 0.0, 1.0],
+        "shininess": 64.0,
+        "specular": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/tiles_01/tiles_diff.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eNormal",
+        "path" : "textures/tiles_01/tiles_nor_gl.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/chair/tiles_spec.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,4],
+      "name": "TilesPbr",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 0.35,
+        "metallic": 0.0,
+        "ao": 1.0,
+        "emission": 0.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/tiles_01/tiles_diff.png:v2",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/tiles_01/tiles_nor_gl.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/tiles_01/tiles_rough.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,5],
+      "name": "ChairUnlit",
+      "base_material_path" : "materials/textured/material.json",
+      "base_material_type" : "eTextured",
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/chair/chair_diff_1k.png:v0",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,6],
+      "name": "ChairPhong",
+      "base_material_path" : "materials/phong/material.json",
+      "base_material_type" : "ePhong",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "ambient": [0.0, 0.0, 0.0, 1.0],
+        "shininess": 32.0,
+        "specular": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/chair/chair_diff_1k.png:v0",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/chair/chair_nor_gl_1k.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/chair/chair_spec_1k.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,7],
+      "name": "ChairPBR",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/chair/chair_diff_1k.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/chair/chair_nor_gl_1k.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/chair/chair_rough_1k.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,8],
+      "name": "HallwayFloor",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/hallway/floor_base_color.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/hallway/floor_normal.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eMetalOrReflect",
+        "path" : "textures/hallway/floor_metallic.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/hallway/floor_roughness.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,9],
+      "name": "HallwayRoom01",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/hallway/room-01_base_color.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/hallway/room-01_normal.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eMetalOrReflect",
+        "path" : "textures/hallway/room-01_metallic.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/hallway/room-01_roughness.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,10],
+      "name": "HallwayRoom02",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/hallway/room-02_base_color.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/hallway/room-02_normal.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eMetalOrReflect",
+        "path" : "textures/hallway/room-02_metallic.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/hallway/room-02_roughness.png",
+        "filter" : "eLinear"
+      }]
+    }
+  ],
+
+  "input" : {
+    "mouse_sensitivity": 0.1,
+    "key_bindings": [
+      {"action": "forward", "keys": ["key:eW"]},
+      {"action": "backward", "keys": ["key:eS"]},
+      {"action": "left", "keys": ["key:eA"]},
+      {"action": "right", "keys": ["key:eD"]},
+      {"action": "up", "keys": ["key:eSpace"]},
+      {"action": "down", "keys": ["key:eC"]},
+      {"action": "exit", "keys": ["key:eEscape"]}
+    ]
+  },
+
+  "initial_scene": "scenes/hallway.json"
+}

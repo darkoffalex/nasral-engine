@@ -29,6 +29,7 @@ namespace utils
             glfwSetKeyCallback(window_, key_callback);
             glfwSetCursorPosCallback(window_, mouse_pos_callback);
             glfwSetMouseButtonCallback(window_, mouse_button_callback);
+            glfwSetFramebufferSizeCallback(window_, window_resize_callback);
         }
 
         ~GlfwInputProvider() override
@@ -36,6 +37,7 @@ namespace utils
             glfwSetKeyCallback(window_, nullptr);
             glfwSetCursorPosCallback(window_, nullptr);
             glfwSetMouseButtonCallback(window_, nullptr);
+            glfwSetFramebufferSizeCallback(window_, nullptr);
         }
 
     private:
@@ -207,11 +209,19 @@ namespace utils
         {
             auto* provider = static_cast<GlfwInputProvider*>(glfwGetWindowUserPointer(window));
             if (provider && button >= 0 && button < GLFW_MOUSE_BUTTON_LAST + 1) {
-                const nasral::inp::MouseButton mapped_button = provider->glfw_mouse_button_map_[button];
+                const auto mapped_button = provider->glfw_mouse_button_map_[button];
                 if (mapped_button != nasral::inp::MouseButton::eNone) {
                     provider->on_mouse_btn_state_changed(mapped_button, action == GLFW_PRESS);
                 }
             }
+        }
+
+        static void window_resize_callback(GLFWwindow* window
+            , const int width
+            , const int height)
+        {
+            auto* provider = static_cast<GlfwInputProvider*>(glfwGetWindowUserPointer(window));
+            provider->on_window_surface_resized(width, height);
         }
     };
 }

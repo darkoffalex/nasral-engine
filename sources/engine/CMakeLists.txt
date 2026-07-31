@@ -9,6 +9,7 @@ add_library(Engine OBJECT
 
         # События
         evt/manager.cpp
+        evt/objects/listener.cpp
 
         # Ввод
         inp/manager.cpp
@@ -17,31 +18,40 @@ add_library(Engine OBJECT
         # ECS
         ecs/archetype.cpp
         ecs/manager.cpp
+        ecs/utils.cpp
+
+        # Среда выполнения
+        run/manager.cpp
 
         # Ресурсы
         res/manager.cpp
         res/system.cpp
-        res/resources/file.cpp
-        res/resources/shader.cpp
-        res/resources/texture.cpp
-        res/resources/mesh.cpp
-        res/resources/material.cpp
-        res/resources/project.cpp
-        res/resources/scene.cpp
+        res/objects/resource.cpp
+        res/objects/file.cpp
+        res/objects/project.cpp
+        res/objects/shader.cpp
+        res/objects/texture.cpp
+        res/objects/mesh.cpp
+        res/objects/material.cpp
+        res/objects/project.cpp
+        res/objects/scene.cpp
 
         # Рендеринг
+        gfx/manager.cpp
         gfx/renderer.cpp
+        gfx/renderer_init.cpp
+        gfx/objects/material.cpp
         gfx/system.cpp
-        gfx/io/material.cpp
+        gfx/utils.cpp
 
         # Сцена
         scn/manager.cpp
+        scn/objects/node.cpp
+        scn/objects/spatial.cpp
+        scn/objects/camera.cpp
+        scn/objects/mesh.cpp
+        scn/objects/light.cpp
         scn/system.cpp
-        scn/io/base_node.cpp
-        scn/io/spatial_node.cpp
-        scn/io/camera_node.cpp
-        scn/io/light_node.cpp
-        scn/io/mesh_node.cpp
 )
 add_default_configurations(Engine demo_app)
 
@@ -62,4 +72,5 @@ target_link_libraries(Engine PRIVATE
         assimp::assimp
         Vulkan::Vulkan
         magic_enum::magic_enum
+        nlohmann_json::nlohmann_json
 )

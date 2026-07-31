@@ -7,143 +7,131 @@ namespace nasral
     {
         try
         {
-            /* Engine subsystems */
+            std::apply([&](auto&&... systems) {
+                (..., (void)[&](auto& s) {
+                    using SubsystemPtr = std::decay_t<decltype(s)>;
 
-            logger_ = std::make_unique<log::Logger>(this, config.log);
-            logger()->info("Logger initialized.");
-
-            evt_ = std::make_unique<evt::Manager>(this);
-            logger()->info("Event manager initialized.");
-
-            inp_ = std::make_unique<inp::Manager>(this, config.inp);
-            logger()->info("Input manager initialized.");
-
-            ecs_ = std::make_unique<ecs::Manager>(this, config.ecs);
-            logger()->info("ECS manager initialized.");
-
-            renderer_ = std::make_unique<gfx::Renderer>(this, config.gfx);
-            logger()->info("Renderer initialized.");
-
-            res_ = std::make_unique<res::Manager>(this, config.res);
-            logger()->info("Resource manager initialized.");
-
-            scn_ = std::make_unique<scn::Manager>(this, config.scn);
-            logger()->info("Scene manager initialized.");
-
-            /* E C S */
-
-            res_system_ = std::make_unique<res::System>(this);
-            res_system_->init();
-            logger()->info("ECS: Resource system initialized.");
-
-            gfx_system_ = std::make_unique<gfx::System>(this);
-            gfx_system_->init();
-            logger()->info("ECS: GFX system initialized.");
-
-            scn_system_ = std::make_unique<scn::System>(this);
-            scn_system_->init();
-            logger()->info("ECS: Scene system initialized.");
+                    if constexpr (std::is_same_v<SubsystemPtr, log::Logger::Ptr>) {
+                        s = std::make_unique<log::Logger>(this, config.log);
+                    } else if constexpr (std::is_same_v<SubsystemPtr, evt::Manager::Ptr>) {
+                        s = std::make_unique<evt::Manager>(this);
+                    } else if constexpr (std::is_same_v<SubsystemPtr, run::Manager::Ptr>) {
+                        s = std::make_unique<run::Manager>(this, config.run);
+                    } else if constexpr (std::is_same_v<SubsystemPtr, ecs::Manager::Ptr>) {
+                        s = std::make_unique<ecs::Manager>(this, config.ecs);
+                    } else if constexpr (std::is_same_v<SubsystemPtr, gfx::Manager::Ptr>) {
+                        s = std::make_unique<gfx::Manager>(this, config.gfx);
+                    } else if constexpr (std::is_same_v<SubsystemPtr, res::Manager::Ptr>) {
+                        s = std::make_unique<res::Manager>(this, config.res);
+                    } else if constexpr (std::is_same_v<SubsystemPtr, scn::Manager::Ptr>) {
+                        s = std::make_unique<scn::Manager>(this, config.scn);
+                    } else if constexpr (std::is_same_v<SubsystemPtr, inp::Manager::Ptr>) {
+                        s = std::make_unique<inp::Manager>(this, config.inp);
+                    }
+                    if (s) {
+                        s->init();
+                    }
+                }(systems));
+            }, subsystems_);
         }
         catch (const std::runtime_error& e){
-            if (logger_) logger()->fatal(e.what());
+            if (logger()) logger()->fatal(e.what());
             throw;
         }
     }
 
     Engine::~Engine()
     {
-        assert(ecs_ != nullptr);
-        assert(res_ != nullptr);
-        assert(renderer_ != nullptr);
-        assert(logger_ != nullptr);
-
-        assert(res_system_ != nullptr);
-        assert(gfx_system_ != nullptr);
-
-        /* E C S */
-
-        scn_system_.reset();
-        logger()->info("ECS: Scene system destroyed.");
-
-        res_system_.reset();
-        logger()->info("ECS: Resource system destroyed.");
-
-        gfx_system_.reset();
-        logger()->info("ECS: GFX system destroyed.");
-
-        /* Engine subsystems */
-
-        scn_.reset();
-        logger()->info("Scene manager destroyed.");
-
-        res_.reset();
-        logger()->info("Resource manager destroyed.");
-
-        renderer_.reset();
-        logger()->info("Renderer destroyed.");
-
-        ecs_.reset();
-        logger()->info("ECS manager destroyed.");
-
-        inp_.reset();
-        logger()->info("Input manager destroyed.");
-
-        evt_.reset();
-        logger()->info("Event manager destroyed.");
-
-        logger_.reset();
+        // Уничтожение подсистем в обратном порядке
+        apply_reverse([&](auto&&... systems) {
+            (..., (void)[&](auto& s) {
+                s.reset();
+            }(systems));
+        }, subsystems_);
     }
 
     void Engine::finalize() const
     {
-        logger()->info("Finalizing...");
+        // Дождаться завершения графических команд
+        gfx()->renderer()->cmd_wait_for_all();
 
-        // Заключительные операции ECS систем
-        scn_system_->shutdown();
-        gfx_system_->shutdown();
-        res_system_->shutdown();
+        // Для всех подсистем выполнять:
+        // - Финализация подсистемы
+        // - Отложенные действия подсистемы
+        // - (Опционально) Синхронизация ECS, если текущая система не является ECS.
+        apply_reverse([&](auto&&... systems){
+            (..., (void)[&](auto* s) {
+                using SubsystemType = std::remove_pointer_t<decltype(s)>;
 
-        // Выполнить отложенные действия (после заключительных ECS операций)
-        evt_->apply_deferred_actions();
-        ecs_->apply_deferred_actions();
+                if (kDebugBuild){
+                    assert(s && "Subsystem pointer is null");
+                }
+                s->finalize();
+                s->apply_deferred();
 
-        // Последний loop ECS систем
-        scn_system_->update(0.0f);
-        res_system_->update(0.0f);
-        gfx_system_->update(0.0f);
-
-        // Подождать завершения кадра
-        renderer_->cmd_wait_for_frame();
-
-        // Заключительная обработка ресурсов
-        res_->finalize();
-
-        // Выполнить отложенные действия (завершение)
-        evt_->apply_deferred_actions();
-        ecs_->apply_deferred_actions();
+                if constexpr (!std::is_same_v<SubsystemType, ecs::Manager>){
+                    ecs()->apply_deferred();
+                }
+            }(systems.get()));
+        }, subsystems_);
     }
 
-    void Engine::update(const float delta)
+    void Engine::update([[maybe_unused]] const float delta)
     {
-        // Обновление систем ECS
-        scn_system_->update(delta);
-        res_system_->update(delta);
-        gfx_system_->update(delta);
+        // Для всех подсистем выполнять:
+        // - Update
+        // - Отложенные действия подсистемы
+        // - (Опционально) Синхронизация ECS, если текущая система не является ECS.
+        std::apply([&](auto&&... systems) {
+            (..., (void)[&](auto* s) {
+                using SubsystemType = std::remove_pointer_t<decltype(s)>;
 
-        // Выполнение отложенных действий
-        ecs_->apply_deferred_actions();
-        evt_->apply_deferred_actions();
+                if (kDebugBuild){
+                    assert(s && "Subsystem pointer is null");
+                }
 
-        // Загрузка/выгрузка ресурсов
-        res_->update();
+                s->update(delta);
+                s->apply_deferred();
+
+                if constexpr (!std::is_same_v<SubsystemType, ecs::Manager>){
+                    ecs()->apply_deferred();
+                }
+            }(systems.get()));
+        }, subsystems_);
 
         // Рендеринг
-        renderer_->cmd_begin_frame();
-        renderer_->cmd_bind_frame_descriptors();
-        gfx_system_->render();
-        renderer_->cmd_end_frame();
+        gfx()->render();
+    }
 
-        // Обновить ввод
-        inp_->update(delta);
+    log::Logger* Engine::logger() const noexcept{
+        return std::get<log::Logger::Ptr>(subsystems_).get();
+    }
+
+    evt::Manager* Engine::events() const noexcept{
+        return std::get<evt::Manager::Ptr>(subsystems_).get();
+    }
+
+    ecs::Manager* Engine::ecs() const noexcept{
+        return std::get<ecs::Manager::Ptr>(subsystems_).get();
+    }
+
+    res::Manager* Engine::res() const noexcept{
+        return std::get<res::Manager::Ptr>(subsystems_).get();
+    }
+
+    gfx::Manager* Engine::gfx() const noexcept{
+        return std::get<gfx::Manager::Ptr>(subsystems_).get();
+    }
+
+    run::Manager* Engine::run() const noexcept{
+        return std::get<run::Manager::Ptr>(subsystems_).get();
+    }
+
+    scn::Manager* Engine::scn() const noexcept{
+        return std::get<scn::Manager::Ptr>(subsystems_).get();
+    }
+
+    inp::Manager* Engine::inp() const noexcept{
+        return std::get<inp::Manager::Ptr>(subsystems_).get();
     }
 }

@@ -1,0 +1,172 @@
+#pragma once
+#include <deque>
+#include <nasral/common/utils.h>
+#include <nlohmann/detail/meta/detected.hpp>
+
+namespace nasral
+{
+    /**
+     * @brief Forward declaration
+     */
+    class Engine;
+
+    /**
+     * @brief Базовая специализация CRTP-класса подсистемы
+     * @tparam Derived Тип класса наследника
+     * @tparam Config Тип структуры конфигурации
+     */
+    template<typename Derived, typename Config = void>
+    class Subsystem
+    {
+    public:
+        Subsystem(Engine* engine, const Config& config)
+        : engine_(engine)
+        , config_(config)
+        {}
+
+        DECLARE_DETECTOR(on_init)
+        DECLARE_DETECTOR(on_update)
+        DECLARE_DETECTOR(on_finalize)
+        DECLARE_DETECTOR(on_render)
+
+        [[nodiscard]] Engine* engine() const { return engine_; }
+        [[nodiscard]] const Config& config() const { return config_; }
+
+        void init(){
+            if constexpr(nlohmann::detail::is_detected<has_on_init_t, Derived>::value){
+                static_cast<Derived*>(this)->on_init();
+            }
+        }
+
+        void update(float delta){
+            if constexpr (nlohmann::detail::is_detected<has_on_update_t, Derived, float>::value){
+                static_cast<Derived*>(this)->on_update(delta);
+            }
+        }
+
+        void finalize(){
+            if constexpr (nlohmann::detail::is_detected<has_on_finalize_t, Derived>::value){
+                static_cast<Derived*>(this)->on_finalize();
+            }
+        }
+
+        void render(){
+            if constexpr (nlohmann::detail::is_detected<has_on_render_t, Derived>::value){
+                static_cast<Derived*>(this)->on_render();
+            }
+        }
+
+        void apply_deferred() {
+            for (auto& action : deferred_actions_) {
+                action(*static_cast<Derived*>(this));
+            }
+            deferred_actions_.clear();
+        }
+
+    protected:
+        typedef std::function<void(Derived&)> DeferredAction;
+
+        /**
+         * @brief Отложенное действие подсистемы
+         * @warning Должно вызываться только во владеющем потоке
+         * @param action Callback-функция
+         */
+        void defer(DeferredAction action) {
+            deferred_actions_.emplace_back(std::move(action));
+        }
+
+    private:
+        Engine* const engine_;
+        Config config_;
+        std::vector<DeferredAction> deferred_actions_;
+    };
+
+
+    /**
+     * @brief Специализация CRTP-класса подсистемы без config
+     * @tparam Derived Тип класса наследника
+     */
+    template<typename Derived>
+    class Subsystem<Derived, void>
+    {
+    public:
+        explicit Subsystem(Engine* engine)
+        : engine_(engine)
+        {}
+
+        DECLARE_DETECTOR(on_init)
+        DECLARE_DETECTOR(on_update)
+        DECLARE_DETECTOR(on_finalize)
+        DECLARE_DETECTOR(on_render)
+
+        [[nodiscard]] Engine* engine() const { return engine_; }
+
+        void init(){
+            if constexpr(nlohmann::detail::is_detected<has_on_init_t, Derived>::value){
+                static_cast<Derived*>(this)->on_init();
+            }
+        }
+
+        void update(float delta){
+            if constexpr (nlohmann::detail::is_detected<has_on_update_t, Derived, float>::value){
+                static_cast<Derived*>(this)->on_update(delta);
+            }
+        }
+
+        void finalize(){
+            if constexpr (nlohmann::detail::is_detected<has_on_finalize_t, Derived>::value){
+                static_cast<Derived*>(this)->on_finalize();
+            }
+        }
+
+        void render(){
+            if constexpr (nlohmann::detail::is_detected<has_on_render_t, Derived>::value){
+                static_cast<Derived*>(this)->on_render();
+            }
+        }
+
+        void apply_deferred() {
+            while (!deferred_actions_.empty()){
+                auto action = std::move(deferred_actions_.front());
+                deferred_actions_.pop_front();
+                action(*static_cast<Derived*>(this));
+            }
+        }
+
+    protected:
+        typedef std::function<void(Derived&)> DeferredAction;
+
+        /**
+         * @brief Отложенное действие подсистемы
+         * @warning Должно вызываться только во владеющем потоке
+         * @param action Callback-функция
+         */
+        void defer(DeferredAction action) {
+            deferred_actions_.emplace_back(std::move(action));
+        }
+
+    private:
+        std::deque<DeferredAction> deferred_actions_;
+        Engine* const engine_;
+    };
+
+    /**
+     * @brief Базовый класс для RAII обертки над сущностью, порождаемой подсистемой
+     * @tparam SubsystemType Тип подсистемы
+     */
+    template<class SubsystemType>
+    class SubsystemObject
+    {
+    public:
+        [[nodiscard]] SubsystemType* subsystem() const { return subsystem_; }
+        [[nodiscard]] Engine* engine() const { return subsystem_->engine(); }
+
+    protected:
+        explicit SubsystemObject(SubsystemType* subsystem)
+        : subsystem_(subsystem)
+        {}
+
+    private:
+        SubsystemType* const subsystem_;
+    };
+}

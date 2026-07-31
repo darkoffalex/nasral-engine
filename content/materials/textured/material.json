@@ -1,0 +1,13 @@
+{
+  "base_type" : "eTextured",
+  "shaders" : [
+    {
+      "stage" : "vertex",
+      "path" : "materials/textured/shader.vert.spv"
+    },
+    {
+      "stage" : "fragment",
+      "path" : "materials/textured/shader.frag.spv"
+    }
+  ]
+}

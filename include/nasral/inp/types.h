@@ -1,12 +1,14 @@
 #pragma once
 
+#include <array>
 #include <bitset>
 #include <string>
 #include <variant>
+#include <memory>
 
 namespace nasral::inp
 {
-    constexpr uint32_t kMaxActionBindings = 2;
+    constexpr uint32_t kMaxKeyBindings = 2;
 
     enum class KeyCode : uint32_t
     {
@@ -90,14 +92,21 @@ namespace nasral::inp
         TOTAL
     };
 
-    typedef std::bitset<static_cast<size_t>(KeyCode::TOTAL)> KeyStateFlags;
-    typedef std::bitset<static_cast<size_t>(MouseButton::TOTAL)> MouseStateFlags;
-    typedef std::variant<KeyCode, MouseButton> ActionBinding;
+    // typedef std::bitset<static_cast<size_t>(KeyCode::TOTAL)> KeyStateFlags;
+    // typedef std::bitset<static_cast<size_t>(MouseButton::TOTAL)> MouseStateFlags;
+    typedef std::variant<KeyCode, MouseButton> KeyBinding;
 
     struct Action
     {
         std::string name;
-        std::array<ActionBinding, kMaxActionBindings> bindings;
+        std::array<KeyBinding, kMaxKeyBindings> bindings = {KeyCode::eNone};
+        size_t binding_count = 0;
+    };
+
+    struct ActionDesc
+    {
+        std::string name;
+        std::vector<KeyBinding> bindings;
     };
 
     class InputProvider;

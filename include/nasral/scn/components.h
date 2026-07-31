@@ -1,48 +1,40 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <nasral/core/types.h>
-#include <nasral/scn/types.h>
 #include <nasral/gfx/types.h>
+#include <nasral/scn/types.h>
 #include <nasral/ecs/entity.h>
-#include <nasral/core/component.h>
 
-namespace nasral::scn::comp
+namespace nasral::scn
 {
-    struct Node : core::Component<Node>
+    struct NodeComponent
     {
-        core::UniqueId uid;
         NodeType type = NodeType::eDummy;
-        std::optional<ecs::EntityId> parent = std::nullopt;
     };
 
-    struct NodeChildren : core::Component<NodeChildren>
-    {
-        ecs::EntityIdVector<4> children;
-    };
-
-    struct Spatial : core::Component<Spatial>
+    struct SpatialComponent
     {
         glm::vec3 position = {0.0f, 0.0f, 0.0f};
-        glm::vec3 scale = {1.0f, 1.0f, 1.0f};
         glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
+        glm::vec3 scale = {1.0f, 1.0f, 1.0f};
     };
 
-    struct Camera : core::Component<Camera>
+    struct ViewComponent
     {
-        CameraType type = CameraType::ePerspective;
+        gfx::ViewType type = gfx::ViewType::ePerspective;
         glm::float32_t fov = 90.0f;
         glm::float32_t aspect = 1.0f;
         glm::float32_t near = 0.1f;
         glm::float32_t far = 1000.0f;
     };
 
-    struct Mesh : core::Component<Mesh>
+    struct MeshComponent
     {
-        std::optional<ecs::EntityId> material_entity = std::nullopt;
+        ecs::EntityIds<gfx::kMaxMaterialsPerMesh> materials = {};
+        std::array<bool, gfx::kMaxMaterialsPerMesh> materials_requested = {false};
     };
 
-    struct Light : core::Component<Light>
+    struct LightComponent
     {
         gfx::LightType type = gfx::LightType::ePointLight;
         glm::float32_t intensity = 1.0f;

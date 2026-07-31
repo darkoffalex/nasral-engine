@@ -10,6 +10,15 @@ constexpr int kWindowHeight = 720;
 constexpr auto kWindowTitle = "Sandbox";
 
 /**
+ * Заставить выбрать конкретный бекенд GLFW. Возможные варианты:
+ * - GLFW_PLATFORM_NULL (авто)
+ * - GLFW_PLATFORM_WAYLAND (Linux/Wayland)
+ * - GLFW_PLATFORM_X11 (Linux/X11)
+ * - GLFW_PLATFORM_WIN32 (Windows)
+ */
+constexpr int kForceGlfwPlatform = GLFW_PLATFORM_NULL;
+
+/**
  * Точка входа
  * @param argc Кол-во аргументов
  * @param argv Аргументы
@@ -20,8 +29,29 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
     try
     {
         // Инициализация GLFW
+        if constexpr (kForceGlfwPlatform != GLFW_PLATFORM_NULL){
+            glfwInitHint(GLFW_PLATFORM, kForceGlfwPlatform);
+        }
+
         if (glfwInit() != GLFW_TRUE){
             throw std::runtime_error("Failed to initialize GLFW");
+        }
+
+        // Вывод используемого backend для GLFW
+        switch (const int glfw_platform = glfwGetPlatform())
+        {
+        case GLFW_PLATFORM_WAYLAND:
+            std::cout << "GLFW platform: Wayland" << std::endl;
+            break;
+        case GLFW_PLATFORM_X11:
+            std::cout << "GLFW platform: X11 / XWayland" << std::endl;
+            break;
+        case GLFW_PLATFORM_WIN32:
+            std::cout << "GLFW platform: Windows" << std::endl;
+            break;
+        default:
+            std::cout << "GLFW platform: " << glfw_platform << std::endl;
+            break;
         }
 
         // Для Vulkan не нужны hints
@@ -45,54 +75,24 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.ecs.max_entities = 1000;
 
             // Ресурсы
-            using ResType = nasral::res::Type;
-            using TexLoadParams = nasral::res::TextureLoadParams;
-            using MeshLoadParams = nasral::res::MeshLoadParams;
             config.res.content_dir = "../../content/";
             // Эти ресурсы будут добавлены в список по умолчанию
             config.res.initial_resources = {
-                // Dummy материал (вершины без преобразований)
-                {ResType::eMaterial, "materials/dummy/material.xml", std::nullopt},
-                {ResType::eShader, "materials/dummy/shader.vert.spv", std::nullopt},
-                {ResType::eShader, "materials/dummy/shader.frag.spv", std::nullopt},
-                // Vertex-colored материал (цветные вершины)
-                {ResType::eMaterial, "materials/vertex-colored/material.xml", std::nullopt},
-                {ResType::eShader, "materials/vertex-colored/shader.vert.spv", std::nullopt},
-                {ResType::eShader, "materials/vertex-colored/shader.frag.spv", std::nullopt},
-                // Phong освещение
-                {ResType::eMaterial, "materials/phong/material.xml", std::nullopt},
-                {ResType::eShader, "materials/phong/shader.vert.spv", std::nullopt},
-                {ResType::eShader, "materials/phong/shader.geom.spv", std::nullopt},
-                {ResType::eShader, "materials/phong/shader.frag.spv", std::nullopt},
-                // PBR
-                {ResType::eMaterial, "materials/pbr/material.xml", std::nullopt},
-                {ResType::eShader, "materials/pbr/shader.vert.spv", std::nullopt},
-                {ResType::eShader, "materials/pbr/shader.geom.spv", std::nullopt},
-                {ResType::eShader, "materials/pbr/shader.frag.spv", std::nullopt},
-                // Текстуры (стул, для теста)
-                { ResType::eTexture, "textures/chair/chair_ao_1k.png", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_diff_1k.png:v0", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_diff_1k.png:v1", TexLoadParams{true, false}},
-                { ResType::eTexture, "textures/chair/chair_metal_1k.png", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_nor_gl_1k.png", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_rough_1k.png", std::nullopt},
-                { ResType::eTexture, "textures/chair/chair_spec_1k.png", std::nullopt},
-                // Меш (стул, для теста)
-                {ResType::eMesh, "meshes/chair/chair.obj", MeshLoadParams{false, false, false}},
-
+                {nasral::res::Type::eProjectFile, "project.json", std::nullopt},
             };
 
             // Графика (Vulkan)
             config.gfx.app_name = "Nasral Sandbox";
             config.gfx.engine_name = "Nasral Engine";
             config.gfx.surface_provider = std::make_shared<utils::GlfwSurfaceProvider>(window);
-            config.gfx.clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            config.gfx.clear_color = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
             config.gfx.pfn_vk_get_proc_addr = glfwGetInstanceProcAddress;
             config.gfx.color_format = vk::Format::eB8G8R8A8Unorm;
             config.gfx.depth_format = vk::Format::eD32SfloatS8Uint;
             config.gfx.color_space = vk::ColorSpaceKHR::eSrgbNonlinear;
-            config.gfx.present_mode = vk::PresentModeKHR::eImmediate;
-            config.gfx.enable_validation_layers = true;
+            config.gfx.present_mode = vk::PresentModeKHR::eMailbox;
+            config.gfx.composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+            config.gfx.enable_validation_layers = false;
             config.gfx.opengl_compatible = true;
             config.gfx.max_frames_in_flight = 3;
             config.gfx.swap_chain_images = 4;
@@ -128,9 +128,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
 
         // Завершение работы с движком
         engine.finalize();
-
-        // Завершение работы с GLFW
-        glfwTerminate();
     }
     catch (const std::exception& e)
     {
@@ -138,5 +135,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
         return EXIT_FAILURE;
     }
 
+    // Завершение работы с GLFW
+    glfwTerminate();
+
+    // Выход
     return EXIT_SUCCESS;
 }

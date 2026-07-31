@@ -1,0 +1,17 @@
+{
+  "base_type" : "ePBR",
+  "shaders" : [
+    {
+      "stage" : "vertex",
+      "path" : "materials/pbr/shader.vert.spv"
+    },
+    {
+      "stage" : "fragment",
+      "path" : "materials/pbr/shader.frag.spv"
+    },
+    {
+      "stage" : "geometry",
+      "path" : "materials/pbr/shader.geom.spv"
+    }
+  ]
+}

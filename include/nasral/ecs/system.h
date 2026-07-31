@@ -1,27 +1,56 @@
 #pragma once
 
-#include <nasral/core/subsystem.h>
+#include <nasral/common/utils.h>
+#include <nlohmann/detail/meta/detected.hpp>
+
+namespace nasral
+{
+    class Engine;
+}
 
 namespace nasral::ecs
 {
-    template<typename Derived>
-    class System : public core::Subsystem<>
+    template<typename Derived, class SubsystemType>
+    class System
     {
     public:
-        void init(){
-            static_cast<Derived*>(this)->init();
-        }
-
-        void update(float dt){
-            static_cast<Derived*>(this)->update(dt);
-        }
-
-        void shutdown(){
-            static_cast<Derived*>(this)->shutdown();
-        }
-
-    protected:
-        explicit System(Engine* engine) : Subsystem<>(engine)
+        explicit System(SubsystemType* subsystem)
+        : subsystem_(subsystem)
         {}
+
+        DECLARE_DETECTOR(on_init)
+        DECLARE_DETECTOR(on_update)
+        DECLARE_DETECTOR(on_finalize)
+        DECLARE_DETECTOR(on_render)
+
+        [[nodiscard]] auto* subsystem() const { return subsystem_; }
+        [[nodiscard]] Engine* engine() const { return subsystem_->engine(); }
+
+        void init(){
+            if constexpr(nlohmann::detail::is_detected<has_on_init_t, Derived>::value){
+                static_cast<Derived*>(this)->on_init();
+            }
+        }
+
+        void update(float delta){
+            if constexpr (nlohmann::detail::is_detected<has_on_update_t, Derived, float>::value){
+                static_cast<Derived*>(this)->on_update(delta);
+            }
+        }
+
+        void finalize(){
+            if constexpr (nlohmann::detail::is_detected<has_on_finalize_t, Derived>::value){
+                static_cast<Derived*>(this)->on_finalize();
+            }
+        }
+
+        void render(){
+            if constexpr (nlohmann::detail::is_detected<has_on_render_t, Derived>::value){
+                static_cast<Derived*>(this)->on_render();
+            }
+        }
+
+    private:
+        SubsystemType* const subsystem_;
     };
 }

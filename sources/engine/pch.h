@@ -11,6 +11,7 @@
 #include <memory>
 #include <vector>
 #include <array>
+#include <list>
 #include <string>
 #include <string_view>
 #include <thread>

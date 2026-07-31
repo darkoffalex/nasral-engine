@@ -1,34 +1,48 @@
 #pragma once
 #include <nasral/ecs/system.h>
+#include <nasral/gfx/types.h>
 #include <nasral/log/loggable.h>
 
 namespace nasral::gfx
 {
-    class System final : public ecs::System<System>, public log::Loggable<System>
+    class Manager;
+    class System : public ecs::System<System, Manager>, public log::Loggable<System>
     {
     public:
-        using Ptr = std::unique_ptr<System>;
-        explicit System(Engine* engine);
+        typedef std::unique_ptr<System> Ptr;
+        explicit System(Manager* m);
         ~System();
 
         System(const System&) = delete;
         System& operator=(const System&) = delete;
 
-        void init();
-        void update(float dt);
-        void shutdown();
-        void render() const;
+        void on_init() const;
+        void on_update(float delta) const;
+        void on_finalize() const;
+        void on_render() const;
 
-    private:
+    protected:
+        // Материалы
+        void update_mtl_ubo() const;
+        void update_mtl_handles() const;
+        void update_mtl_textures() const;
+        void update_mtl_destroy() const;
+
+        // Объекты (UBO)
+        void update_obj_static_ubo() const;
+        void update_obj_dynamic_ubo() const;
+        void update_obj_mesh_handles() const;
+
+        // Источники света (UBO)
+        void update_light_static_ubo() const;
+        void update_light_dynamic_ubo() const;
+
+        // Камеры (UBO)
+        void update_cam_ubo() const;
+
+        // Рендеринг
         void render_meshes() const;
-
-        void update_material_settings() const;
-        void update_material_textures() const;
-        void update_objects_uniforms() const;
-        void update_lights_uniforms() const;
-        void update_lights_states() const;
-        void update_cam_uniforms() const;
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(gfx::System)
+DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(gfx::System, "GFX|ECS")

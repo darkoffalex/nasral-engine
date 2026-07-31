@@ -1,56 +1,84 @@
 #pragma once
 
 #include <bitset>
-#include <nasral/ecs/utils.h>
+#include <nasral/common/utils.h>
+#include <nasral/ecs/components.h>
 #include <nasral/gfx/components.h>
 #include <nasral/res/components.h>
 #include <nasral/scn/components.h>
 
 namespace nasral::ecs
 {
-    // Tuple из возможных типов компонентов
-    using ComponentTypes = std::tuple<
-        // Подсистема рендеринга
-        gfx::comp::MaterialHandles,
-        gfx::comp::MaterialSettings,
-        gfx::comp::MeshHandles,
-        gfx::comp::UniformIndex,
-        gfx::comp::UniformState,
-        gfx::comp::DirtyUniform,
-        gfx::comp::DirtyTextures,
-        gfx::comp::Activate,
-        gfx::comp::Deactivate,
+    /**
+     * @brief Перечисление всех используемых компонентов
+     */
+    using ComponentTypes = std::tuple
+    <
+        // Общие
+        ActivateComponent,
+        DeactivateComponent,
+        DestroyComponent,
+        UidComponent,
+        NameComponent,
+        EntityComponent,
+        EntityListComponent,
+        RefsCountComponent,
+        RefsChangedComponent,
 
-        // Подсистема ресурсов
-        res::comp::AssetId,
-        res::comp::Descriptor,
-        res::comp::DescriptorList<gfx::TextureType>,
-        res::comp::Request,
-        res::comp::Release,
-        res::comp::Error,
-        res::comp::Loaded,
-        res::comp::PendingDelete,
+        // Ресурсы
+        res::ResourcesComponent,
+        res::RequestComponent,
+        res::LoadingComponent,
+        res::LoadedComponent,
+        res::ReleaseComponent,
+        res::ErrorComponent,
+
+        // Графика
+        gfx::RenderComponent,
+        gfx::MaterialHandlesComponent,
+        gfx::MaterialSettingsComponent,
+        gfx::MeshHandlesComponent,
+        gfx::UniformIndexComponent,
+        gfx::UniformStateComponent,
+        gfx::DirtyUnformComponent,
+        gfx::DirtyTexturesComponent,
+        gfx::DirtyHandlesComponent,
 
         // Сцена
-        scn::comp::Node,
-        scn::comp::NodeChildren,
-        scn::comp::Spatial,
-        scn::comp::Camera,
-        scn::comp::Mesh,
-        scn::comp::Light
+        scn::NodeComponent,
+        scn::SpatialComponent,
+        scn::ViewComponent,
+        scn::MeshComponent,
+        scn::LightComponent
     >;
 
-    // Битовая маска компонентов (размер зависит от кол-ва возможных типов компонентов)
+    // Проверка типов компонентов на соответствие требования (на этапе компиляции)
+    static_assert(
+        all_default_constructible_v<ComponentTypes>,
+        "All components must be default constructible");
+
+    /**
+     * @brief Битовая маска компонентов (размер зависит от кол-ва возможных типов компонентов)
+     */
     using ComponentMask = std::bitset<std::tuple_size_v<ComponentTypes>>;
 
-    // Вариант-вектор компонентов
+    /**
+     * @brief Вариант-вектор компонентов (std::variant<std::vector<Component>>)
+     */
     using ComponentPool = to_variant_vector<ComponentTypes>;
 
-    // Получение ID компонента (соответствует индексу элемента в ComponentTypes)
+    /**
+     * @brief Получение ID компонента (соответствует индексу элемента в ComponentTypes)
+     * @tparam T Тип компонента
+     */
     template <typename T>
-    constexpr size_t kComponentId = tuple_index<T, ComponentTypes>::value;
+    constexpr size_t kComponentId = tuple_index<T, ComponentTypes>();
 
-    // Получение битовой маски типу компонентов
+    /**
+     * @brief Получить маску компонентов
+     * @tparam Ts Типы компонентов
+     * @return Битовая маска
+     */
     template<typename... Ts>
     ComponentMask make_mask(){
         ComponentMask mask;
@@ -58,9 +86,16 @@ namespace nasral::ecs
         return mask;
     }
 
+    /**
+     * @brief Получить маску компонентов (константный алиас)
+     * @tparam Ts Типы компонентов
+     */
     template<typename... Ts>
     inline const ComponentMask kMaskOf = make_mask<Ts...>();
 
+    /**
+     * @brief Конфигурация подсистемы ECS
+     */
     struct Config
     {
         size_t max_entities = 1024;

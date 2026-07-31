@@ -1,41 +1,56 @@
 #include "pch.h"
 #include <nasral/inp/manager.h>
 #include <nasral/inp/provider.h>
-#include <nasral/engine.h>
 #include <nasral/evt/utils.h>
-#include <nasral/res/resources/project.h>
+#include <nasral/res/objects/project.h>
+#include <nasral/engine.h>
 
 namespace nasral::inp
 {
-    Manager::Manager(Engine* engine, const Config& config)
-        : Subsystem(engine, config)
-        , evt_h_proj_load_(evt::kInvalidListener)
+    Manager::Manager(Engine* e, const Config& config)
+        : Subsystem(e, config)
         , prev_mouse_pos_({0.0f, 0.0f})
         , prev_keyboard_states_({})
         , prev_mouse_states_({})
         , sensitivity_(config.default_sensitivity)
     {
         if (!config.provider){
-            throw std::runtime_error("No input provider specified");
+            throw std::runtime_error("Input provider is not set");
         }
-
-        evt_h_proj_load_ = engine->events()->register_l(
-            evt::Type::eProjectResLoaded,
-            evt::bind(this, &Manager::on_project_loaded));
     }
 
     Manager::~Manager()
+    = default;
+
+    void Manager::on_init()
     {
-        engine()->events()->unregister_l(
-            evt::Type::eProjectResLoaded,
-            evt_h_proj_load_);
+        // Слушать событие загрузки проекта
+        evl_on_proj_load_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eProjectFileLoaded,
+            evt::bind(this, &Manager::on_project_loaded));
+
+        log_info("Manager initialized");
     }
 
-    void Manager::update([[maybe_unused]] float dt)
+    void Manager::on_update([[maybe_unused]] float delta)
     {
         prev_mouse_pos_ = mouse_position();
         prev_keyboard_states_ = config().provider->keyboard_states();
         prev_mouse_states_ = config().provider->mouse_states();
+
+        if (config().provider->consume_surface_resized())
+        {
+            engine()->events()->send(
+                evt::Type::eDisplaySurfaceChanged,
+                evt::ChangeReason::eResized);
+        }
+    }
+
+    void Manager::on_finalize()
+    {
+        evl_on_proj_load_.reset();
+        log_info("Manager finalized");
     }
 
     bool Manager::is_key_pressed(const KeyCode code) const
@@ -45,19 +60,17 @@ namespace nasral::inp
 
     bool Manager::is_key_just_pressed(const KeyCode code) const
     {
-        const auto bit = static_cast<size_t>(code);
-        return is_key_pressed(code) && !prev_keyboard_states_.test(bit);
+        return is_key_pressed(code) && !prev_keyboard_states_.test(code);
     }
 
     bool Manager::is_mouse_btn_pressed(const MouseButton button) const
     {
-        return config().provider->is_mouse_button_pressed(button);
+        return config().provider->is_mouse_btn_pressed(button);
     }
 
     bool Manager::is_mouse_btn_just_pressed(const MouseButton button) const
     {
-        const auto bit = static_cast<size_t>(button);
-        return is_mouse_btn_pressed(button) && !prev_mouse_states_.test(bit);
+        return is_mouse_btn_pressed(button) && !prev_mouse_states_.test(button);
     }
 
     glm::vec2 Manager::mouse_position() const
@@ -70,22 +83,16 @@ namespace nasral::inp
         return (mouse_position() - prev_mouse_pos_) * (use_sensitivity ? sensitivity_ : 1.0f);
     }
 
-    bool Manager::is_action_pressed(const std::string& name) const
+    std::optional<size_t> Manager::action_index(const std::string& name) const
     {
         const auto it = action_indices_.find(name);
-        if (it == action_indices_.end()) return false;
-        return is_action_pressed(it->second);
-    }
-
-    bool Manager::is_action_just_pressed(const std::string& name) const
-    {
-        const auto it = action_indices_.find(name);
-        if (it == action_indices_.end()) return false;
-        return is_action_just_pressed(it->second);
+        if (it == action_indices_.end()) return std::nullopt;
+        return it->second;
     }
 
     bool Manager::is_action_pressed(const size_t index) const
     {
+        if (index >= actions_.size()) return false;
         const auto& bindings = actions_[index].bindings;
         for (const auto& binding : bindings){
             if (std::holds_alternative<KeyCode>(binding)){
@@ -100,6 +107,7 @@ namespace nasral::inp
 
     bool Manager::is_action_just_pressed(const size_t index) const
     {
+        if (index >= actions_.size()) return false;
         const auto& bindings = actions_[index].bindings;
         for (const auto& binding : bindings){
             if (std::holds_alternative<KeyCode>(binding)){
@@ -147,7 +155,7 @@ namespace nasral::inp
         return normalize ? glm::normalize(result) : result;
     }
 
-    glm::vec3 Manager::get_mouse_movement_vector(const std::string& left_act
+    glm::vec3 Manager::get_movement_vector(const std::string& left_act
         , const std::string& right_act
         , const std::string& forward_act
         , const std::string& backward_act
@@ -157,42 +165,47 @@ namespace nasral::inp
     {
         auto result = glm::vec3(0.0f);
 
-        if (is_action_pressed(left_act)){
+        const auto left_act_idx     = action_index(left_act);
+        const auto right_act_idx    = action_index(right_act);
+        const auto forward_act_idx  = action_index(forward_act);
+        const auto backward_act_idx = action_index(backward_act);
+        const auto up_act_idx       = action_index(up_act);
+        const auto down_act_idx     = action_index(down_act);
+
+
+        if (left_act_idx.has_value() && is_action_pressed(left_act_idx.value())){
             result.x += -1.0f;
-        }else if (is_action_pressed(right_act)){
+        } else if (right_act_idx.has_value() && is_action_pressed(right_act_idx.value())){
             result.x += 1.0f;
         }
 
-        if (is_action_pressed(forward_act)){
+        if (forward_act_idx.has_value() && is_action_pressed(forward_act_idx.value())){
             result.z += -1.0f;
-        }else if (is_action_pressed(backward_act)){
+        } else if (backward_act_idx.has_value() && is_action_pressed(backward_act_idx.value())){
             result.z += 1.0f;
         }
 
-        if (is_action_pressed(up_act)){
+        if (up_act_idx.has_value() && is_action_pressed(up_act_idx.value())){
             result.y += 1.0f;
-        }else if (is_action_pressed(down_act)){
+        } else if (down_act_idx.has_value() && is_action_pressed(down_act_idx.value())){
             result.y += -1.0f;
-        }
-
-        if (glm::length2(result) == 0.0f){
-            return glm::vec3(0.0f);
         }
 
         return normalize ? glm::normalize(result) : result;
     }
 
-    void Manager::register_action(const std::string& name, const std::vector<ActionBinding>& bindings)
+    void Manager::register_action(const ActionDesc& action_desc)
     {
-        actions_.push_back({name, {}});
-        auto& [added_name, added_bindings] = actions_.back();
+        actions_.push_back({action_desc.name, {}});
+        auto& [name, bindings, bindings_count] = actions_.back();
 
-        for (size_t i = 0; i < bindings.size(); ++i){
-            if (i >= added_bindings.size()) break;
-            added_bindings[i] = bindings[i];
+        for (size_t i = 0; i < action_desc.bindings.size(); ++i){
+            if (i >= bindings.size()) break;
+            bindings[i] = action_desc.bindings[i];
+            bindings_count++;
         }
 
-        action_indices_[added_name] = static_cast<uint32_t>(actions_.size() - 1);
+        action_indices_[name] = static_cast<uint32_t>(actions_.size() - 1);
     }
 
     void Manager::reset_actions()
@@ -203,19 +216,22 @@ namespace nasral::inp
 
     void Manager::on_project_loaded(const evt::Arg& arg)
     {
-        auto* r_ptr = evt::from_arg<res::IResource*>(arg).value_or(nullptr);
-        if (const auto* proj = dynamic_cast<res::Project*>(r_ptr))
-        {
-            if (!proj->action_bindings().empty()){
-                reset_actions();
-                for (const auto& [name, bindings] : proj->action_bindings()){
-                    register_action(name, bindings);
-                }
-            }
+        // Получить ресурс файла проекта
+        auto* res = evt::from_arg<res::Resource*>(arg).value_or(nullptr);
+        const auto* proj = dynamic_cast<res::ProjectFile*>(res);
 
-            if (proj->sensitivity() > 0.0f){
-                sensitivity_ = proj->sensitivity();
-            }
+        assert(res && "Wrong project file resource");
+        assert(res->status() == res::Status::eLoaded && "Project file resource is not loaded");
+        assert(proj && "Project file resource is not a project file");
+
+        // Зарегистрировать действие
+        for (const auto& ab : proj->action_bindings()){
+            register_action(ab);
         }
+
+        // Настройки ввода готовы
+        engine()->events()->send_deferred(
+            evt::Type::eInputSettingsChanged,
+            evt::ChangeReason::eInitial);
     }
 }

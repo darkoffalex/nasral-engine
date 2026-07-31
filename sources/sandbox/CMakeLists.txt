@@ -24,4 +24,5 @@ target_link_libraries(Sandbox PRIVATE
         Vulkan::Vulkan
         glm::glm
         magic_enum::magic_enum
+        nlohmann_json::nlohmann_json
 )

@@ -1,6 +1,9 @@
 #pragma once
 
+#include <nasral/gfx/types.h>
 #include <vulkan/vulkan.hpp>
+
+namespace nasral::res { class Manager; }
 
 namespace nasral::gfx
 {
@@ -29,4 +32,19 @@ namespace nasral::gfx
     vk::DeviceSize sbo_offset(const vk::PhysicalDevice& device, const uint32_t index){
         return aligned_sbo<T>(device) * index;
     }
+
+    vk::Format get_image_vk_format(uint32_t channel_count, uint32_t channel_depth, bool srgb);
+
+    GeometryData gen_quad_geometry(float size = 1.0f);
+
+    GeometryData gen_cube_geometry(float size = 1.0f);
+
+    GeometryData gen_sphere_geometry(
+        float radius = 0.5f,
+        uint32_t segments = 32,
+        uint32_t rings = 16,
+        bool clockwise = true,
+        const glm::vec4& color = glm::vec4(1.0f));
+
+    handles::Texture fallback_tex_h(const res::Manager* res_m, TextureType type);
 }

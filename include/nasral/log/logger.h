@@ -4,12 +4,12 @@
 #include <fstream>
 #include <mutex>
 
-#include <nasral/core/subsystem.h>
+#include <nasral/common/subsystem.h>
 #include <nasral/log/types.h>
 
 namespace nasral::log
 {
-    class Logger final : public core::Subsystem<Config>
+    class Logger final : public Subsystem<Logger, Config>
     {
     public:
         typedef std::unique_ptr<Logger> Ptr;
@@ -22,11 +22,30 @@ namespace nasral::log
 
         void log_unsafe(Level level, const std::string& message);
         void log(Level level, const std::string& message);
-        void debug(const std::string& message);
-        void info(const std::string& message);
-        void warn(const std::string& message);
-        void error(const std::string& message);
-        void fatal(const std::string& message);
+
+        void debug(const std::string& message){
+            log(Level::eDebug, message);
+        }
+
+        void info(const std::string& message){
+            log(Level::eInfo, message);
+        }
+
+        void warn(const std::string& message){
+            log(Level::eWarning, message);
+        }
+
+        void error(const std::string& message){
+            log(Level::eError, message);
+        }
+
+        void fatal(const std::string& message){
+            log(Level::eFatal, message);
+        }
+
+    protected:
+        void on_init();
+        void on_finalize();
 
     private:
         std::ofstream fs_;

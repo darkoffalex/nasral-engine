@@ -1,47 +1,54 @@
 #pragma once
 
-#include <nasral/core/subsystem.h>
-#include <nasral/scn/types.h>
+#include <list>
+#include <nasral/common/subsystem.h>
+#include <nasral/scn/system.h>
 #include <nasral/log/loggable.h>
-#include <nasral/ecs/entity.h>
-#include <nasral/evt/types.h>
+#include <nasral/scn/types.h>
+#include <nasral/scn/objects/node.h>
+#include <nasral/scn/objects/camera.h>
+#include <nasral/evt/objects/listener.h>
 
 namespace nasral::scn
 {
-    class Manager final : public core::Subsystem<Config>, public log::Loggable<Manager>
+    class Manager final : public Subsystem<Manager, Config>, public log::Loggable<Manager>
     {
     public:
         typedef std::unique_ptr<Manager> Ptr;
 
-        Manager(Engine* e, const Config& cfg);
+        explicit Manager(Engine* e, const Config& config);
         ~Manager();
 
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
 
-        [[nodiscard]] ecs::EntityId root() const noexcept { return root_; }
-        [[nodiscard]] ecs::EntityId camera() const noexcept { return camera_; }
+        void on_init();
+        void on_update(float delta) const;
+        void on_finalize();
 
-        void set_parent(const ecs::EntityId& child
-            , const ecs::EntityId& parent
-            , bool keep_order_on_erase = true) const;
-
-        void unparent(const ecs::EntityId& node
-            , bool keep_order = true) const;
-
-    private:
-        void init_root();
-        void init_camera();
-        void on_project_loaded(const evt::Arg& arg) const;
+        Node* spawn(const NodeDesc& desc);
+        void remove(const Node* node);
+        void remove(const UniqueId& id);
+        [[nodiscard]] Node* find(const UniqueId& id) const;
+        [[nodiscard]] Node* find(const std::string& name) const;
 
     protected:
-        // Корень сцены
-        ecs::EntityId root_;
-        ecs::EntityId camera_;
+        void on_session_start(const evt::Arg& arg);
+        void on_display_surface_changed(const evt::Arg& arg) const;
+        void load_initial_scene(const std::string& path);
 
-        // События
-        evt::ListenerHandle evt_h_proj_load_;
+    private:
+        // Список узлов
+        std::list<Node::Ptr> nodes_;
+        // Основная камера
+        Camera* main_camera_;
+        // Слушатель события начала сеанса
+        evt::Listener::Ptr evl_session_start_;
+        // Слушатель события смены размеров поверхности
+        evt::Listener::Ptr evl_sfc_chg_;
+        // ECS-система
+        System::Ptr ecs_system_;
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(scn::Manager)
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(scn::Manager, "SCN")

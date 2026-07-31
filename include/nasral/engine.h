@@ -1,19 +1,27 @@
 #pragma once
-#include <nasral/types.h>
+
 #include <nasral/log/logger.h>
 #include <nasral/evt/manager.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/res/manager.h>
-#include <nasral/gfx/renderer.h>
+#include <nasral/gfx/manager.h>
+#include <nasral/run/manager.h>
 #include <nasral/scn/manager.h>
 #include <nasral/inp/manager.h>
 
-#include <nasral/res/system.h>
-#include <nasral/gfx/system.h>
-#include <nasral/scn/system.h>
-
 namespace nasral
 {
+    struct Config
+    {
+        log::Config log = {};
+        ecs::Config ecs = {};
+        res::Config res = {};
+        gfx::Config gfx = {};
+        run::Config run = {};
+        scn::Config scn = {};
+        inp::Config inp = {};
+    };
+
     class Engine
     {
     public:
@@ -28,25 +36,32 @@ namespace nasral
         void finalize() const;
         void update(float delta);
 
-        [[nodiscard]] log::Logger* logger() const noexcept { return logger_.get(); }
-        [[nodiscard]] evt::Manager* events() const noexcept { return evt_.get(); }
-        [[nodiscard]] ecs::Manager* ecs() const noexcept { return ecs_.get(); }
-        [[nodiscard]] res::Manager* res() const noexcept { return res_.get(); }
-        [[nodiscard]] gfx::Renderer* renderer() const noexcept { return renderer_.get(); }
-        [[nodiscard]] scn::Manager* scn() const noexcept { return scn_.get(); }
-        [[nodiscard]] inp::Manager* input() const noexcept { return inp_.get(); }
+        [[nodiscard]] log::Logger* logger() const noexcept;
+        [[nodiscard]] evt::Manager* events() const noexcept;
+        [[nodiscard]] ecs::Manager* ecs() const noexcept;
+        [[nodiscard]] res::Manager* res() const noexcept;
+        [[nodiscard]] gfx::Manager* gfx() const noexcept;
+        [[nodiscard]] run::Manager* run() const noexcept;
+        [[nodiscard]] scn::Manager* scn() const noexcept;
+        [[nodiscard]] inp::Manager* inp() const noexcept;
 
     protected:
-        log::Logger::Ptr logger_;
-        inp::Manager::Ptr inp_;
-        evt::Manager::Ptr evt_;
-        ecs::Manager::Ptr ecs_;
-        res::Manager::Ptr res_;
-        scn::Manager::Ptr scn_;
-        gfx::Renderer::Ptr renderer_;
+        /**
+         * @brief Подсистемы
+         * @details От порядка подсистем в кортеже зависит порядок
+         * инициализации, обновления, финализации.
+         * Финализация происходит в порядке, обратном порядку инициализации.
+         */
+        using SubsystemTuple = std::tuple<
+            log::Logger::Ptr,
+            evt::Manager::Ptr,
+            run::Manager::Ptr,
+            ecs::Manager::Ptr,
+            gfx::Manager::Ptr,
+            res::Manager::Ptr,
+            scn::Manager::Ptr,
+            inp::Manager::Ptr>;
 
-        gfx::System::Ptr gfx_system_;
-        res::System::Ptr res_system_;
-        scn::System::Ptr scn_system_;
+        SubsystemTuple subsystems_;
     };
 }

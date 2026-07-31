@@ -7,12 +7,16 @@
 #include <vector>
 #include <array>
 #include <stdexcept>
+#include <limits>
+#include <tuple>
+#include <cstdint>
 
 namespace nasral::res
 {
     constexpr size_t kMaxResourcePathLength = 64;
     constexpr size_t kMaxResourceCount = 1024;
     constexpr size_t kMinRefsCount = 10;
+    constexpr size_t kResListComponentSize = 10;
 
     constexpr uint32_t kInvalidResourceId = std::numeric_limits<uint32_t>::max();
 
@@ -38,12 +42,13 @@ namespace nasral::res
 
     enum class Type : uint32_t
     {
-        eFile = 0,
+        eUndefined = 0,
+        eFile,
         eTexture,
         eMesh,
         eShader,
         eMaterial,
-        eProject,
+        eProjectFile,
         eScene,
         TOTAL
     };
@@ -71,8 +76,10 @@ namespace nasral::res
         bool winding_order_ccw = false;
     };
 
-    using LoadParams = std::variant<TextureLoadParams, MeshLoadParams>;
-    using LoadParamsOpt = std::optional<LoadParams>;
+    using LoadParams = std::variant<
+        TextureLoadParams,
+        MeshLoadParams
+    >;
 
     struct Path
     {
@@ -110,10 +117,11 @@ namespace nasral::res
     };
 
     using ResourceId = uint32_t;
+    using ResourceDesc = std::tuple<Type, std::string, std::optional<LoadParams>>;
 
     struct Config
     {
         std::string content_dir;
-        std::vector<std::tuple<Type, std::string, LoadParamsOpt>> initial_resources;
+        std::vector<ResourceDesc> initial_resources;
     };
 }

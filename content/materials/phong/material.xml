@@ -1,7 +1,0 @@
-<Material type="ePhong">
-    <Shaders>
-        <Shader stage="vertex" path="materials/phong/shader.vert.spv"/>
-        <Shader stage="fragment" path="materials/phong/shader.frag.spv"/>
-        <Shader stage="geometry" path="materials/phong/shader.geom.spv"/>
-    </Shaders>
-</Material>

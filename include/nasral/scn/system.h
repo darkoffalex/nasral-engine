@@ -1,28 +1,36 @@
 #pragma once
 #include <nasral/ecs/system.h>
-#include <nasral/res/resource.h>
 #include <nasral/log/loggable.h>
 
 namespace nasral::scn
 {
-    class System final : public ecs::System<System>, public log::Loggable<System>
+    class Manager;
+    class System : public ecs::System<System, Manager>, public log::Loggable<System>
     {
     public:
-        using Ptr = std::unique_ptr<System>;
-        explicit System(Engine* engine);
+        typedef std::unique_ptr<System> Ptr;
+        explicit System(Manager* m);
         ~System();
 
         System(const System&) = delete;
         System& operator=(const System&) = delete;
 
-        void init();
-        void update(float dt);
-        void shutdown();
+        void on_init() const;
+        void on_update(float delta);
+        void on_finalize() const;
+
+    protected:
+        void update_resource_requests() const;
+        void update_cam_input(float delta) const;
+        void update_light_input(float delta) const;
+        void update_mesh_destroy() const;
+        void update_light_destroy() const;
+        void update_light_states();
 
     private:
-        void update_obj_transforms(float dt) const;
-        void update_camera_transform(float dt) const;
+        std::vector<uint32_t> activate_lights_;
+        std::vector<uint32_t> deactivate_lights_;
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(scn::System)
+DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(scn::System, "SCN|ECS")

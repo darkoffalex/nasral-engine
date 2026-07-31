@@ -1,240 +1,488 @@
 #include "pch.h"
 #include <nasral/gfx/system.h>
-#include <nasral/engine.h>
-#include <nasral/ecs/view.h>
+#include <nasral/gfx/manager.h>
+#include <nasral/gfx/objects/material.h>
 #include <nasral/ecs/manager.h>
+#include <nasral/ecs/view.h>
+#include <nasral/ecs/utils.h>
+#include <nasral/res/components.h>
+#include <nasral/scn/components.h>
+#include <nasral/res/objects/material.h>
+#include <nasral/res/objects/texture.h>
+#include <nasral/res/objects/mesh.h>
+#include <nasral/engine.h>
 
 namespace nasral::gfx
 {
-    System::System(Engine* engine) : ecs::System<System>(engine)
-    {}
+    System::System(Manager* m) : ecs::System<System, Manager>(m){}
 
-    System::~System()
-    = default;
+    System::~System() = default;
 
-    void System::init()
-    {}
-
-    void System::update([[maybe_unused]] const float dt)
-    {
-        update_material_settings();
-        update_material_textures();
-        update_objects_uniforms();
-        update_lights_uniforms();
-        update_lights_states();
-        update_cam_uniforms();
+    void System::on_init() const{
+        log_info("ECS-system initialized");
     }
 
-    void System::shutdown()
-    {}
+    void System::on_update([[maybe_unused]] const float delta) const
+    {
+        // Материалы
+        update_mtl_ubo();
+        update_mtl_handles();
+        update_mtl_textures();
+        update_mtl_destroy();
 
-    void System::render() const
+        // Объекты
+        update_obj_static_ubo();
+        update_obj_dynamic_ubo();
+        update_obj_mesh_handles();
+
+        // Источники света
+        update_light_static_ubo();
+        update_light_dynamic_ubo();
+
+        // Камеры
+        update_cam_ubo();
+    }
+
+    void System::on_finalize() const{
+        update_mtl_destroy();
+        log_info("ECS-system finalized");
+    }
+
+    void System::on_render() const
     {
         render_meshes();
     }
 
-    void System::render_meshes() const
+    void System::update_mtl_ubo() const
     {
-        using Spatial = scn::comp::Spatial;
-        using MeshNode = scn::comp::Mesh;
-        using MeshHandles = comp::MeshHandles;
-        using MatHandles = comp::MaterialHandles;
-        using MatSettings = comp::MaterialSettings;
-        using UboIdx = comp::UniformIndex;
+        // Алиасы компонентов
+        using Settings  = MaterialSettingsComponent;
+        using UniformId = UniformIndexComponent;
+        using Dirty     = DirtyUnformComponent;
 
-        auto* renderer = engine()->renderer();
-        auto* ecs = engine()->ecs();
-
-        for (auto [e, spatial, mesh, mesh_hdl, mesh_ubo] : ecs->view<Spatial, MeshNode, MeshHandles, UboIdx>())
+        // Пройти по всем сущностям с компонентами:
+        // - Настройки материала
+        // - Uniform index
+        // - Грязный (не обновленный) uniform
+        for (auto [e, ms, ui, du_tag] : engine()->ecs()->view<Settings, UniformId, Dirty>())
         {
-            if (!mesh_hdl.mesh){
-                log_warn("Mesh node has no render handles!");
-                continue;
-            }
+            // Для всех вариаций настроек материала
+            std::visit([&, index = ui.index](auto&& uniforms){
+                engine()->gfx()->update_mat_uniforms(uniforms, index);
+            }, ms.uniforms);
 
-            if (!mesh.material_entity.has_value()){
-                log_warn("Mesh node has no material!");
-                continue;
-            }
-
-            auto mat_e = mesh.material_entity.value();
-            if (!ecs->is_valid(mat_e)
-                || !ecs->has_component<MatSettings>(mat_e)
-                || !ecs->has_component<MatHandles>(mat_e))
-            {
-                log_warn("Material entity is invalid!");
-                continue;
-            }
-
-            const auto& mat_ubo = ecs->get_component<UboIdx>(mat_e);
-            const auto& mat_hdl = ecs->get_component<MatHandles>(mat_e);
-
-            renderer->cmd_bind_material(mat_hdl.material, mat_ubo.index);
-            renderer->cmd_draw_mesh(mesh_hdl.mesh, mesh_ubo.index);
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
         }
     }
 
-    void System::update_material_settings() const
+    void System::update_mtl_handles() const
     {
-        using Dirty = comp::DirtyUniform;
-        using Settings = comp::MaterialSettings;
-        using UboIdx = comp::UniformIndex;
+        // Алиасы компонентов
+        using Handles   = MaterialHandlesComponent;
+        using Resources = res::ResourcesComponent;
+        using Dirty     = DirtyHandlesComponent;
+        using Loaded    = res::LoadedComponent;
 
-        // Сущности материалов с тегом MatDirtyTag должны обновить свои данные в SSBO/UBO рендерера
-        for (auto [e, d, s, ubo] : engine()->ecs()->view<Dirty, Settings, UboIdx>())
+        // Алиасы для индексов ресурсов
+        using ResIndices = MaterialInstance::ResIndices;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Handles материала
+        // - Список ресурсов
+        // - Грязные (не обновленные) handles
+        // - Ресурсы загружены
+        for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
         {
-            if (s.type == MaterialType::ePhong){
-                const auto* u = std::get_if<uniforms::MaterialPhong>(&s.uniforms);
-                engine()->renderer()->update_mat_phong_uniforms(*u, ubo.index);
-            }
-            else if (s.type == MaterialType::ePbr){
-                const auto* u = std::get_if<uniforms::MaterialPbr>(&s.uniforms);
-                engine()->renderer()->update_mat_pbr_uniforms(*u, ubo.index);
+            // Материал должен быть загружен
+            if (kDebugBuild){
+                assert(rsc.active[ResIndices::eBaseMaterial]);
+                assert(rsc.ids[ResIndices::eBaseMaterial] != res::kInvalidResourceId);
             }
 
-            engine()->ecs()->remove_component_deferred<Dirty>(e);
+            // Ресурс материала (должен быть доступен)
+            const auto* mat_res = engine()->res()->get<res::Material>(rsc.ids[ResIndices::eBaseMaterial]);
+            assert(mat_res != nullptr && "Bad material");
+            // Если загружен - обновить handles, если нет - fallback
+            if (mat_res->status() == res::Status::eLoaded){
+                mh.material = mat_res->render_handles();
+            }else{
+                // TODO: Fallback
+            }
+
+            // Итерация по типам текстур
+            for (const auto type : magic_enum::enum_values<TextureType>()){
+                if (type == TextureType::TOTAL) continue;
+                const auto res_index = MaterialInstance::kTexResMap[type];
+                // Если текстура используется
+                if (rsc.active[res_index]){
+                    assert(rsc.ids[res_index] != res::kInvalidResourceId);
+                    const auto* tex_res = engine()->res()->get<res::Texture>(rsc.ids[res_index]);
+                    assert(tex_res != nullptr && "Bad texture");
+                    if (tex_res->status() == res::Status::eLoaded){
+                        mh.textures[type] = tex_res->render_handles();
+                    }
+                    else{
+                        // TODO: Fallback
+                    }
+                }
+                else{
+                    mh.textures[type] = {};
+                }
+            }
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
         }
     }
 
-    void System::update_material_textures() const
+    void System::update_mtl_textures() const
     {
-        using Dirty = comp::DirtyTextures;
-        using Settings = comp::MaterialSettings;
-        using Handles = comp::MaterialHandles;
-        using UboIdx = comp::UniformIndex;
+        // Алиасы компонентов
+        using Handles       = MaterialHandlesComponent;
+        using Settings      = MaterialSettingsComponent;
+        using UniformId     = UniformIndexComponent;
+        using DirtyHandles  = DirtyHandlesComponent;
+        using DirtyTextures = DirtyTexturesComponent;
 
-        for (auto [e, d, s, h, ubo] : engine()->ecs()->view<Dirty, Settings, Handles, UboIdx>())
+        // Пройти по всем сущностям с компонентами:
+        // - Handles материала
+        // - Настройки материала
+        // - Uniform index
+        // - Грязные (не обновленные) текстуры
+        // Где нет компонентов:
+        // - Грязные (не обновленные) handles
+        for (auto [e, mh, ms, ui, dt_tag] : engine()->ecs()->view<
+            Handles,
+            Settings,
+            UniformId,
+            DirtyTextures>(ecs::kMaskOf<DirtyHandles>))
         {
-            for (const TextureType tt : magic_enum::enum_values<TextureType>())
-            {
-                if (!h.textures[tt]) continue;
+            // Итерация по типам текстур
+            for (const auto type : magic_enum::enum_values<TextureType>()){
+                if (type == TextureType::TOTAL) continue;
+                if (!mh.textures[type]) continue;
 
-                engine()->renderer()->update_mat_textures({
-                    tt,
-                    s.samplers[tt],
-                    h.textures[tt]
-                }, ubo.index);
+                engine()->gfx()->update_mat_textures({
+                    type,
+                    ms.samplers[type],
+                    mh.textures[type]
+                }, ui.index);
             }
+
+            // Обновлено
+            engine()->ecs()->remove_components<DirtyTextures>(e);
         }
     }
 
-    void System::update_objects_uniforms() const
+    void System::update_mtl_destroy() const
     {
-        using Spatial = scn::comp::Spatial;
-        using UboIdx = comp::UniformIndex;
-        using State = comp::UniformState;
-        using Cam = scn::comp::Camera;
-        using Light = scn::comp::Light;
+        // Алиасы компонентов
+        using Material  = MaterialSettingsComponent;
+        using UniformId = UniformIndexComponent;
+        using Destroy   = ecs::DestroyComponent;
 
-        for (auto [e, settings, ubo, state] : engine()->ecs()->view<Spatial, UboIdx, State>(ecs::kMaskOf<Cam, Light>))
+        // Пройти по всем сущностям с компонентами
+        // - Параметры материала
+        // - Uniform index
+        // - Уничтожение
+        // Внимание: ожидается, что в конце полной итерации update сущность удаляется (что предотвратит повторную обработку)
+        for (const auto& [e, ms, ui, d_tag] : engine()->ecs()->view<Material, UniformId, Destroy>())
         {
-            if (!state.dirty) continue;
+            engine()->gfx()->material_ubo_ids().release(ui.index);
+        }
+    }
 
+    void System::update_obj_static_ubo() const
+    {
+        // Алиасы компонентов
+        using Spatial   = scn::SpatialComponent;
+        using UniformId = UniformIndexComponent;
+        using Render    = RenderComponent;
+        using Dirty     = DirtyUnformComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Пространственные параметры
+        // - Uniform index
+        // - Рендеринг
+        // - Грязный (не обновленный) UBO
+        for (const auto& [e, sp, ui, r_tag, d_tag] : engine()->ecs()->view<Spatial, UniformId, Render, Dirty>())
+        {
+            // Вычислить матрицы
             uniforms::Object uniforms = {};
             auto& model = uniforms.model;
             auto& normals = uniforms.normals;
-
-            model = glm::translate(model, settings.position);
-            model = glm::rotate(model, glm::radians(settings.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-            model = glm::rotate(model, glm::radians(settings.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-            model = glm::rotate(model, glm::radians(settings.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-            model = glm::scale(model, settings.scale);
+            model = glm::translate(model, sp.position);
+            model = glm::rotate(model, glm::radians(sp.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, glm::radians(sp.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(sp.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::scale(model, sp.scale);
             normals = glm::transpose(glm::inverse(glm::mat3(model)));
 
-            engine()->renderer()->update_obj_uniforms(uniforms, ubo.index);
-            state.dirty = false;
+            // Обновить матрицы для объекта
+            engine()->gfx()->update_obj_uniforms(uniforms, ui.index);
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
         }
     }
 
-    void System::update_lights_uniforms() const
+
+    void System::update_obj_dynamic_ubo() const
     {
-        using Spatial = scn::comp::Spatial;
-        using Light = scn::comp::Light;
-        using UboIdx = comp::UniformIndex;
-        using State = comp::UniformState;
+        // Алиасы компонентов
+        using Spatial   = scn::SpatialComponent;
+        using UniformId = UniformIndexComponent;
+        using State     = UniformStateComponent;
+        using Render    = RenderComponent;
 
-        for (auto [e, spatial, light, ubo, state] : engine()->ecs()->view<Spatial, Light, UboIdx, State>())
+        // Пройти по всем сущностям с компонентами:
+        // - Пространственные параметры
+        // - Uniform index
+        // - Состояние UBO
+        // - Рендеринг
+        for (auto [e, sp, ui, state, r_tag] : engine()->ecs()->view<Spatial, UniformId, State, Render>())
         {
-            if (!state.dirty) continue;
+            if (!state.is_dirty) continue;
 
+            // Вычислить матрицы
+            uniforms::Object uniforms = {};
+            auto& model = uniforms.model;
+            auto& normals = uniforms.normals;
+            model = glm::translate(model, sp.position);
+            model = glm::rotate(model, glm::radians(sp.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::rotate(model, glm::radians(sp.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(sp.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::scale(model, sp.scale);
+            normals = glm::transpose(glm::inverse(glm::mat3(model)));
+
+            // Обновить матрицы для объекта
+            engine()->gfx()->update_obj_uniforms(uniforms, ui.index);
+
+            // Обновлено
+            state.is_dirty = false;
+        }
+    }
+
+    void System::update_obj_mesh_handles() const
+    {
+        // Алиасы компонентов
+        using Handles   = MeshHandlesComponent;
+        using Resources = res::ResourcesComponent;
+        using Dirty     = DirtyHandlesComponent;
+        using Loaded    = res::LoadedComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Handles меша
+        // - Список ресурсов
+        // - Грязные (не обновленные) handles
+        // - Ресурсы загружены
+        for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
+        {
+            // Меш должен быть загружен
+            if (kDebugBuild){
+                assert(rsc.active[0]);
+                assert(rsc.ids[0] != res::kInvalidResourceId);
+            }
+
+            // Ресурс материала (должен быть доступен)
+            const auto* mesh_res = engine()->res()->get<res::Mesh>(rsc.ids[0]);
+            assert(mesh_res != nullptr && "Bad mesh resource");
+
+            // Если загружен - обновить handles, если нет - fallback
+            if (mesh_res->status() == res::Status::eLoaded){
+                mh.mesh = mesh_res->render_handles();
+            }else{
+                // TODO: Fallback
+            }
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
+        }
+    }
+
+    void System::update_light_static_ubo() const
+    {
+        // Алиасы компонентов
+        using Spatial   = scn::SpatialComponent;
+        using Light     = scn::LightComponent;
+        using UniformId = UniformIndexComponent;
+        using Dirty     = DirtyUnformComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        for (auto [e, sp, l, ui, d_tag] : engine()->ecs()->view<Spatial, Light, UniformId, Dirty>())
+        {
+            // Параметры источника
             uniforms::LightSettings uniforms = {};
-            uniforms.type = static_cast<uint32_t>(light.type);
-            uniforms.position = glm::vec4(spatial.position, 1.0f);
-            uniforms.color = light.color;
-            uniforms.intensity = light.intensity;
-            uniforms.radius = light.radius;
-            uniforms.quadratic = light.quadratic;
+            uniforms.position = {sp.position.x, sp.position.y, sp.position.z, 1.0f};
+            uniforms.direction = {sp.rotation.x, sp.rotation.y, sp.rotation.z, 0.0f};
+            uniforms.color = l.color;
+            uniforms.type = static_cast<uint32_t>(l.type);
+            uniforms.intensity = l.intensity;
+            uniforms.quadratic = l.quadratic;
+            uniforms.radius = l.radius;
 
-            engine()->renderer()->update_light_uniforms(uniforms, ubo.index);
-            state.dirty = false;
+            // TODO: Вычислить матрицу пространства источника (для потенциальной реализации теней)
+
+            // Обновить параметры источника
+            engine()->gfx()->update_light_uniforms(uniforms, ui.index);
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
         }
     }
 
-    void System::update_lights_states() const
+    void System::update_light_dynamic_ubo() const
     {
-        using Light = scn::comp::Light;
-        using UboIdx = comp::UniformIndex;
-        using Activate = comp::Activate;
-        using Deactivate = comp::Deactivate;
+        // Алиасы компонентов
+        using Spatial   = scn::SpatialComponent;
+        using Light     = scn::LightComponent;
+        using UniformId = UniformIndexComponent;
+        using State     = UniformStateComponent;
 
-        static std::vector<uint32_t> activate_lights;
-        static std::vector<uint32_t> deactivate_lights;
-        activate_lights.reserve(10);
-        deactivate_lights.reserve(10);
-
-        activate_lights.clear();
-        for (auto [e, light, ubo, a] : engine()->ecs()->view<Light, UboIdx, Activate>())
+        // Пройти по всем сущностям с компонентами:
+        // - Пространственные параметры
+        // - Источник света
+        // - Uniform index
+        // - Состояние UBO
+        for (auto [e, sp, l, ui, state] : engine()->ecs()->view<Spatial, Light, UniformId, State>())
         {
-            activate_lights.push_back(ubo.index);
-            engine()->ecs()->remove_component_deferred<Activate>(e);
-        }
+            if (!state.is_dirty) continue;
 
-        deactivate_lights.clear();
-        for (auto [e, light, ubo, d] : engine()->ecs()->view<Light, UboIdx, Deactivate>())
-        {
-            deactivate_lights.push_back(ubo.index);
-            engine()->ecs()->remove_component_deferred<Deactivate>(e);
-        }
+            // Параметры источника
+            uniforms::LightSettings uniforms = {};
+            uniforms.position  = {sp.position.x, sp.position.y, sp.position.z, 1.0f};
+            uniforms.direction = {sp.rotation.x, sp.rotation.y, sp.rotation.z, 0.0f};
+            uniforms.color     = l.color;
+            uniforms.type      = static_cast<uint32_t>(l.type);
+            uniforms.intensity = l.intensity;
+            uniforms.quadratic = l.quadratic;
+            uniforms.radius    = l.radius;
 
-        if (!activate_lights.empty()){
-            engine()->renderer()->update_light_states_unsafe(activate_lights, true);
-        }
+            // TODO: Вычислить матрицу пространства источника (для потенциальной реализации теней)
 
-        if (!deactivate_lights.empty()){
-            engine()->renderer()->update_light_states_unsafe(deactivate_lights, false);
+            // Обновить параметры источника
+            engine()->gfx()->update_light_uniforms(uniforms, ui.index);
+
+            // Обновлено
+            state.is_dirty = false;
         }
     }
 
-    void System::update_cam_uniforms() const
+    void System::update_cam_ubo() const
     {
-        using Spatial = scn::comp::Spatial;
-        using Cam = scn::comp::Camera;
-        using UboIdx = comp::UniformIndex;
-        using State = comp::UniformState;
+        // Алиасы компонентов
+        using Spatial   = scn::SpatialComponent;
+        using Camera    = scn::ViewComponent;
+        using UniformId = UniformIndexComponent;
+        using State     = UniformStateComponent;
+        using Render    = RenderComponent;
 
-        for (auto [e, spatial, cam, ubo, state] : engine()->ecs()->view<Spatial, Cam, UboIdx, State>())
+        // Пройти по всем сущностям с компонентами:
+        // - Пространственные параметры
+        // - Камера
+        // - Uniform index
+        // - Состояние UBO
+        // Где нет компонентов:
+        // - Рендеринг
+        for (auto [e, cam, sp, ui, state] : engine()->ecs()->view<
+            Camera,
+            Spatial,
+            UniformId,
+            State>(ecs::kMaskOf<Render>))
         {
-            if (!state.dirty) continue;
+            if (!state.is_dirty) continue;
 
             // Матрица поворота камеры
             glm::mat4 cam_rotation =
-                glm::rotate(glm::mat4(1.0f), glm::radians(spatial.rotation.y),glm::vec3(0.0f,1.0f,0.0f)) *
-                glm::rotate(glm::mat4(1.0f), glm::radians(spatial.rotation.x),glm::vec3(1.0f,0.0f,0.0f));
+                glm::rotate(glm::mat4(1.0f), glm::radians(sp.rotation.y),glm::vec3(0.0f,1.0f,0.0f)) *
+                glm::rotate(glm::mat4(1.0f), glm::radians(sp.rotation.x),glm::vec3(1.0f,0.0f,0.0f));
 
             // Матрица смещения камеры
-            glm::mat4 cam_translate = glm::translate(glm::mat4(1.0f), spatial.position);
+            glm::mat4 cam_translate = glm::translate(glm::mat4(1.0f), sp.position);
 
+            // Итоговый UBO
             uniforms::Camera uniforms = {};
-            uniforms.position = glm::vec4(spatial.position, 1.0f);
+            uniforms.position = glm::vec4(sp.position, 1.0f);
             uniforms.view = glm::inverse(cam_translate * cam_rotation);
             uniforms.projection = glm::perspective(
                     glm::radians(cam.fov),
-                    engine()->renderer()->get_rendering_aspect(),
+                    engine()->gfx()->renderer()->rendering_aspect(),
                     cam.near,
                     cam.far);
 
-            engine()->renderer()->update_cam_uniforms(uniforms, ubo.index);
-            state.dirty = false;
+            // Обновить
+            engine()->gfx()->update_cam_uniforms(uniforms, ui.index);
+            state.is_dirty = false;
+        }
+    }
+
+    void System::render_meshes() const
+    {
+        // Алиасы компонентов
+        using Handles       = MeshHandlesComponent;
+        using DirtyHandles  = DirtyHandlesComponent;
+        using Render        = RenderComponent;
+        using UniformId     = UniformIndexComponent;
+        using Mesh          = scn::MeshComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Handles меша
+        // - Uniform index
+        // - Узел сцены "меш"
+        // - Тег рендеринга
+        // Где нет компонентов:
+        // - Грязные handles
+        for (auto[e, mh, ui, mesh, r_tag] : engine()->ecs()->view<
+            Handles,
+            UniformId,
+            Mesh,
+            Render>(ecs::kMaskOf<DirtyHandles>))
+        {
+            if (!mh.mesh){
+                log_warn("Missing render handles for renderable mesh entity " + e.to_string());
+            }
+
+            if (mesh.materials.empty()){
+                log_warn("Missing materials for renderable mesh entity" + e.to_string());
+            }
+
+            // Привязка всей геометрии меша
+            subsystem()->renderer()->cmd_bind_geometry(mh.mesh, ui.index);
+
+            // Проход по поверхностям
+            for (uint32_t i = 0; i < mh.mesh.surfaces_count; ++i)
+            {
+                // Параметры поверхности
+                const auto& surface = mh.mesh.surfaces[i];
+                // Найти соответствующий экземпляр материала
+                const auto& mat_e = mesh.materials[i];
+                // const auto& mat_e = mesh.materials[surface.material_index-1];
+
+                // Если меш еще не ссылался на entity материала - сослаться (запрос готовности)
+                if (!mesh.materials_requested[i]){
+                    mesh.materials_requested[i] = true;
+                    ecs::inc_entity_refs(engine()->ecs(), mat_e);
+                }
+
+                // Если материал не готов - пропуск
+                if (!engine()->ecs()->is_valid(mat_e)
+                    || !engine()->ecs()->has<MaterialHandlesComponent>(mat_e)
+                    || !engine()->ecs()->has<res::LoadedComponent>(mat_e)
+                    || engine()->ecs()->has<DirtyHandles>(mat_e))
+                {
+                    continue;
+                }
+
+                // Получить UBO id и handles материала
+                auto [mat_ubo, mat_hdl] = engine()->ecs()->get_components<
+                    UniformId,
+                    MaterialHandlesComponent>(mat_e);
+
+                // Привязать материал, нарисовать поверхность
+                subsystem()->renderer()->cmd_bind_material(mat_hdl.material, mat_ubo.index);
+                subsystem()->renderer()->cmd_draw_geometry(surface.index_offset, surface.index_count);
+            }
         }
     }
 }

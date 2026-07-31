@@ -1,4 +1,6 @@
 #pragma once
+
+#include <string>
 #include <cstddef>
 #include <array>
 #include <vector>
@@ -9,86 +11,100 @@ namespace nasral::ecs
 {
     /**
      * @brief Идентификатор Entity
+     * @details Может также использоваться как часть (поле) компонента (для ссылок на другие Entity)
      */
     struct EntityId
     {
-        size_t index;
-        size_t version;
+        size_t index = 0;
+        size_t version = 0;
+
+        static constexpr EntityId invalid() {
+            return {
+                static_cast<size_t>(-1),
+                static_cast<size_t>(-1)
+            };
+        }
 
         bool operator==(const EntityId& other) const{
             return index == other.index && version == other.version;
+        }
+
+        [[nodiscard]] std::string to_string() const{
+            return "[" + std::to_string(index) + "." + std::to_string(version) + "]";
         }
     };
 
     /**
      * @brief Контейнер для идентификаторов Entity
-     * @details Может использоваться для ссылок на другие Entity в рамках компонентов
-     * @tparam InlineCapacity Размер inline буфера (для оптимизации кещ-локальности)
+     * @tparam N Объем контейнера, выделяемого на стеке (для оптимизации кеш-локальности)
+     * @details Может также использоваться как часть (поле) компонента (для ссылок на другие Entity)
      */
-    template <std::size_t InlineCapacity>
-    class EntityIdVector
+    template<std::size_t N = 10>
+    class EntityIds
     {
     public:
         using value_type = EntityId;
         using size_type = std::size_t;
 
-        static_assert(InlineCapacity > 0, "InlineCapacity must be > 0");
-        static_assert(std::is_trivially_copyable_v<value_type>, "EntityIdVector expects trivially copyable EntityId");
-        static_assert(std::is_trivially_destructible_v<value_type>, "EntityIdVector expects trivially destructible EntityId");
+        static_assert(N > 0, "Inline capacity must be greater than zero");
+        static_assert(std::is_trivially_copyable_v<value_type>, "EntityId must be trivially copyable");
+        static_assert(std::is_trivially_destructible_v<value_type>, "EntityId must be trivially destructible");
 
-        EntityIdVector() = default;
+        EntityIds() = default;
 
-        [[nodiscard]] size_type size() const noexcept
-        {
-            return using_heap_ ? heap_.size() : size_;
+        [[nodiscard]] size_type size() const noexcept{
+            return is_heap_ ? heap_.size() : size_;
         }
 
-        [[nodiscard]] bool empty() const noexcept
-        {
-            return size_ == 0;
+        [[nodiscard]] bool empty() const noexcept{
+            return size() == 0;
         }
 
-        [[nodiscard]] value_type* data() noexcept
-        {
-            return using_heap_ ? heap_.data() : inline_.data();
+        [[nodiscard]] value_type* data() noexcept{
+            return is_heap_ ? heap_.data() : stack_.data();
         }
 
-        [[nodiscard]] const value_type* data() const noexcept
-        {
-            return using_heap_ ? heap_.data() : inline_.data();
+        [[nodiscard]] const value_type* data() const noexcept{
+            return is_heap_ ? heap_.data() : stack_.data();
         }
 
-        value_type* begin() noexcept { return data(); }
-        value_type* end() noexcept { return data() + size_; }
-        [[nodiscard]] const value_type* begin() const noexcept { return data(); }
-        [[nodiscard]] const value_type* end() const noexcept { return data() + size_; }
+        [[nodiscard]] value_type* begin() noexcept{
+            return data();
+        }
 
-        value_type& operator[](size_type i) noexcept
-        {
+        [[nodiscard]] const value_type* begin() const noexcept{
+            return data();
+        }
+
+        [[nodiscard]] value_type* end() noexcept{
+            return data() + size_;
+        }
+
+        [[nodiscard]] const value_type* end() const noexcept{
+            return data() + size_;
+        }
+
+        value_type& operator[](size_type i) noexcept{
             assert(i < size_);
-            return using_heap_ ? heap_[i] : inline_[i];
+            return is_heap_ ? heap_[i] : stack_[i];
         }
 
-        const value_type& operator[](size_type i) const noexcept
-        {
+        const value_type& operator[](size_type i) const noexcept{
             assert(i < size_);
-            return using_heap_ ? heap_[i] : inline_[i];
+            return is_heap_ ? heap_[i] : stack_[i];
         }
 
-        void clear() noexcept
-        {
-            if (using_heap_) heap_.clear();
+        void clear() noexcept{
+            if (is_heap_) heap_.clear();
             size_ = 0;
         }
 
-        void reserve(const size_type n)
-        {
-            if (n <= InlineCapacity && !using_heap_){
+        void reserve(const size_type n){
+            if (n <= N && !is_heap_){
                 return;
             }
 
-            if (using_heap_)
-            {
+            if (is_heap_){
                 heap_.reserve(n);
                 return;
             }
@@ -96,13 +112,11 @@ namespace nasral::ecs
             ensure_heap(n);
         }
 
-        value_type& push_back(const value_type& v)
-        {
-            if (!using_heap_ && size_ < InlineCapacity)
-            {
-                inline_[size_] = v;
+        value_type& push_back(const value_type& v){
+            if (!is_heap_ && size_ < N){
+                stack_[size_] = v;
                 ++size_;
-                return inline_[size_ - 1];
+                return stack_[size_ - 1];
             }
 
             ensure_heap(size_ + 1);
@@ -111,13 +125,12 @@ namespace nasral::ecs
             return heap_.back();
         }
 
-        value_type& push_back(value_type&& v)
-        {
-            if (!using_heap_ && size_ < InlineCapacity)
+        value_type& push_back(value_type&& v){
+            if (!is_heap_ && size_ < N)
             {
-                inline_[size_] = std::move(v);
+                stack_[size_] = std::move(v);
                 ++size_;
-                return inline_[size_ - 1];
+                return stack_[size_ - 1];
             }
 
             ensure_heap(size_ + 1);
@@ -126,20 +139,22 @@ namespace nasral::ecs
             return heap_.back();
         }
 
-        value_type& emplace_back(const size_t index, const size_t version)
-        {
+        value_type& emplace_back(const size_t index, const size_t version){
             return push_back(value_type{index, version});
         }
 
-        void pop_back() noexcept
-        {
+        void pop_back() noexcept{
             assert(size_ > 0);
-            if (using_heap_) heap_.pop_back();
+            if (is_heap_) heap_.pop_back();
             --size_;
         }
 
-        bool erase_unordered(const value_type& v) noexcept
-        {
+        /**
+         * @brief Удаление по значению через swap & pop (быстро, но без сохранения порядка)
+         * @param v Значение
+         * @return Статус операции
+         */
+        bool erase_unordered(const value_type& v) noexcept{
             for (size_type i = 0; i < size_; ++i)
             {
                 if ((*this)[i] == v)
@@ -152,8 +167,12 @@ namespace nasral::ecs
             return false;
         }
 
-        bool erase_ordered(const value_type& v) noexcept
-        {
+        /**
+         * @brief Удаление по значению, с сохранением порядка (медленно)
+         * @param v Значение
+         * @return Статус операции
+         */
+        bool erase_ordered(const value_type& v) noexcept{
             for (size_type i = 0; i < size_; ++i)
             {
                 if ((*this)[i] == v)
@@ -169,24 +188,23 @@ namespace nasral::ecs
             return false;
         }
 
+
     private:
-        void ensure_heap(const size_type min_capacity)
-        {
-            if (using_heap_) return;
-            using_heap_ = true;
+        void ensure_heap(const size_type min_capacity){
+            if (is_heap_) return;
+            is_heap_ = true;
 
             heap_.reserve(min_capacity);
             heap_.insert(
                 heap_.end(),
-                inline_.begin(),
-                inline_.begin() + static_cast<std::ptrdiff_t>(size_)
-                );
+                stack_.begin(),
+                stack_.begin() + static_cast<std::ptrdiff_t>(size_));
         }
 
     protected:
-        std::array<value_type, InlineCapacity> inline_{};
+        std::array<value_type, N> stack_{};
         std::vector<value_type> heap_{};
         size_type size_ = 0;
-        bool using_heap_ = false;
+        bool is_heap_ = false;
     };
 }

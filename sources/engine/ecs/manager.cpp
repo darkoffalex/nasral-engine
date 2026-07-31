@@ -1,139 +1,157 @@
 #include "pch.h"
 #include <nasral/ecs/manager.h>
+#include <nasral/ecs/view.h>
+#include <nasral/engine.h>
 
 namespace nasral::ecs
 {
-    Manager::Manager(Engine* engine, const Config& config)
-        : Subsystem(engine, config)
-    {
-        entities_.reserve(config.max_entities);
-        free_slots_.reserve(config.max_entities);
+    Manager::Manager(Engine* e, const Config& config) : Subsystem(e, config){
+        log_info("Initializing manager...");
     }
 
-    EntityId Manager::spawn()
+    Manager::~Manager(){
+        log_info("Manager destroyed");
+    }
+
+    void Manager::on_init()
     {
-        // Если есть освобожденные слоты
+        entities_.reserve(config().max_entities);
+        free_slots_.reserve(config().max_entities);
+        log_info("Manager initialized");
+    }
+
+    void Manager::on_update([[maybe_unused]] const float delta)
+    {
+        destroy_pending();
+    }
+
+    void Manager::on_finalize()
+    {
+        destroy_pending();
+        log_info("Manager finalized");
+    }
+
+    EntityId Manager::spawn(){
         if (!free_slots_.empty()){
-            const auto index = free_slots_.back();
+            const auto idx = free_slots_.back();
             free_slots_.pop_back();
 
-            auto& slot = entities_[index];
-            slot.is_alive = true;
-            return slot.id;
+            auto& [id, archetype, mask, index_in_arch] = entities_[idx];
+            archetype = nullptr;
+            index_in_arch = 0;
+            mask.reset();
+            return id;
         }
 
-        if (entities_.size() >= config().max_entities){
-            throw std::runtime_error("Cannot create entity. Max entities reached.");
+        if (entities_.size() >= entities_.capacity()){
+            throw std::runtime_error("Entity pool is full");
         }
 
-        // Новый слот
-        EntitySlot slot{};
-        slot.id = EntityId{entities_.size(), 0};
-        entities_.emplace_back(slot);
-        return slot.id;
+        entities_.emplace_back(
+            EntitySlot{
+                EntityId{entities_.size(), 0},
+                nullptr,
+                0,
+                0
+            });
+
+        log_debug("Entity " + entities_.back().id.to_string() + " created.");
+        return entities_.back().id;
     }
 
-    bool Manager::destroy(const EntityId& entity_id)
-    {
-        if (entity_id.index >= entities_.size()
-            || !entities_[entity_id.index].is_alive
-            || entity_id.version != entities_[entity_id.index].id.version) return false;
-
-        auto& slot = entities_[entity_id.index];
-
-        // Удаление из архетипа (возможен swap & pop)
-        const auto rr = slot.archetype->remove(entity_id);
-
-        // Если при удалении было перемещение внутри архетипа (у какой-то entity сменился индекс):
-        // Нужно обновить поле "индекс внутри архетипа" у соответствующего слота
-        if (rr.swapped_entity.has_value()){
-            assert(rr.prev_idx.has_value());
-            const auto& [index, version] = rr.swapped_entity.value();
-            entities_[index].index_in_archetype = rr.prev_idx.value();
-        }
-
-        // Очистка слота
-        slot.is_alive = false;
-        slot.archetype = nullptr;
-        slot.index_in_archetype = 0;
-        slot.id.version++;
-
-        // Добавить в список освобожденных слотов
-        free_slots_.push_back(entity_id.index);
-        return true;
-    }
-
-    void Manager::destroy_deferred(const EntityId& entity_id, std::function<void()> on_destroy){
-        deferred_actions_.emplace_back([entity_id, callback = std::move(on_destroy)](Manager& m){
-            const auto destroyed = m.destroy(entity_id);
-            if (destroyed && callback){
-                callback();
-            }
+    void Manager::destroy(const EntityId& entity){
+        defer([entity](Manager& m){
+            m.destroy_immediate(entity);
         });
     }
 
-    void Manager::apply_deferred_actions(){
-        if (deferred_actions_.empty()) return;
-        for (auto& action : deferred_actions_){
-            action(*this);
+    void Manager::destroy_immediate(const EntityId& entity){
+        if (entity.index >= entities_.size() || !is_valid(entity)){
+            return;
         }
-        deferred_actions_.clear();
+
+        // При удалении из архетипа возможно перемещение (swap & pop)
+        auto& slot = entities_[entity.index];
+        const auto removal = slot.archetype->remove(entity);
+
+        // Если при удалении было перемещение внутри архетипа (у какой-то entity сменился индекс):
+        // Нужно обновить поле "индекс внутри архетипа" у соответствующего слота
+        if (removal.swapped_entity.has_value()){
+            assert(removal.swapped_idx.has_value() && "Swapped entity index missing");
+            const auto& [swapped_idx, swapped_ver] = removal.swapped_entity.value();
+            entities_[swapped_idx].index_in_arch = removal.swapped_idx.value();
+        }
+
+        slot.archetype = nullptr;
+        slot.index_in_arch = 0;
+        slot.id.version++;
+        slot.mask.reset();
+
+        log_debug("Entity " + entity.to_string() + " destroyed");
+        free_slots_.push_back(entity.index);
     }
 
-    Archetype* Manager::find_or_create_archetype(const ComponentMask& mask){
+    Archetype* Manager::ensure_archetype(const ComponentMask& mask){
         for (const auto& archetype : archetypes_){
             if (archetype->mask() == mask){
                 return archetype.get();
             }
         }
-        archetypes_.emplace_back(std::make_unique<Archetype>(mask, config().max_entities));
+
+        archetypes_.emplace_back(std::make_unique<Archetype>(
+            mask,
+            config().max_entities));
+
         return archetypes_.back().get();
     }
 
     void Manager::assign_archetype(EntitySlot& slot, Archetype* archetype)
     {
-        assert(archetype != nullptr);
+        assert(archetype != nullptr && "Archetype is null");
         if (!archetype){
             return;
         }
 
-        // Архетип отсутствует (новая entity)
-        if (!slot.archetype)
-        {
-            const auto ar = archetype->add(slot.id);
-            assert(ar.new_idx.has_value());
+        // У слота нет архетипа (новая entity)
+        if (!slot.archetype){
+            const auto addition = archetype->add(slot.id);
+            assert(addition.new_idx.has_value() && "New entity index missing");
 
             slot.archetype = archetype;
-            slot.index_in_archetype = ar.new_idx.value();
+            slot.index_in_arch = addition.new_idx.value();
             slot.mask = archetype->mask();
         }
-        // Уже принадлежит другому архетипу
-        else if (slot.archetype != archetype)
-        {
-            // Прежний архетип
-            auto* prev_arc = slot.archetype;
 
-            // Перемещение между архетипами
-            const auto [new_idx, prev_idx, swapped] = archetype->move_from(prev_arc, slot.id);
+        // Entity принадлежит другому архетипу
+        else if (slot.archetype != archetype){
+            auto* previous_arch = slot.archetype;
+            const auto transition = Archetype::move(*previous_arch, *archetype, slot.id);
 
-            // Если внутри архетипа была перестановка (swap & pop)
-            if (swapped.has_value()){
-                assert(prev_idx.has_value());
-                auto& other = entities_[swapped.value().index];
-                other.index_in_archetype = prev_idx.value();
+            // Если при удалении было перемещение внутри архетипа (у какой-то entity сменился индекс):
+            // Нужно обновить поле "индекс внутри архетипа" у соответствующего слота
+            if (transition.swapped_entity.has_value()){
+                assert(transition.swapped_idx.has_value() && "Swapped entity index missing");
+                const auto& [swapped_idx, swapped_ver] = transition.swapped_entity.value();
+                entities_[swapped_idx].index_in_arch = transition.swapped_idx.value();
             }
 
-            // Новый архетип и индекс в нем
             slot.archetype = archetype;
-            slot.index_in_archetype = new_idx.value();
+            slot.index_in_arch = transition.new_idx.value();
             slot.mask = archetype->mask();
 
             // Если в прежнем архетипе не осталось сущностей - удалить архетип
-            if (prev_arc->entities().empty()){
+            if (previous_arch->entities().empty()){
                 archetypes_.erase(std::remove_if(archetypes_.begin(), archetypes_.end(), [&](const Archetype::Ptr& a){
-                    return a.get() == prev_arc;
+                    return a.get() == previous_arch;
                 }), archetypes_.end());
             }
+        }
+    }
+
+    void Manager::destroy_pending()
+    {
+        for (auto [e, d_tag] : view<DestroyComponent>()){
+            destroy(e);
         }
     }
 }

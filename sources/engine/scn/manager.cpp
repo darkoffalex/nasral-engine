@@ -1,169 +1,179 @@
 #include "pch.h"
 #include <nasral/scn/manager.h>
-#include <nasral/scn/components.h>
+#include <nasral/res/objects/project.h>
+#include <nasral/res/objects/scene.h>
+#include <nasral/scn/objects/node.h>
+#include <nasral/scn/objects/mesh.h>
+#include <nasral/scn/objects/camera.h>
+#include <nasral/scn/objects/light.h>
 #include <nasral/evt/utils.h>
-#include <nasral/res/resources/project.h>
 #include <nasral/engine.h>
 
 namespace nasral::scn
 {
-    Manager::Manager(Engine* e, const Config& cfg)
-        : Subsystem(e, cfg)
-        , root_({})
-        , camera_({})
+    Manager::Manager(Engine* e, const Config& config)
+        : Subsystem(e, config)
+        , main_camera_(nullptr)
+        , ecs_system_(std::make_unique<System>(this))
     {
-        evt_h_proj_load_ = engine()->events()->register_l(
-            evt::Type::eProjectResLoaded,
-            evt::bind(this, &Manager::on_project_loaded));
-
-        init_root();
-        init_camera();
+        log_info("Initializing manager...");
     }
 
-    Manager::~Manager()
-    {
-        engine()->events()->unregister_l(
-            evt::Type::eProjectResLoaded,
-            evt_h_proj_load_);
+    Manager::~Manager(){
+        log_info("Manager destroyed");
     }
 
-    void Manager::set_parent(const ecs::EntityId& child
-        , const ecs::EntityId& parent
-        , const bool keep_order_on_erase) const
+    void Manager::on_init()
     {
-        auto* ecs = engine()->ecs();
-        auto& child_nc = ecs->get_component<comp::Node>(child);
+        evl_session_start_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eSessionStarted,
+            evt::bind(this, &Manager::on_session_start));
 
-        // Родители совпадают - выход
-        if (child_nc.parent.has_value() && child_nc.parent.value() == parent){
-            assert(false && "Child already has requested parent.");
-            return;
-        }
+        // Слушать событие изменения поверхности отображения
+        evl_sfc_chg_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eDisplaySurfaceChanged,
+            evt::bind(this, &Manager::on_display_surface_changed));
 
-        // Я свой собственный сын! (и лошади едят друг друга!)
-        if (child == parent){
-            assert(false && "Can't set parent to itself.");
-            return;
-        }
+        ecs_system_->init();
 
-        // Удалить из списка предыдущего родителя
-        unparent(child, keep_order_on_erase);
-
-        // Добавить новому родителю компонент списка потомков (если отсутствует)
-        if (!ecs->has_component<comp::NodeChildren>(parent)){
-            ecs->add_component<comp::NodeChildren>(parent);
-        }
-
-        auto& parent_ncc = ecs->get_component<comp::NodeChildren>(parent);
-        parent_ncc.children.push_back(child);
-        child_nc.parent = parent;
+        log_info("Manager initialized");
     }
 
-    void Manager::unparent(const ecs::EntityId& node
-        , const bool keep_order) const
+    void Manager::on_update(const float delta) const
     {
-        auto* ecs = engine()->ecs();
-        auto& node_c = ecs->get_component<comp::Node>(node);
+        if (engine()->run()->state().has_no(run::StateFlags::eRunning)) return;
+        ecs_system_->update(delta);
+    }
 
-        if (!node_c.parent.has_value()){
-            return;
-        }
+    void Manager::on_finalize(){
+        evl_session_start_.reset();
+        evl_sfc_chg_.reset();
+        nodes_.clear();
+        ecs_system_->finalize();
+        log_info("Manager finalized");
+    }
 
-        // Удалить из списка предыдущего родителя
-        const auto old_parent = node_c.parent.value();
-        if (ecs->has_component<comp::NodeChildren>(node_c.parent.value()))
+    Node* Manager::spawn(const NodeDesc& desc)
+    {
+        switch (desc.type)
         {
-            auto& pc = ecs->get_component<comp::NodeChildren>(old_parent);
-            const bool removed = keep_order
-                ? pc.children.erase_ordered(node)
-                : pc.children.erase_unordered(node);
+        case NodeType::eDummy:
+            nodes_.emplace_back(Node::Ptr(new Node(this, desc)));
+            break;
+        case NodeType::eSpatial:
+            nodes_.emplace_back(Node::Ptr(new Spatial(this, desc)));
+            break;
+        case NodeType::eCamera:
+            nodes_.emplace_back(Node::Ptr(new Camera(this, desc)));
+            break;
+        case NodeType::eMesh:
+            nodes_.emplace_back(Node::Ptr(new Mesh(this, desc)));
+            break;
+        case NodeType::eLight:
+            nodes_.emplace_back(Node::Ptr(new Light(this, desc)));
+            break;
+        default:
+            return nullptr;
+        }
 
-            (void)removed;
-            assert(!removed);
+        return nodes_.back().get();
+    }
 
-            if (pc.children.empty()){
-                ecs->remove_component<comp::NodeChildren>(old_parent);
+    void Manager::remove(const Node* node){
+        nodes_.erase(std::remove_if(nodes_.begin(), nodes_.end(), [&](const auto& n){
+            return n.get() == node;
+        }), nodes_.end());
+    }
+
+    void Manager::remove(const UniqueId& id){
+        nodes_.erase(std::remove_if(nodes_.begin(), nodes_.end(), [&](const Node::Ptr& n){
+            const auto dv = std::get<data::DummyNodeView>(n->data_view());
+            return dv.uid == id;
+        }), nodes_.end());
+    }
+
+    Node* Manager::find(const UniqueId& id) const{
+        for (const auto& n : nodes_){
+            if (const auto dv = std::get<data::DummyNodeView>(n->data_view()); dv.uid == id){
+                return n.get();
             }
         }
-        else
-        {
-            log_warn("Node has parent but parent has no NodeChildren!");
-        }
-
-        // Обнулить родителя узла
-        node_c.parent = std::nullopt;
+        return nullptr;
     }
 
-    void Manager::init_root()
-    {
-        auto* ecs = engine()->ecs();
-
-        root_ = ecs->spawn();
-        {
-            ecs->add_component<comp::Node>(root_);
-            ecs->add_component<comp::NodeChildren>(root_);
-            auto& node = ecs->get_component<comp::Node>(root_);
-            node.uid = core::UniqueId(1, 0);
-            node.parent = std::nullopt;
-        }
-    }
-
-    void Manager::init_camera()
-    {
-        auto* ecs = engine()->ecs();
-        const auto* renderer = engine()->renderer();
-
-        camera_ = ecs->spawn();
-        {
-            ecs->add_component<comp::Node>(camera_);
-            ecs->add_component<comp::Spatial>(camera_);
-            ecs->add_component<comp::Camera>(camera_);
-            ecs->add_component<gfx::comp::UniformIndex>(camera_);
-            ecs->add_component<gfx::comp::UniformState>(camera_);
-
-            auto& node = ecs->get_component<comp::Node>(camera_);
-            node.uid = core::UniqueId(1, 1);
-            node.type = NodeType::eCamera;
-
-            auto& spatial = ecs->get_component<comp::Spatial>(camera_);
-            spatial.position = glm::vec3(0.0f, 0.0f, 1.0f);
-            spatial.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-            spatial.scale = glm::vec3(1.0f, 1.0f, 1.0f);
-
-            auto& camera = ecs->get_component<comp::Camera>(camera_);
-            camera.aspect = renderer->get_rendering_aspect();
-            camera.fov = 90.0f;
-            camera.far = 1000.0f;
-            camera.near = 0.1f;
-            camera.type = CameraType::ePerspective;
-
-            auto& ubo_id = ecs->get_component<gfx::comp::UniformIndex>(camera_);
-            ubo_id.index = 0;
-
-            auto& ubo_s = ecs->get_component<gfx::comp::UniformState>(camera_);
-            ubo_s.dirty = true;
-
-            set_parent(camera_, root_);
-        }
-    }
-
-    void Manager::on_project_loaded(const evt::Arg& arg) const
-    {
-        auto* ecs = engine()->ecs();
-        auto* r_ptr = evt::from_arg<res::IResource*>(arg).value_or(nullptr);
-        if (const auto* proj = dynamic_cast<res::Project*>(r_ptr))
-        {
-            // Если проект загружен - задать сцены по умолчанию и запросить его
-            if (proj->status() == res::Status::eLoaded){
-                ecs->add_component<res::comp::Descriptor>(root_);
-                ecs->add_component<res::comp::Request>(root_);
-                auto& desc = ecs->get_component<res::comp::Descriptor>(root_);
-                desc.res_id = proj->initial_scene();
-            }
-            // Если ошибка загрузки проекта
-            else if (proj->status() == res::Status::eError){
-                log_error("Project resource loading error (" + proj->error_str() + ").");
+    Node* Manager::find(const std::string& name) const{
+        for (const auto& n : nodes_){
+            if (const auto dv = std::get<data::DummyNodeView>(n->data_view()); dv.name == name){
+                return n.get();
             }
         }
+        return nullptr;
+    }
+
+    void Manager::on_session_start([[maybe_unused]] const evt::Arg& arg)
+    {
+        // Получить ресурс файла проекта
+        const auto proj_res_id = engine()->res()->find_project().value_or(res::kInvalidResourceId);
+        const auto* proj_res = engine()->res()->get<res::ProjectFile>(proj_res_id);
+
+        // Файл проекта обязан быть загружен на этом этапе
+        if constexpr (kDebugBuild){
+            assert(proj_res && "Project file resource is not found");
+            assert(proj_res->status() == res::Status::eLoaded && "Project file resource is not loaded");
+        }
+
+        // Загрузка начальной сцены
+        load_initial_scene(proj_res->initial_scene());
+    }
+
+    void Manager::on_display_surface_changed([[maybe_unused]] const evt::Arg& arg) const
+    {
+        if (main_camera_ == nullptr) return;
+        main_camera_->invalidate_ubo();
+    }
+
+    void Manager::load_initial_scene([[maybe_unused]] const std::string& path)
+    {
+        log_info("Loading initial scene...");
+
+        // Найти ID ресурса сцены
+        const auto scene_rid = engine()->res()->find(path).value_or(res::kInvalidResourceId);
+        if (scene_rid == res::kInvalidResourceId){
+            log_error("Initial scene ["+path+"] not found");
+            throw std::runtime_error("Initial scene ["+path+"] not found");
+        }
+
+        // Запрос ресурса, инициализация сцены (распаковка) после загрузки
+        engine()->res()->request(scene_rid, [&](res::Resource* res)
+        {
+            // Ресурс сцены
+            const auto* scene = dynamic_cast<res::Scene*>(res);
+            assert(scene && "Initial scene is not a scene");
+
+            // Проверка статуса
+            if (scene->status() != res::Status::eLoaded)
+            {
+                log_error("Failed to load initial scene ["+path+"]");
+                throw std::runtime_error("Failed to load initial scene ["+path+"]");
+            }
+
+            // Создать узлы
+            for (const auto& node_desc : scene->nodes())
+            {
+                // Добавление узла
+                auto* spawned = spawn(node_desc);
+
+                // Первая попавшаяся камера - главная
+                if (node_desc.type == NodeType::eCamera && main_camera_ == nullptr){
+                    main_camera_ = dynamic_cast<Camera*>(spawned);
+                    assert(main_camera_ != nullptr && "Main camera is not a camera");
+                }
+            }
+
+            // Ресурс сцены более не нужен в RAM
+            engine()->res()->release(res->id());
+        });
     }
 }

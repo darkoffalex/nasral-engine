@@ -1,0 +1,17 @@
+{
+  "base_type" : "ePhong",
+  "shaders" : [
+    {
+      "stage" : "vertex",
+      "path" : "materials/phong/shader.vert.spv"
+    },
+    {
+      "stage" : "fragment",
+      "path" : "materials/phong/shader.frag.spv"
+    },
+    {
+      "stage" : "geometry",
+      "path" : "materials/phong/shader.geom.spv"
+    }
+  ]
+}

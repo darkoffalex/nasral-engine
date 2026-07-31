@@ -1,12 +1,11 @@
 #pragma once
 
-#include <string>
-#include <vector>
 #include <memory>
 #include <variant>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vulkan/vulkan.hpp>
+#include <nasral/common/types.h>
 
 namespace nasral::gfx
 {
@@ -15,7 +14,8 @@ namespace nasral::gfx
 
     constexpr uint32_t kMaxCameras = 1;
     constexpr uint32_t kMaxObjects = 1024;
-    constexpr uint32_t kMaxMaterials = 100;
+    constexpr uint32_t kMaxMaterials = 128;
+    constexpr uint32_t kMaxMaterialsPerMesh = 5;
     constexpr uint32_t kMaxLights = 64;
 
     struct Vertex
@@ -26,12 +26,37 @@ namespace nasral::gfx
         glm::vec4 color;
     };
 
+    typedef std::tuple<
+        std::vector<Vertex>,
+        std::vector<uint32_t>
+    > GeometryData;
+
     enum class UniformLayoutType : uint32_t
     {
         eDummy = 0,
-        eBasicRasterization,
+        eRasterization,
         ePostProcessing,
         TOTAL
+    };
+
+    enum class UniformDSetType : uint32_t
+    {
+        eViewUBO = 0,
+        eObjectUBOs,
+        eMaterialUBOs,
+        eMaterialTextures,
+        eLightUBOs,
+        TOTAL
+    };
+
+    enum class UniformBufferType : uint32_t
+    {
+        eView = 0,
+        eObjects,
+        eMaterialsPhong,
+        eMaterialsPBR,
+        eLightSources,
+        eLightSourcesActive,
     };
 
     enum class TextureSamplerType : uint32_t
@@ -49,29 +74,45 @@ namespace nasral::gfx
     {
         eAlbedoColor = 0,
         eNormal,
-        eRoughnessOrSpecular,
+        eRoughOrSpec,
         eHeight,
-        eMetallicOrReflection,
-        eAmbientOcclusion,
+        eMetalOrReflect,
+        eAO,
         eEmission,
         TOTAL
     };
 
-    enum class MaterialType : uint32_t
+    enum class MaterialBaseType : uint32_t
     {
         eDummy = 0,
-        eVertexColored,
+        eColored,
         eTextured,
         ePhong,
-        ePbr,
+        ePBR,
+        TOTAL
+    };
+
+    enum class PolygonMode : uint32_t
+    {
+        eFill = 0,
+        eLine,
+        ePoint,
         TOTAL
     };
 
     enum class LightType : uint32_t
     {
         ePointLight = 0,
-        eDirectionalLight,
         eSpotLight,
+        eDirectionalLight,
+        eAreaLight,
+        TOTAL
+    };
+
+    enum class ViewType : uint32_t
+    {
+        ePerspective = 0,
+        eOrthographic,
         TOTAL
     };
 
@@ -81,6 +122,7 @@ namespace nasral::gfx
         virtual ~VulkanSurfaceProvider() = default;
         virtual VkSurfaceKHR create_surface(const vk::Instance& instance) = 0;
         virtual const std::vector<const char*>& extensions() = 0;
+        virtual vk::Extent2D framebuffer_extent() = 0;
     };
 
     typedef vk::UniqueHandle<vk::DebugReportCallbackEXT, vk::detail::DispatchLoaderDynamic> VkDebugReportCallback;
@@ -105,12 +147,20 @@ namespace nasral::gfx
 
         struct Mesh
         {
+            struct Surface
+            {
+                uint32_t index_offset = 0;
+                uint32_t index_count = 0;
+                uint32_t material_index = 0;
+            };
+
             vk::Buffer vertex_buffer = VK_NULL_HANDLE;
             vk::Buffer index_buffer = VK_NULL_HANDLE;
-            uint32_t index_count = 0;
+            std::array<Surface, kMaxMaterialsPerMesh> surfaces = {};
+            uint32_t surfaces_count = 0;
 
             [[nodiscard]] explicit operator bool() const noexcept{
-                return vertex_buffer && index_buffer && index_count;
+                return vertex_buffer && index_buffer && surfaces_count > 0;
             }
         };
     }
@@ -170,6 +220,40 @@ namespace nasral::gfx
         static_assert(sizeof(Camera) % 16 == 0, "Camera size must be multiple of 16 bytes");
     }
 
+    struct TextureBindingInfo
+    {
+        TextureType type = TextureType::eAlbedoColor;
+        TextureSamplerType sampler_type = TextureSamplerType::eNearest;
+        handles::Texture texture = {};
+    };
+
+    struct MaterialDesc
+    {
+        UniqueId unique_id = {};
+        std::string name = {};
+        MaterialBaseType base_material_type = MaterialBaseType::eDummy;
+        std::string base_material_path = {};
+        EnumArray<TextureType, std::string> texture_paths;
+        EnumArray<TextureType, TextureSamplerType> texture_samplers;
+
+        struct
+        {
+            glm::vec4 color = glm::vec4(1.0f);
+            glm::vec4 ambient = glm::vec4(0.05f);
+            glm::float32 shininess = 32.0f;
+            glm::float32 specular = 1.0f;
+        } phong_settings = {};
+
+        struct
+        {
+            glm::vec4 color = glm::vec4(1.0f);
+            glm::float32 roughness = 1.0f;
+            glm::float32 metallic = 0.0f;
+            glm::float32 ao = 1.0f;
+            glm::float32 emission = 0.0f;
+        } pbr_settings = {};
+    };
+
     struct Config
     {
         std::string app_name;                                               // Имя приложения (для драйвера Vulkan)
@@ -181,16 +265,10 @@ namespace nasral::gfx
         vk::Format depth_format = vk::Format::eD32SfloatS8Uint;             // Формат вложений глубины и трафарета
         vk::ColorSpaceKHR color_space = vk::ColorSpaceKHR::eSrgbNonlinear;  // Цветовое пространство
         vk::PresentModeKHR present_mode = vk::PresentModeKHR::eFifo;        // Режим представления
+        vk::CompositeAlphaFlagBitsKHR composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque; // Альфа-смешивание для поверхности
         bool opengl_compatible = true;                                      // Совместимость данных с OpenGL
         bool enable_validation_layers = false;                              // Использовать слои валидации
         uint32_t max_frames_in_flight = 2;                                  // Кол-во единовременно обрабатываемых кадров
         uint32_t swap_chain_images = 3;                                     // Кол-во изображений в цепочке свопинга
-    };
-
-    struct TextureBindingInfo
-    {
-        TextureType type = TextureType::eAlbedoColor;
-        TextureSamplerType sampler_type = TextureSamplerType::eNearest;
-        handles::Texture texture = {};
     };
 }

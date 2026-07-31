@@ -6,6 +6,7 @@ stb/cci.20230920
 pugixml/1.14
 assimp/5.4.3
 magic_enum/0.9.7
+nlohmann_json/3.12.0
 
 [generators]
 CMakeDeps
@@ -16,6 +17,8 @@ cmake_layout
 
 [options]
 glfw*:shared=False
+glfw*:with_wayland=True
+glfw*:with_x11=True
 imgui*:shared=False
 
 [imports]

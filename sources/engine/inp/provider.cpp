@@ -1,6 +1,5 @@
 #include "pch.h"
 #include <nasral/inp/provider.h>
-#include <nasral/inp/manager.h>
 
 namespace nasral::inp
 {
@@ -8,40 +7,55 @@ namespace nasral::inp
         : mouse_pos_({0.0f, 0.0f})
         , keyboard_states_({})
         , mouse_states_({})
+        , surface_resized_(false)
     {}
+
+    InputProvider::~InputProvider()
+    = default;
 
     bool InputProvider::is_key_pressed(const KeyCode key) const
     {
-        const auto bit = static_cast<size_t>(key);
-        return keyboard_states_.test(bit);
+        return keyboard_states_.test(key);
     }
 
-    bool InputProvider::is_mouse_button_pressed(const MouseButton button) const
+    bool InputProvider::is_mouse_btn_pressed(const MouseButton button) const
     {
-        const auto bit = static_cast<size_t>(button);
-        return mouse_states_.test(bit);
+        return mouse_states_.test(button);
     }
 
-    glm::vec2 InputProvider::mouse_position() const
+    bool InputProvider::is_window_resized() const
+    {
+        return surface_resized_.load(std::memory_order_acquire);
+    }
+
+    bool InputProvider::consume_surface_resized()
+    {
+        return surface_resized_.exchange(false, std::memory_order_acquire);
+    }
+
+    const glm::vec2& InputProvider::mouse_position() const
     {
         return mouse_pos_;
     }
 
     void InputProvider::on_key_state_changed(const KeyCode code, const bool state)
     {
-        const auto bit = static_cast<size_t>(code);
-        keyboard_states_.set(bit, state);
+        keyboard_states_.set(code, state);
     }
 
     void InputProvider::on_mouse_btn_state_changed(const MouseButton code, const bool state)
     {
-        const auto bit = static_cast<size_t>(code);
-        mouse_states_.set(bit, state);
+        mouse_states_.set(code, state);
     }
 
     void InputProvider::om_mouse_pos_changed(const float x, const float y)
     {
         mouse_pos_.x = x;
         mouse_pos_.y = y;
+    }
+
+    void InputProvider::on_window_surface_resized([[maybe_unused]] int width, [[maybe_unused]] int height)
+    {
+        surface_resized_.store(true, std::memory_order_release);
     }
 }

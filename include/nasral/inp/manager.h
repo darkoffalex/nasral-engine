@@ -1,25 +1,28 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <nasral/core/subsystem.h>
+#include <nasral/common/subsystem.h>
 #include <nasral/log/loggable.h>
 #include <nasral/inp/types.h>
-#include <nasral/evt/types.h>
+#include <nasral/evt/objects/listener.h>
 
 namespace nasral::inp
 {
-    class Manager final : public core::Subsystem<Config>, public log::Loggable<Manager>
+    class Manager final : public Subsystem<Manager, Config>, public log::Loggable<Manager>
     {
     public:
-        using Ptr = std::unique_ptr<Manager>;
+        typedef std::unique_ptr<Manager> Ptr;
 
-        Manager(Engine* engine, const Config& config);
+        explicit Manager(Engine* e, const Config& config);
         ~Manager();
 
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
 
-        void update(float dt);
+        void on_init();
+        void on_update(float delta);
+        void on_finalize();
+
         [[nodiscard]] bool is_key_pressed(KeyCode code) const;
         [[nodiscard]] bool is_key_just_pressed(KeyCode code) const;
         [[nodiscard]] bool is_mouse_btn_pressed(MouseButton button) const;
@@ -27,8 +30,7 @@ namespace nasral::inp
         [[nodiscard]] glm::vec2 mouse_position() const;
         [[nodiscard]] glm::vec2 mouse_delta(bool use_sensitivity = true) const;
 
-        [[nodiscard]] bool is_action_pressed(const std::string& name) const;
-        [[nodiscard]] bool is_action_just_pressed(const std::string& name) const;
+        [[nodiscard]] std::optional<size_t> action_index(const std::string& name) const;
         [[nodiscard]] bool is_action_pressed(size_t index) const;
         [[nodiscard]] bool is_action_just_pressed(size_t index) const;
 
@@ -40,7 +42,7 @@ namespace nasral::inp
             , KeyCode down_key
             , bool normalize = true) const;
 
-        [[nodiscard]] glm::vec3 get_mouse_movement_vector(const std::string& left_act
+        [[nodiscard]] glm::vec3 get_movement_vector(const std::string& left_act
             , const std::string& right_act
             , const std::string& forward_act
             , const std::string& backward_act
@@ -48,21 +50,29 @@ namespace nasral::inp
             , const std::string& down_act
             , bool normalize = true) const;
 
-    private:
-        void register_action(const std::string& name, const std::vector<ActionBinding>& bindings = {});
-        void reset_actions();
-        void on_project_loaded(const evt::Arg& arg);
-
     protected:
-        evt::ListenerHandle     evt_h_proj_load_;
-        glm::vec2               prev_mouse_pos_;
-        KeyStateFlags           prev_keyboard_states_;
-        MouseStateFlags         prev_mouse_states_;
-        float                   sensitivity_;
+        void on_project_loaded(const evt::Arg& arg);
+        void register_action(const ActionDesc& action_desc);
+        void reset_actions();
 
-        std::vector<Action>     actions_;
+    private:
+        /// Слушатель события загрузки проекта
+        evt::Listener::Ptr evl_on_proj_load_;
+        /// Положение мыши на предыдущем кадре
+        glm::vec2 prev_mouse_pos_;
+        /// Состояние кнопок клавиатуры на предыдущем кадре
+        EnumMask<KeyCode> prev_keyboard_states_;
+        // KeyStateFlags prev_keyboard_states_;
+        /// Состояние кнопок мыши на предыдущем кадре
+        EnumMask<MouseButton> prev_mouse_states_;
+        // MouseStateFlags prev_mouse_states_;
+        /// Чувствительность мыши
+        float sensitivity_;
+
+        /// Зарегистрированные действия (привязка к кнопкам)
+        std::vector<Action> actions_;
         std::unordered_map<std::string_view, size_t> action_indices_;
     };
 }
 
-DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(nasral::inp::Manager)
+DECLARE_SUBSYSTEM_LOGGER_ACCESSOR(inp::Manager, "INP")
