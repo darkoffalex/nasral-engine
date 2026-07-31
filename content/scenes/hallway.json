@@ -36,9 +36,9 @@
       "type": "eMesh",
       "uid": [1, 2],
       "spatial": {
-        "position": [1.2, 0.15, -1.8],
+        "position": [1.2, -0.5, -1.8],
         "rotation": [0.0, -75.0, 0.0],
-        "scale": [1.5, 1.5, 1.5]
+        "scale": [1.0, 1.0, 1.0]
       },
       "mesh": {
         "mesh_path": "meshes/chair/chair.obj",
@@ -55,8 +55,9 @@
         "scale": [1.0, 1.0, 1.0]
       },
       "light": {
+        "dynamic" : true,
         "type": "ePointLight",
-        "intensity": 5.0,
+        "intensity": 8.0,
         "radius": 1.0,
         "quadratic": 1.0,
         "color": [1.0, 1.0, 1.0, 1.0]
@@ -72,8 +73,9 @@
         "scale": [1.0, 1.0, 1.0]
       },
       "light": {
+        "dynamic" : true,
         "type": "ePointLight",
-        "intensity": 5.0,
+        "intensity": 8.0,
         "radius": 1.0,
         "quadratic": 1.0,
         "color": [1.0, 1.0, 1.0, 1.0]

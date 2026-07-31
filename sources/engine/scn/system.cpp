@@ -28,6 +28,7 @@ namespace nasral::scn
 
         // Обработка ввода
         update_cam_input(delta);
+        update_light_input(delta); // <-- Временно: для отладки
 
         // Состояние источников света (активация/деактивация)
         update_light_states();
@@ -123,6 +124,55 @@ namespace nasral::scn
                     * move_speed
                     * delta;
 
+                uniform.is_dirty = true;
+            }
+        }
+    }
+
+    void System::update_light_input(const float delta) const
+    {
+        // Алиасы компонентов
+        using Node       = NodeComponent;
+        using Light      = LightComponent;
+        using Spatial    = SpatialComponent;
+        using Uniform    = gfx::UniformStateComponent;
+
+        // Найти первый источник
+        const auto first_light = engine()->ecs()->view<
+            Node,
+            Spatial,
+            Light,
+            Uniform>().begin();
+
+        // Если нет - выход
+        if (!first_light) return;
+
+        // Внести изменения (если еще не внесены)
+        if (auto [e, n, spatial, light, uniform] = *first_light; !uniform.is_dirty)
+        {
+            constexpr float move_speed = 2.5f;
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eUp))
+            {
+                spatial.position.y += move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eDown))
+            {
+                spatial.position.y -= move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eLeft))
+            {
+                spatial.position.x -= move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eRight))
+            {
+                spatial.position.x += move_speed * delta;
                 uniform.is_dirty = true;
             }
         }

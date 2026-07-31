@@ -101,6 +101,7 @@ namespace nasral::res
             {
                 const auto& l = entry.at("light");
                 const auto light_type_str = l.at("type").get<std::string>();
+                desc.light.dynamic = l.at("dynamic").get<bool>();
                 desc.light.type = magic_enum::enum_cast<gfx::LightType>(light_type_str).value_or(gfx::LightType::ePointLight);
                 desc.light.intensity = l.at("intensity").get<float>();
                 desc.light.radius = l.at("radius").get<float>();

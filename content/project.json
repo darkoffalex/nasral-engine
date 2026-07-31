@@ -29,13 +29,11 @@
     {"type": "eTexture", "path": "textures/tiles_01/tiles_rough.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/tiles_01/tiles_spec.png", "load_params": {}},
 
-    {"type": "eTexture", "path": "textures/chair/chair_ao_1k.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/chair/chair_diff_1k.png:v0", "load_params": {}},
     {"type": "eTexture", "path": "textures/chair/chair_diff_1k.png:v1", "load_params": {"srgb": true, "generate_mipmaps": false}},
-    {"type": "eTexture", "path": "textures/chair/chair_metal_1k.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/chair/chair_nor_gl_1k.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/chair/chair_rough_1k.png", "load_params": {}},
-    {"type": "eTexture", "path": "textures/chair/chair_spec_1k.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair/chair_ao_1k.png", "load_params": {}},
 
     {"type": "eTexture", "path": "textures/hallway/floor_base_color.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
     {"type": "eTexture", "path": "textures/hallway/floor_base_color.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
@@ -171,7 +169,7 @@
       "base_material_path" : "materials/pbr/material.json",
       "base_material_type" : "ePBR",
       "settings": {
-        "color": [1.2, 1.2, 1.2, 1.0],
+        "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
         "metallic": 1.0,
         "ao": 1.0,
@@ -184,10 +182,6 @@
       }, {
         "type" : "eNormal",
         "path" : "textures/chair/chair_nor_gl_1k.png",
-        "filter" : "eLinear"
-      },{
-        "type" : "eMetalOrReflect",
-        "path" : "textures/chair/chair_metal_1k.png",
         "filter" : "eLinear"
       },{
         "type" : "eRoughOrSpec",
