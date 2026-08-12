@@ -22,6 +22,10 @@
     {"type": "eShader", "path": "materials/pbr/shader.geom.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/pbr/shader.frag.spv", "load_params": {}},
 
+    {"type": "eMaterial", "path": "materials/post/material.json", "load_params": {}},
+    {"type": "eShader", "path": "materials/post/shader.vert.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/post/shader.frag.spv", "load_params": {}},
+
     {"type": "eTexture", "path": "textures/tiles_01/tiles_diff.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/tiles_01/tiles_diff.png:v2", "load_params": {"srgb": true, "generate_mipmaps": false}},
     {"type": "eTexture", "path": "textures/tiles_01/tiles_disp.png", "load_params": {}},
@@ -56,6 +60,14 @@
 
     {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}},
     {"type": "eScene", "path": "scenes/hallway.json", "load_params": {}}
+  ],
+
+  "post_processing": [
+    {
+      "uid" : [2,0],
+      "name" : "Basic",
+      "material_path" : "materials/post/material.json"
+    }
   ],
 
   "materials": [

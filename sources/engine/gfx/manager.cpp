@@ -57,6 +57,40 @@ namespace nasral::gfx
         return nullptr;
     }
 
+    void Manager::remove_post_processing(const UniqueId& id)
+    {
+        post_process_pipelines_.erase(std::remove_if(post_process_pipelines_.begin(), post_process_pipelines_.end(), [&](const auto& pp) {
+            return pp->data_view().uid == id;
+        }), post_process_pipelines_.end());
+    }
+
+    void Manager::remove_post_processing(const ecs::EntityId& id)
+    {
+        post_process_pipelines_.erase(std::remove_if(post_process_pipelines_.begin(), post_process_pipelines_.end(), [&](const auto& pp) {
+            return pp->entity() == id;
+        }), post_process_pipelines_.end());
+    }
+
+    PostProcessing* Manager::find_post_processing(const UniqueId& id) const
+    {
+        for (const auto& pp : post_process_pipelines_){
+            if (pp->data_view().uid == id){
+                return pp.get();
+            }
+        }
+        return nullptr;
+    }
+
+    PostProcessing* Manager::find_post_processing(const ecs::EntityId& id) const
+    {
+        for (const auto& pp : post_process_pipelines_){
+            if (pp->entity() == id){
+                return pp.get();
+            }
+        }
+        return nullptr;
+    }
+
     void Manager::update_cam_uniforms(const uniforms::Camera& uniforms, const uint32_t index) const
     {
         const auto& pd = renderer()->vk_device().physical_device();
@@ -108,11 +142,10 @@ namespace nasral::gfx
     void Manager::update_mat_textures(const TextureBindingInfo& info, const uint32_t index) const
     {
         const auto& ld = renderer()->vk_device().logical_device();
-        const auto& ds = renderer()->vk_uniform_d_set(UniformDSetType::eMaterialTextures);
+        const auto& ds = renderer()->vk_rasterization_d_set(UniformDSetType::eMaterialTextures);
         const auto& ts = renderer()->vk_texture_sampler(info.sampler_type);
 
         assert(index < kMaxMaterials);
-        // assert(info.texture);
         assert(ds);
 
         vk::DescriptorImageInfo image_info{};
@@ -191,9 +224,14 @@ namespace nasral::gfx
             assert(res->status() == res::Status::eLoaded && "Project file resource is not loaded");
             assert(proj && "Project file resource is not a project file");
 
-            // Сформировать список материалов
+            // Сформировать список материалов растеризации
             for (const auto& mat_desc : proj->materials()){
                 materials_.emplace_back(MaterialInstance::Ptr(new MaterialInstance(this, mat_desc)));
+            }
+
+            // Сформировать список материалов пост-процессинга
+            for (const auto& pp_desc : proj->post_process_pipelines()){
+                post_process_pipelines_.emplace_back(PostProcessing::Ptr(new PostProcessing(this, pp_desc)));
             }
 
             // Список ресурсов готов
@@ -247,6 +285,7 @@ namespace nasral::gfx
 
         // Уничтожение регистра материалов
         materials_.clear();
+        post_process_pipelines_.clear();
 
         // Финализация ECS системы
         ecs_system_->finalize();
@@ -263,11 +302,22 @@ namespace nasral::gfx
         if (!renderer()->is_active()) return;
         if (engine()->run()->state().has_no(run::StateFlags::eRunning)) return;
 
-        // Начало кадра, привязка необходимых дескрипторов Vulkan
+        // Начало кадра
         renderer()->cmd_begin_frame();
 
-        // ECS обход сцены для рендеринга
+        // Проход растеризации
+        renderer()->cmd_begin_rasterization_pass();
         ecs_system()->render();
+        renderer()->cmd_end_render_pass();
+
+        // Проход пост-обработки
+        renderer()->cmd_begin_post_processing_pass();
+        if (engine()->scn()->is_post_processing_ready())
+        {
+            renderer()->cmd_bind_post_processing_material(engine()->scn()->post_processing_pipeline());
+            renderer()->cmd_draw_post_processing_quad();
+        }
+        renderer()->cmd_end_render_pass();
 
         // Завершение кадра, показ результата
         renderer()->cmd_end_frame();

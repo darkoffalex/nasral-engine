@@ -28,6 +28,9 @@ namespace nasral::gfx
         void update_mtl_textures() const;
         void update_mtl_destroy() const;
 
+        // Пост-процессинг
+        void update_pp_mtl_handles() const;
+
         // Объекты (UBO)
         void update_obj_static_ubo() const;
         void update_obj_dynamic_ubo() const;

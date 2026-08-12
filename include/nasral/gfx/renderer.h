@@ -32,9 +32,14 @@ namespace nasral::gfx
 
         void cmd_begin_frame();
         void cmd_end_frame();
-        void cmd_bind_material(const handles::Material& handles, uint32_t uniform_idx);
-        void cmd_bind_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
+        void cmd_begin_rasterization_pass();
+        void cmd_begin_post_processing_pass();
+        void cmd_end_render_pass();
+        void cmd_bind_rasterization_material(const handles::Material& handles, uint32_t uniform_idx);
+        void cmd_bind_post_processing_material(const handles::Material& handles);
+        void cmd_bind_rasterization_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
         void cmd_draw_geometry(uint32_t index_offset, uint32_t index_count);
+        void cmd_draw_post_processing_quad();
         void cmd_wait_for_all() const;
 
         void request_surface_refresh();
@@ -44,12 +49,15 @@ namespace nasral::gfx
         [[nodiscard]] auto frame() const noexcept{ return frame_index_; }
         [[nodiscard]] const auto& vk_instance() const noexcept{ return *vk_instance_; }
         [[nodiscard]] auto& vk_device() const noexcept{ return *vk_device_; }
-        [[nodiscard]] const auto& vk_render_pass() const noexcept{ return *vk_render_pass_; }
+        [[nodiscard]] const auto& vk_rasterization_pass() const noexcept{ return *vk_rasterization_pass_; }
+        [[nodiscard]] const auto& vk_post_processing_pass() const noexcept{ return *vk_post_processing_pass_; }
         [[nodiscard]] const auto& vk_surface() const noexcept{ return *vk_surface_; }
-        [[nodiscard]] const auto& vk_framebuffer(const size_t index) const noexcept{ return *vk_framebuffers_[index]; }
+        [[nodiscard]] const auto& vk_offscreen_framebuffer(const size_t index) const noexcept{ return *vk_offscreen_framebuffers_[index]; }
+        [[nodiscard]] const auto& vk_swapchain_framebuffer(const size_t index) const noexcept{ return *vk_swapchain_framebuffers_[index]; }
         [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{ return *vk_texture_samplers_[type]; }
         [[nodiscard]] const auto& vk_uniform_layout(const UniformLayoutType& type) const noexcept{ return *vk_uniform_layouts_[type]; }
-        [[nodiscard]] const auto& vk_uniform_d_set(const UniformDSetType& type) const noexcept{ return *vk_descriptor_sets_[type]; }
+        [[nodiscard]] const auto& vk_rasterization_d_set(const UniformDSetType& type) const noexcept{ return *vk_rasterization_d_sets_[type]; }
+        [[nodiscard]] const auto& vk_post_process_d_set(const size_t index) const noexcept{ return *vk_post_process_d_sets_[index]; }
         [[nodiscard]] auto& vk_uniform_buffer(const UniformBufferType& type) const noexcept{ return *vk_uniform_buffers_[type]; }
 
         [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
@@ -77,6 +85,7 @@ namespace nasral::gfx
         void init_vk_framebuffers();
         void init_vk_uniform_layouts();
         void init_vk_texture_samplers();
+        void init_vk_framebuffer_bindings();
         void init_vk_uniforms();
         void init_vk_command_buffers();
         void init_vk_synchronization();
@@ -94,14 +103,18 @@ namespace nasral::gfx
         vk::detail::DispatchLoaderDynamic vk_loader_;
         vk::UniqueSurfaceKHR vk_surface_;
         vk::utils::Device::Ptr vk_device_;
-        vk::UniqueRenderPass vk_render_pass_;
+        vk::UniqueRenderPass vk_rasterization_pass_;
+        vk::UniqueRenderPass vk_post_processing_pass_;
         vk::UniqueSwapchainKHR vk_swap_chain_;
-        std::vector<vk::utils::Framebuffer::Ptr> vk_framebuffers_;
+        std::vector<vk::utils::Framebuffer::Ptr> vk_offscreen_framebuffers_;
+        std::vector<vk::utils::Framebuffer::Ptr> vk_swapchain_framebuffers_;
 
         // Макеты конвейеров (для растеризации, пост-процессинга и прочего)
         EnumArray<UniformLayoutType, vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
-        // Дескрипторные наборы (камера, трансформации и материалы объектов, текстуры объектов)
-        EnumArray<UniformDSetType, vk::UniqueDescriptorSet> vk_descriptor_sets_;
+        // Дескрипторные наборы растеризации (камера, трансформации и материалы объектов, текстуры объектов)
+        EnumArray<UniformDSetType, vk::UniqueDescriptorSet> vk_rasterization_d_sets_;
+        // Дескрипторные наборы пост-процессинга (текстуры кадровых буферов)
+        std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_post_process_d_sets_;
         // Uniform буферы объектов (камера, трансформации, материалы, источники света)
         EnumArray<UniformBufferType, vk::utils::Buffer::Ptr> vk_uniform_buffers_;
         // Семплеры текстур
@@ -117,7 +130,7 @@ namespace nasral::gfx
         std::vector<vk::UniqueFence> vk_frame_fence_;
 
         // Последний использованный конвейер (pipeline)
-        vk::Pipeline vk_last_pipeline_;
+        vk::Pipeline vk_last_rasterization_pipeline_;
     };
 }
 

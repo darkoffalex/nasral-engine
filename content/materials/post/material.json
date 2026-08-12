@@ -1,0 +1,13 @@
+{
+  "base_type" : "ePostProcessing",
+  "shaders" : [
+    {
+      "stage" : "vertex",
+      "path" : "materials/post/shader.vert.spv"
+    },
+    {
+      "stage" : "fragment",
+      "path" : "materials/post/shader.frag.spv"
+    }
+  ]
+}

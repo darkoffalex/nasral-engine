@@ -35,6 +35,7 @@ namespace nasral::ecs
 
         // Графика
         gfx::RenderComponent,
+        gfx::PostProcessHandlesComponent,
         gfx::MaterialHandlesComponent,
         gfx::MaterialSettingsComponent,
         gfx::MeshHandlesComponent,

@@ -17,6 +17,8 @@ namespace nasral::gfx
     constexpr uint32_t kMaxMaterials = 128;
     constexpr uint32_t kMaxMaterialsPerMesh = 5;
     constexpr uint32_t kMaxLights = 64;
+    constexpr uint32_t kMaxFramesInFlight = 5;
+    constexpr uint32_t kMaxPostProcessPipelines = 5;
 
     struct Vertex
     {
@@ -82,6 +84,15 @@ namespace nasral::gfx
         TOTAL
     };
 
+    enum class OffscreenTextureType : uint32_t
+    {
+        eColor = 0,
+        eDepth,
+        eNormal,
+        eEmissive,
+        TOTAL
+    };
+
     enum class MaterialBaseType : uint32_t
     {
         eDummy = 0,
@@ -89,6 +100,7 @@ namespace nasral::gfx
         eTextured,
         ePhong,
         ePBR,
+        ePostProcessing,
         TOTAL
     };
 
@@ -254,21 +266,30 @@ namespace nasral::gfx
         } pbr_settings = {};
     };
 
+    struct PostProcessingDesc
+    {
+        UniqueId unique_id = {};
+        std::string name = {};
+        std::string material_path = {};
+    };
+
     struct Config
     {
-        std::string app_name;                                               // Имя приложения (для драйвера Vulkan)
-        std::string engine_name;                                            // Имя движка (для драйвера Vulkan)
-        VulkanSurfaceProvider::Ptr surface_provider = nullptr;              // Поставщик поверхности Vulkan
-        glm::vec4 clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);          // Цвет очистки
-        PFN_vkGetInstanceProcAddr pfn_vk_get_proc_addr;                     // Функция получения адресов функций
-        vk::Format color_format = vk::Format::eB8G8R8A8Unorm;               // Формат цветовых вложений
-        vk::Format depth_format = vk::Format::eD32SfloatS8Uint;             // Формат вложений глубины и трафарета
-        vk::ColorSpaceKHR color_space = vk::ColorSpaceKHR::eSrgbNonlinear;  // Цветовое пространство
-        vk::PresentModeKHR present_mode = vk::PresentModeKHR::eFifo;        // Режим представления
+        std::string app_name;                                                       // Имя приложения (для драйвера Vulkan)
+        std::string engine_name;                                                    // Имя движка (для драйвера Vulkan)
+        VulkanSurfaceProvider::Ptr surface_provider = nullptr;                      // Поставщик поверхности Vulkan
+        glm::vec4 clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);                  // Цвет очистки
+        PFN_vkGetInstanceProcAddr pfn_vk_get_proc_addr;                             // Функция получения адресов функций
+        vk::Extent2D rendering_resolution = {1024, 768};                            // Разрешение кадрового буфера рендеринга
+        vk::Format offscreen_color_format = vk::Format::eR16G16B16A16Sfloat;        // Формат цветовых вложений кадрового буфера рендеринга
+        vk::Format offscreen_depth_format = vk::Format::eD32SfloatS8Uint;           // Формат вложений глубины и трафарета (буфер рендеринга)
+        vk::Format present_color_format = vk::Format::eB8G8R8A8Unorm;               // Формат цветовых вложений презентации (показа)
+        vk::ColorSpaceKHR present_color_space = vk::ColorSpaceKHR::eSrgbNonlinear;  // Цветовое пространство презентации (показа)
+        vk::PresentModeKHR present_mode = vk::PresentModeKHR::eFifo;                // Режим представления
         vk::CompositeAlphaFlagBitsKHR composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque; // Альфа-смешивание для поверхности
-        bool opengl_compatible = true;                                      // Совместимость данных с OpenGL
-        bool enable_validation_layers = false;                              // Использовать слои валидации
-        uint32_t max_frames_in_flight = 2;                                  // Кол-во единовременно обрабатываемых кадров
-        uint32_t swap_chain_images = 3;                                     // Кол-во изображений в цепочке свопинга
+        bool opengl_compatible = true;                                              // Совместимость данных с OpenGL
+        bool enable_validation_layers = false;                                      // Использовать слои валидации
+        uint32_t max_frames_in_flight = 2;                                          // Кол-во единовременно обрабатываемых кадров
+        uint32_t swap_chain_images = 3;                                             // Кол-во изображений в цепочке свопинга
     };
 }

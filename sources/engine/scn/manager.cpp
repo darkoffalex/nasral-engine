@@ -7,6 +7,7 @@
 #include <nasral/scn/objects/camera.h>
 #include <nasral/scn/objects/light.h>
 #include <nasral/evt/utils.h>
+#include <nasral/ecs/utils.h>
 #include <nasral/engine.h>
 
 namespace nasral::scn
@@ -51,6 +52,7 @@ namespace nasral::scn
         evl_session_start_.reset();
         evl_sfc_chg_.reset();
         nodes_.clear();
+        release_post_processing();
         ecs_system_->finalize();
         log_info("Manager finalized");
     }
@@ -110,6 +112,55 @@ namespace nasral::scn
             }
         }
         return nullptr;
+    }
+
+    void Manager::request_post_processing(){
+        if (is_post_processing_requested()){
+            log_warn("Post-processing already requested");
+            return;
+        }
+
+        if (!engine()->ecs()->is_valid(post_processing_.pp_entity)){
+            log_warn("Invalid post-processing pipeline entity");
+            return;
+        }
+
+        post_processing_.requested = true;
+        ecs::inc_entity_refs(engine()->ecs(), post_processing_.pp_entity);
+    }
+
+    void Manager::release_post_processing()
+    {
+        if (!is_post_processing_requested()){
+            log_warn("Post-processing already released");
+            return;
+        }
+
+        if (!engine()->ecs()->is_valid(post_processing_.pp_entity)){
+            log_warn("Invalid post-processing pipeline entity");
+            return;
+        }
+
+        post_processing_.requested = false;
+        ecs::dec_entity_refs(engine()->ecs(), post_processing_.pp_entity);
+    }
+
+    bool Manager::is_post_processing_ready() const
+    {
+        auto& e = post_processing_.pp_entity;
+        return engine()->ecs()->is_valid(e)
+            && engine()->ecs()->has<gfx::PostProcessHandlesComponent, res::LoadedComponent>(e)
+            && !engine()->ecs()->has<gfx::DirtyHandlesComponent>(e);
+    }
+
+    bool Manager::is_post_processing_requested() const{
+        return post_processing_.requested;
+    }
+
+    const gfx::handles::Material& Manager::post_processing_pipeline() const{
+        auto& e = post_processing_.pp_entity;
+        auto& [material] = engine()->ecs()->get_component<gfx::PostProcessHandlesComponent>(e);
+        return material;
     }
 
     void Manager::on_session_start([[maybe_unused]] const evt::Arg& arg)
@@ -172,8 +223,27 @@ namespace nasral::scn
                 }
             }
 
+            // Найти и задать пост-процессинг сцены
+            const UniqueId pp_uid(2, 0); // <-- Временно hardcoded, позже будет браться из сцены
+            const auto* pp = engine()->gfx()->find_post_processing(pp_uid);
+            assert(pp != nullptr && "Post-processing pipeline is not found");
+            set_post_processing(pp->entity());
+            request_post_processing();
+
             // Ресурс сцены более не нужен в RAM
             engine()->res()->release(res->id());
         });
+    }
+
+    void Manager::set_post_processing(const ecs::EntityId& entity)
+    {
+        // Уменьшить ссылки на предыдущий объект конвейера пост-обработки
+        if (is_post_processing_requested()){
+            release_post_processing();
+        }
+
+        // Установить новый объект
+        post_processing_.pp_entity = entity;
+        post_processing_.requested = false;
     }
 }

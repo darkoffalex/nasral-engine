@@ -183,7 +183,9 @@ namespace nasral::res
 
         // Получить renderer и устройство
         const auto* renderer = subsystem()->engine()->gfx()->renderer();
-        const auto& ul = renderer->vk_uniform_layout(gfx::UniformLayoutType::eRasterization);
+        // Определить тип макета конвейера по базовому типу материала
+        auto ul_type = base_type() == gfx::MaterialBaseType::ePostProcessing ? gfx::UniformLayoutType::ePostProcessing : gfx::UniformLayoutType::eRasterization;
+        const auto& ul = renderer->vk_uniform_layout(ul_type);
         auto& vd = renderer->vk_device();
 
         /** 1. Входные данные **/
@@ -392,7 +394,7 @@ namespace nasral::res
                 .setPColorBlendState(&color_blending_state)
                 .setPDynamicState(&dynamic_states_info)
                 .setLayout(ul.vk_pipeline_layout())
-                .setRenderPass(renderer->vk_render_pass())
+                .setRenderPass(base_type() == gfx::MaterialBaseType::ePostProcessing ? renderer->vk_post_processing_pass() : renderer->vk_rasterization_pass())
                 .setSubpass(0));
 
             if (result.result != vk::Result::eSuccess){

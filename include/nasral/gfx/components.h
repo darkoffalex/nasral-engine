@@ -6,6 +6,11 @@ namespace nasral::gfx
 {
     struct RenderComponent{};
 
+    struct PostProcessHandlesComponent
+    {
+        handles::Material material = {};
+    };
+
     struct MaterialHandlesComponent
     {
         handles::Material material = {};

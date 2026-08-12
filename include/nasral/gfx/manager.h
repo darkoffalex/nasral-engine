@@ -7,6 +7,7 @@
 #include <nasral/gfx/renderer.h>
 #include <nasral/gfx/system.h>
 #include <nasral/gfx/objects/material.h>
+#include <nasral/gfx/objects/post_processing.h>
 #include <nasral/evt/objects/listener.h>
 
 namespace nasral::gfx
@@ -43,6 +44,11 @@ namespace nasral::gfx
         [[nodiscard]] MaterialInstance* find_material(const UniqueId& id) const;
         [[nodiscard]] MaterialInstance* find_material(const ecs::EntityId& id) const;
 
+        void remove_post_processing(const UniqueId& id);
+        void remove_post_processing(const ecs::EntityId& id);
+        [[nodiscard]] PostProcessing* find_post_processing(const UniqueId& id) const;
+        [[nodiscard]] PostProcessing* find_post_processing(const ecs::EntityId& id) const;
+
         void on_init();
         void on_update(float delta);
         void on_finalize();
@@ -70,8 +76,10 @@ namespace nasral::gfx
         evt::Listener::Ptr evl_res_reg_;
         evt::Listener::Ptr evl_sfc_chg_;
 
-        // Глобальный реестр материалов (общий для проекта)
+        // Глобальный реестр материалов (конвейеров) растеризации (общий для проекта)
         std::vector<MaterialInstance::Ptr> materials_;
+        // Глобальный реестр материалов (конвейеров) пост-процессинга (общий для проекта)
+        std::vector<PostProcessing::Ptr> post_process_pipelines_;
 
         // ECS-система
         System::Ptr ecs_system_;

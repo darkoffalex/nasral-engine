@@ -24,11 +24,14 @@ namespace nasral::gfx
 
     void System::on_update([[maybe_unused]] const float delta) const
     {
-        // Материалы
+        // Материалы (основные)
         update_mtl_ubo();
         update_mtl_handles();
         update_mtl_textures();
         update_mtl_destroy();
+
+        // Материалы (пост-процессинг)
+        update_pp_mtl_handles();
 
         // Объекты
         update_obj_static_ubo();
@@ -190,6 +193,45 @@ namespace nasral::gfx
         for (const auto& [e, ms, ui, d_tag] : engine()->ecs()->view<Material, UniformId, Destroy>())
         {
             engine()->gfx()->material_ubo_ids().release(ui.index);
+        }
+    }
+
+    void System::update_pp_mtl_handles() const
+    {
+        // Алиасы компонентов
+        using Handles   = PostProcessHandlesComponent;
+        using Resources = res::ResourcesComponent;
+        using Dirty     = DirtyHandlesComponent;
+        using Loaded    = res::LoadedComponent;
+
+        // Алиасы для индексов ресурсов
+        using ResIndices = MaterialInstance::ResIndices;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Handles материала
+        // - Список ресурсов
+        // - Грязные (не обновленные) handles
+        // - Ресурсы загружены
+        for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
+        {
+            // Материал должен быть загружен
+            if (kDebugBuild){
+                assert(rsc.active[ResIndices::eBaseMaterial]);
+                assert(rsc.ids[ResIndices::eBaseMaterial] != res::kInvalidResourceId);
+            }
+
+            // Ресурс материала (должен быть доступен)
+            const auto* mat_res = engine()->res()->get<res::Material>(rsc.ids[ResIndices::eBaseMaterial]);
+            assert(mat_res != nullptr && "Bad material");
+            // Если загружен - обновить handles, если нет - fallback
+            if (mat_res->status() == res::Status::eLoaded){
+                mh.material = mat_res->render_handles();
+            }else{
+                // TODO: Fallback
+            }
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
         }
     }
 
@@ -448,7 +490,7 @@ namespace nasral::gfx
             }
 
             // Привязка всей геометрии меша
-            subsystem()->renderer()->cmd_bind_geometry(mh.mesh, ui.index);
+            subsystem()->renderer()->cmd_bind_rasterization_geometry(mh.mesh, ui.index);
 
             // Проход по поверхностям
             for (uint32_t i = 0; i < mh.mesh.surfaces_count; ++i)
@@ -480,7 +522,7 @@ namespace nasral::gfx
                     MaterialHandlesComponent>(mat_e);
 
                 // Привязать материал, нарисовать поверхность
-                subsystem()->renderer()->cmd_bind_material(mat_hdl.material, mat_ubo.index);
+                subsystem()->renderer()->cmd_bind_rasterization_material(mat_hdl.material, mat_ubo.index);
                 subsystem()->renderer()->cmd_draw_geometry(surface.index_offset, surface.index_count);
             }
         }

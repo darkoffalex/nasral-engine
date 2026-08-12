@@ -156,103 +156,171 @@ namespace nasral::gfx
         assert(vk_surface_ && "Vulkan surface is not initialized");
         assert(vk_device_ && "Vulkan device is not initialized");
 
-        if (!vk_device_->supports_color(config().color_format, vk_surface_)){
-            throw std::runtime_error("Color format is not supported by the device");
+        if (!vk_device_->surface_supports_color(config().present_color_format, vk_surface_)){
+            throw std::runtime_error("Color format is not supported by the surface");
         }
 
-        if (!vk_device_->supports_depth(config().depth_format)){
+        if (!vk_device_->supports_depth(config().offscreen_depth_format)){
             throw std::runtime_error("Depth format is not supported by the device");
         }
 
-        // Описания вложений.
-        // Предполагается использование двух вложений - цвета и глубины/трафарета.
-        // Вложение - изображение, в которое производится запись на стороне shader'а.
-        // Вложение также может быть прочитано в другом под-проходе (например, для легкой пост-обработки)
-        std::vector<::vk::AttachmentDescription> attachment_descriptions{};
+        // 1. ПРОХОД РАСТЕРИЗАЦИИ (Offscreen Render Pass)
+        {
+            // Описания вложений.
+            // Предполагается использование двух вложений - цвета и глубины/трафарета.
+            // Вложение - изображение, в которое производится запись на стороне shader.
+            // Вложение также может быть прочитано в другом под-проходе (например, для легкой пост-обработки)
+            std::vector<::vk::AttachmentDescription> attachment_descriptions{};
+            attachment_descriptions.reserve(2);
 
-        // Цвет
-        attachment_descriptions.push_back(
-            vk::AttachmentDescription()
-            .setFormat(config().color_format)
-            .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
-            .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
-            .setStoreOp(vk::AttachmentStoreOp::eStore)                      // Хранить для показа (один под-проход)
-            .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (цветовое вложение)
-            .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (цветовое вложение)
-            .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
-            .setFinalLayout(vk::ImageLayout::ePresentSrcKHR)                // В конце - отправка на экран (один под-проход)
-        );
+            // Цвет (вложение 0)
+            attachment_descriptions.push_back(
+                vk::AttachmentDescription()
+                .setFormat(config().offscreen_color_format)
+                .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
+                .setStoreOp(vk::AttachmentStoreOp::eStore)                      // Хранить для показа (один под-проход)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (цветовое вложение)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (цветовое вложение)
+                .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
+                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal)        // В конце - чтение в шейдере (на этапе пост-обработки)
+            );
 
-        // Глубина/трафарет
-        attachment_descriptions.push_back(
-            vk::AttachmentDescription()
-            .setFormat(config().depth_format)
-            .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
-            .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
-            .setStoreOp(vk::AttachmentStoreOp::eDontCare)                   // Хранить для показа не нужно (не показываем)
-            .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (только глубина)
-            .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (только глубина)
-            .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
-            .setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)); // В конце - использование в качестве вложения глубины/трафарета
+            // Глубина/трафарет (вложение 1)
+            attachment_descriptions.push_back(
+                vk::AttachmentDescription()
+                .setFormat(config().offscreen_depth_format)
+                .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
+                .setStoreOp(vk::AttachmentStoreOp::eDontCare)                   // Хранить для показа не нужно (не показываем)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (только глубина)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (только глубина)
+                .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
+                .setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)); // В конце - использование в качестве вложения глубины/трафарета
 
-        // Ссылки на вложения.
-        // Указываем, какие вложения из ранее описанных (и в качестве чего) будет использовать под-проход.
-        // На данный момент: 1 проход с 1 под-проходом (с последующим выводом изображения в кадровый буфер).
-        std::vector<vk::AttachmentReference> color_attachment_refs{};
-        std::vector<vk::AttachmentReference> depth_attachment_refs{};
+            // Ссылки на вложения.
+            // Указываем, какие вложения из ранее описанных (и в качестве чего) будет использовать под-проход.
+            constexpr std::array<vk::AttachmentReference, 1> colort_refs{
+                vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal)
+            };
 
-        color_attachment_refs.push_back(
-            vk::AttachmentReference()
-            .setAttachment(0)
-            .setLayout(vk::ImageLayout::eColorAttachmentOptimal));
+            constexpr std::array<vk::AttachmentReference, 1> depth_refs{
+                vk::AttachmentReference(1, vk::ImageLayout::eDepthStencilAttachmentOptimal)
+            };
 
-        depth_attachment_refs.push_back(
-            vk::AttachmentReference()
-            .setAttachment(1)
-            .setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal));
+            // Под-проходы (1 под проход на текущий момент)
+            std::vector<vk::SubpassDescription> subpass_descriptions{};
+            subpass_descriptions.push_back(
+                vk::SubpassDescription().
+                setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+                .setColorAttachments(colort_refs)
+                .setPDepthStencilAttachment(&depth_refs[0]));
 
-        // Под-проходы (1 под проход на текущий момент)
-        std::vector<vk::SubpassDescription> subpass_descriptions{};
-        subpass_descriptions.push_back(
-            vk::SubpassDescription().
-            setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-            .setColorAttachments(color_attachment_refs)
-            .setPDepthStencilAttachment(&depth_attachment_refs[0]));
+            // Зависимости под-проходов.
+            // Синхронизация: гарантируем, что запись цвета завершится до того, как Pass 2 начнет читать текстуру
+            std::vector<vk::SubpassDependency> subpass_dependencies{};
+            subpass_dependencies.reserve(2);
 
-        // Зависимости под-проходов.
-        // Указываем, на каких стадиях конвейера какой будет доступ к вложениям под-проходов
-        std::vector<vk::SubpassDependency> subpass_dependencies{};
+            // Переход из внешнего (неявного) в основной (первый/нулевой)
+            subpass_dependencies.push_back(
+                vk::SubpassDependency()
+                .setSrcSubpass(VK_SUBPASS_EXTERNAL)                                   // Исходный под-проход (внешний)
+                .setDstSubpass(0)                                                     // Целевой (первый)
+                .setSrcStageMask(vk::PipelineStageFlagBits::eFragmentShader)          // Этап ожидания операций прохода пост-процессинга
+                .setSrcAccessMask(vk::AccessFlagBits::eShaderRead)                    // Ждем операций чтения в шейдере
+                .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап выполнения операций целевого под-прохода
+                .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции целевого под-прохода
+                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
+            );
 
-        // Переход из внешнего (неявного) в основной (первый/нулевой)
-        subpass_dependencies.push_back(
-            vk::SubpassDependency()
-            .setSrcSubpass(VK_SUBPASS_EXTERNAL)                                   // Исходный под-проход (внешний)
-            .setDstSubpass(0)                                                     // Целевой (первый)
-            .setSrcStageMask(vk::PipelineStageFlagBits::eTopOfPipe)               // Этап ожидания операций
-            .setSrcAccessMask(vk::AccessFlagBits::eNone)                          // Нет операций для ожидания (вложение очищается)
-            .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап выполнения операций целевого под-прохода
-            .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции целевого под-прохода
-            .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
-        );
+            // Переход из основного во внешний (неявный)
+            subpass_dependencies.push_back(
+                vk::SubpassDependency()
+                .setSrcSubpass(0)
+                .setDstSubpass(VK_SUBPASS_EXTERNAL)
+                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+                .setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)
+            );
 
-        // Переход из основного во внешний (неявный)
-        subpass_dependencies.push_back(
-            vk::SubpassDependency()
-            .setSrcSubpass(0)                                                     // Исходный под-проход (первый)
-            .setDstSubpass(VK_SUBPASS_EXTERNAL)                                   // Целевой (внешний)
-            .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап ожидания операций (вывод)
-            .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции записи
-            .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап выполнения операций целевого под-прохода
-            .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead)           // Операции чтения (swap chain)
-            .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
-        );
+            // Создать проход
+            vk_rasterization_pass_ = vk_device_->logical_device().createRenderPassUnique(
+                vk::RenderPassCreateInfo()
+                .setAttachments(attachment_descriptions)
+                .setSubpasses(subpass_descriptions)
+                .setDependencies(subpass_dependencies));
+        }
 
-        // Создать проход
-        vk_render_pass_ = vk_device_->logical_device().createRenderPassUnique(
-            vk::RenderPassCreateInfo()
-            .setAttachments(attachment_descriptions)
-            .setSubpasses(subpass_descriptions)
-            .setDependencies(subpass_dependencies));
+        // 2. ПРОХОД ПОСТ-ПРОЦЕССИНГА (Post-Processing / Swapchain Render Pass)
+        {
+            // Описания вложений.
+            // Предполагается использование одного вложения (цвета)
+            std::vector<::vk::AttachmentDescription> attachment_descriptions{};
+            attachment_descriptions.reserve(1);
+
+            // Цвет
+            attachment_descriptions.push_back(
+                vk::AttachmentDescription()
+                .setFormat(config().present_color_format)
+                .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
+                .setStoreOp(vk::AttachmentStoreOp::eStore)                      // Хранить для показа (один под-проход)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (цветовое вложение)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (цветовое вложение)
+                .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
+                .setFinalLayout(vk::ImageLayout::ePresentSrcKHR)                // В конце - отправка на экран (один под-проход)
+            );
+
+            // Ссылки на вложения.
+            // Буфер глубины не нужен для пост-процессинга
+            constexpr std::array<vk::AttachmentReference, 1> colort_refs{
+                vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal)
+            };
+
+            // Под-проходы (1 под проход на текущий момент)
+            std::vector<vk::SubpassDescription> subpass_descriptions{};
+            subpass_descriptions.push_back(
+                vk::SubpassDescription()
+                .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+                .setColorAttachments(colort_refs));
+
+            // Зависимости под-проходов.
+            // Указываем, на каких стадиях конвейера какой будет доступ к вложениям под-проходов
+            std::vector<vk::SubpassDependency> subpass_dependencies{};
+            subpass_dependencies.reserve(2);
+
+            // Переход из внешнего (неявного) в основной (первый/нулевой)
+            subpass_dependencies.push_back(
+                vk::SubpassDependency()
+                .setSrcSubpass(VK_SUBPASS_EXTERNAL)                                   // Исходный под-проход (внешний)
+                .setDstSubpass(0)                                                     // Целевой (первый)
+                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап ожидания операций прохода рендеринга
+                .setSrcAccessMask(vk::AccessFlagBits::eNone)                          // Нет операций для ожидания (вложение очищается)
+                .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап выполнения операций целевого под-прохода
+                .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции целевого под-прохода
+                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
+            );
+
+            // Переход из основного во внешний (неявный)
+            subpass_dependencies.push_back(
+                vk::SubpassDependency()
+                .setSrcSubpass(0)                                                     // Исходный под-проход (первый)
+                .setDstSubpass(VK_SUBPASS_EXTERNAL)                                   // Целевой (внешний)
+                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап ожидания операций (вывод)
+                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции записи
+                .setDstStageMask(vk::PipelineStageFlagBits::eBottomOfPipe)            // Этап выполнения операций целевого под-прохода
+                .setDstAccessMask(vk::AccessFlagBits::eNone)                          // Операции чтения (swap chain)
+                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
+            );
+
+            vk_post_processing_pass_ = vk_device_->logical_device().createRenderPassUnique(
+                vk::RenderPassCreateInfo()
+                .setAttachments(attachment_descriptions)
+                .setSubpasses(subpass_descriptions)
+                .setDependencies(subpass_dependencies));
+        }
     }
 
     /**
@@ -276,8 +344,8 @@ namespace nasral::gfx
         assert(vk_device_ && "Vulkan device is not initialized");
 
         // Проверка формата поверхности
-        const vk::SurfaceFormatKHR surface_format = {config().color_format, config().color_space};
-        if (!vk_device_->supports_format(surface_format, vk_surface_)){
+        const vk::SurfaceFormatKHR surface_format = {config().present_color_format, config().present_color_space};
+        if (!vk_device_->surface_supports_format(surface_format, vk_surface_)){
             throw std::runtime_error("Color format is not supported by the device");
         }
 
@@ -367,7 +435,35 @@ namespace nasral::gfx
         const auto swap_chain_images = vk_device_->logical_device().getSwapchainImagesKHR(*vk_swap_chain_);
         assert(!swap_chain_images.empty());
 
-        // Проход по изображениям swap-chain
+        // Создать первичные кадровые буферы (рендеринг)
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i)
+        {
+            // Описать вложения кадрового буфера
+            std::vector<vk::utils::Framebuffer::AttachmentInfo> attachments{};
+
+            // Вложение цвета (не передаем image, оно будет создано внутри Framebuffer)
+            vk::utils::Framebuffer::AttachmentInfo color{};
+            color.format = config().offscreen_color_format;
+            color.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+            color.aspect = vk::ImageAspectFlagBits::eColor;
+            attachments.push_back(color);
+
+            // Вложение глубины (не передаем image, оно будет создано внутри Framebuffer)
+            vk::utils::Framebuffer::AttachmentInfo depth{};
+            depth.format = config().offscreen_depth_format;
+            depth.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
+            depth.aspect = vk::ImageAspectFlagBits::eDepth;
+            attachments.push_back(depth);
+
+            // Создать и добавить кадровый буфер
+            vk_offscreen_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
+                vk_device_.get(),
+                vk_rasterization_pass_.get(),
+                config().rendering_resolution,
+                attachments));
+        }
+
+        // Создать буферы пост-процессинга (swap chain)
         for (const auto& sci : swap_chain_images)
         {
             // Описать вложения кадрового буфера
@@ -376,23 +472,15 @@ namespace nasral::gfx
             // Вложение цвета (используем изображение из swap-chain)
             vk::utils::Framebuffer::AttachmentInfo color{};
             color.image = sci;
-            color.format = config().color_format;
+            color.format = config().present_color_format;
             color.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
             color.aspect = vk::ImageAspectFlagBits::eColor;
             attachments.push_back(color);
 
-            // Для вложения глубины-трафарета изображения не создано (swap-chain создает только показываемые изображения)
-            // НЕ указываем ничего в поле image (оно будет создано внутри кадрового буфера)
-            vk::utils::Framebuffer::AttachmentInfo depth{};
-            depth.format = config().depth_format;
-            depth.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-            depth.aspect = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
-            attachments.push_back(depth);
-
             // Создать и добавить кадровый буфер
-            vk_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
+            vk_swapchain_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
                 vk_device_.get(),
-                vk_render_pass_.get(),
+                vk_post_processing_pass_.get(),
                 vk_device_->clamp_swapchain_extent(config().surface_provider->framebuffer_extent(), *vk_surface_),
                 attachments));
         }
@@ -537,7 +625,7 @@ namespace nasral::gfx
                 }
             };
 
-            // Push-константы layout'а растеризации
+            // Push-константы layout-а растеризации
             std::vector push_constants{
                 // Индекс объекта и индекс используемого материала
                 vk::PushConstantRange()
@@ -551,6 +639,57 @@ namespace nasral::gfx
                 vk_device_,
                 set_layouts,
                 push_constants);
+        }
+
+        // 3. Для шейдеров пост-процессинга
+        {
+            std::vector<vk::utils::UniformLayout::SetLayoutInfo> set_layouts =
+            {
+                // set = 0: Текстуры кадровых буферов
+                {
+                    {
+                        // Цвет (итоговый результат рендеринга первого прохода)
+                        {
+                            static_cast<uint32_t>(OffscreenTextureType::eColor),
+                            1,
+                            vk::DescriptorType::eCombinedImageSampler,
+                            vk::ShaderStageFlagBits::eFragment,
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                        },
+                        // Глубина кадра
+                        {
+                            static_cast<uint32_t>(OffscreenTextureType::eDepth),
+                            1,
+                            vk::DescriptorType::eCombinedImageSampler,
+                            vk::ShaderStageFlagBits::eFragment,
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                        },
+                        // Нормали кадра
+                        {
+                            static_cast<uint32_t>(OffscreenTextureType::eNormal),
+                            1,
+                            vk::DescriptorType::eCombinedImageSampler,
+                            vk::ShaderStageFlagBits::eFragment,
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                        },
+                        // Яркие области кадра (сияния)
+                        {
+                            static_cast<uint32_t>(OffscreenTextureType::eEmissive),
+                            1,
+                            vk::DescriptorType::eCombinedImageSampler,
+                            vk::ShaderStageFlagBits::eFragment,
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                        }
+                    },
+                    // Наборов столько, сколько может быть "кадров на лету".
+                    config().max_frames_in_flight
+                }
+            };
+
+            // Создать pipeline layout для растеризации
+            layouts[UniformLayoutType::ePostProcessing] = std::make_unique<vk::utils::UniformLayout>(
+                vk_device_,
+                set_layouts);
         }
     }
 
@@ -675,6 +814,59 @@ namespace nasral::gfx
             );
     }
 
+    void Renderer::init_vk_framebuffer_bindings()
+    {
+        // Текстурные семплеры должны быть готовы к этому этапу
+        assert(vk_texture_samplers_[TextureSamplerType::eLinearClamp] && "Linear clamp texture sampler is not initialized");
+        assert(vk_texture_samplers_[TextureSamplerType::eNearest] && "Nearest texture sampler is not initialized");
+
+        // Сохранить наборы, связать кадровые буферы (изображения) с вложениями дескрипторных наборов пост-процессинга
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i)
+        {
+            auto& set = vk_post_process_d_sets_[i];
+            std::vector<vk::DescriptorImageInfo> pp_image_infos{};
+            std::vector<vk::WriteDescriptorSet> pp_writes{};
+            pp_image_infos.reserve(static_cast<uint32_t>(OffscreenTextureType::TOTAL));
+            pp_writes.reserve(static_cast<uint32_t>(OffscreenTextureType::TOTAL));
+
+            // Цвет (0)
+            pp_image_infos.push_back(
+                vk::DescriptorImageInfo()
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
+                    .setImageView(vk_offscreen_framebuffers_[i]->attachments()[0]->image_view())
+                    .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+            // Глубина (1)
+            pp_image_infos.push_back(
+                vk::DescriptorImageInfo()
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
+                    .setImageView(vk_offscreen_framebuffers_[i]->attachments()[1]->image_view())
+                    .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+            // Связать с дескрипторами набора
+            pp_writes.push_back(
+                vk::WriteDescriptorSet()
+                    .setDstSet(set.get())
+                    .setDstBinding(static_cast<uint32_t>(OffscreenTextureType::eColor))
+                    .setDstArrayElement(0)
+                    .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                    .setDescriptorCount(1)
+                    .setImageInfo(pp_image_infos[0]));
+
+            pp_writes.push_back(
+                vk::WriteDescriptorSet()
+                    .setDstSet(set.get())
+                    .setDstBinding(static_cast<uint32_t>(OffscreenTextureType::eDepth))
+                    .setDstArrayElement(0)
+                    .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                    .setDescriptorCount(1)
+                    .setImageInfo(pp_image_infos[1]));
+
+            // Обновить набор
+            vk_device_->logical_device().updateDescriptorSets(pp_writes, {});
+        }
+    }
+
     /**
      * @brief Инициализирует uniform’ы: выделяет наборы, создаёт буферы и связывает их с дескрипторами.
      * @details На базе ранее созданного макета eBasicRasterization (UniformLayout) выделяются нужные наборы
@@ -691,19 +883,28 @@ namespace nasral::gfx
         assert(vk_device_ && "Vulkan device is not initialized");
 
         // Получить необходимые объекты (пул, макеты наборов)
-        const auto& ul = vk_uniform_layouts_[UniformLayoutType::eRasterization];
-        assert(ul && "Rasterization uniform layout is not initialized");
+        const auto& ul_rasterize = vk_uniform_layouts_[UniformLayoutType::eRasterization];
+        const auto& ul_post_process = vk_uniform_layouts_[UniformLayoutType::ePostProcessing];
+
+        assert(ul_rasterize && "Rasterization uniform layout is not initialized");
+        assert(ul_post_process && "Post-processing uniform layout is not initialized");
 
         // Выделить дескрипторный набор для камеры
-        ul->allocate_sets(0,1).front().swap(vk_descriptor_sets_[UniformDSetType::eViewUBO]);
+        ul_rasterize->allocate_sets(0,1).front().swap(vk_rasterization_d_sets_[UniformDSetType::eViewUBO]);
         // Выделить дескрипторный набор для uniform-буферов объектов (трансформации)
-        ul->allocate_sets(1,1).front().swap(vk_descriptor_sets_[UniformDSetType::eObjectUBOs]);
+        ul_rasterize->allocate_sets(1,1).front().swap(vk_rasterization_d_sets_[UniformDSetType::eObjectUBOs]);
         // Выделить дескрипторный набор для uniform-буферов материалов (блики, шероховатость и прочее)
-        ul->allocate_sets(2,1).front().swap(vk_descriptor_sets_[UniformDSetType::eMaterialUBOs]);
+        ul_rasterize->allocate_sets(2,1).front().swap(vk_rasterization_d_sets_[UniformDSetType::eMaterialUBOs]);
         // Выделить дескрипторный набор для текстур материалов (по массиву дескрипторов на каждый вид текстур)
-        ul->allocate_sets(3,1).front().swap(vk_descriptor_sets_[UniformDSetType::eMaterialTextures]);
+        ul_rasterize->allocate_sets(3,1).front().swap(vk_rasterization_d_sets_[UniformDSetType::eMaterialTextures]);
         // Выделить дескрипторный набор для источников света
-        ul->allocate_sets(4,1).front().swap(vk_descriptor_sets_[UniformDSetType::eLightUBOs]);
+        ul_rasterize->allocate_sets(4,1).front().swap(vk_rasterization_d_sets_[UniformDSetType::eLightUBOs]);
+
+        // Выделить дескрипторные наборы пост-процессинга (текстуры кадровых буферов)
+        auto pp_sets = ul_post_process->allocate_sets(0, config().max_frames_in_flight);
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i){
+            pp_sets[i].swap(vk_post_process_d_sets_[i]);
+        }
 
         // Uniform буферы
         {
@@ -777,7 +978,7 @@ namespace nasral::gfx
                 .setRange(sizeof(uniforms::Camera)));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_descriptor_sets_[UniformDSetType::eViewUBO].get())
+                .setDstSet(vk_rasterization_d_sets_[UniformDSetType::eViewUBO].get())
                 .setDstBinding(0)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eUniformBuffer)
@@ -793,7 +994,7 @@ namespace nasral::gfx
                 .setRange(sizeof(uniforms::Object) * kMaxObjects));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_descriptor_sets_[UniformDSetType::eObjectUBOs].get())
+                .setDstSet(vk_rasterization_d_sets_[UniformDSetType::eObjectUBOs].get())
                 .setDstBinding(0)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
@@ -809,7 +1010,7 @@ namespace nasral::gfx
                 .setRange(sizeof(uniforms::MaterialPhong) * kMaxMaterials));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_descriptor_sets_[UniformDSetType::eMaterialUBOs].get())
+                .setDstSet(vk_rasterization_d_sets_[UniformDSetType::eMaterialUBOs].get())
                 .setDstBinding(0)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
@@ -825,7 +1026,7 @@ namespace nasral::gfx
                 .setRange(sizeof(uniforms::MaterialPbr) * kMaxMaterials));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_descriptor_sets_[UniformDSetType::eMaterialUBOs].get())
+                .setDstSet(vk_rasterization_d_sets_[UniformDSetType::eMaterialUBOs].get())
                 .setDstBinding(1)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
@@ -841,7 +1042,7 @@ namespace nasral::gfx
                 .setRange(sizeof(uniforms::LightSettings) * kMaxLights));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_descriptor_sets_[UniformDSetType::eLightUBOs].get())
+                .setDstSet(vk_rasterization_d_sets_[UniformDSetType::eLightUBOs].get())
                 .setDstBinding(0)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)
@@ -857,7 +1058,7 @@ namespace nasral::gfx
                 .setRange(sizeof(uniforms::LightIndices)));
 
             writes.emplace_back(vk::WriteDescriptorSet()
-                .setDstSet(vk_descriptor_sets_[UniformDSetType::eLightUBOs].get())
+                .setDstSet(vk_rasterization_d_sets_[UniformDSetType::eLightUBOs].get())
                 .setDstBinding(1)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer)

@@ -177,7 +177,7 @@ namespace vk::utils
          * @param surface Поверхность для проверки
          * @return True, если формат поддерживается
          */
-        [[nodiscard]] bool supports_color(const vk::Format& format, const vk::UniqueSurfaceKHR& surface) const
+        [[nodiscard]] bool surface_supports_color(const vk::Format& format, const vk::UniqueSurfaceKHR& surface) const
         {
             const auto sfs = physical_device_.getSurfaceFormatsKHR(surface.get());
             if(sfs.empty()) return false;
@@ -197,7 +197,7 @@ namespace vk::utils
          * @param surface Поверхность для проверки
          * @return True, если формат поддерживается
          */
-        [[nodiscard]] bool supports_format(const vk::SurfaceFormatKHR& format, const vk::UniqueSurfaceKHR& surface) const
+        [[nodiscard]] bool surface_supports_format(const vk::SurfaceFormatKHR& format, const vk::UniqueSurfaceKHR& surface) const
         {
             const auto sfs = physical_device_.getSurfaceFormatsKHR(surface.get());
             if(sfs.empty()) return false;

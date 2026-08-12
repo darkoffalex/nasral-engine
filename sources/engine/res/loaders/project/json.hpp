@@ -37,6 +37,13 @@ namespace nasral::res
                     data.materials.push_back(parse_material_entry(mat_entry));
                 }
 
+                // Регистр пост-процессинга
+                if (json.contains("post_processing")){
+                    for (const auto& pp_entry : json.at("post_processing")){
+                        data.post_processes.push_back(parse_post_processing_entry(pp_entry));
+                    }
+                }
+
                 // Настройки ввода
                 if (json.contains("input"))
                 {
@@ -234,6 +241,21 @@ namespace nasral::res
                     }
                 }
             }
+
+            return desc;
+        }
+
+        static gfx::PostProcessingDesc parse_post_processing_entry(const nlohmann::json& entry)
+        {
+            gfx::PostProcessingDesc desc = {};
+
+            // Парсинг UniqueId из массива [uint64, uint64]
+            if (const auto& uid_array = entry.at("uid").get<std::vector<uint64_t>>(); uid_array.size() >= 2){
+                desc.unique_id.set(uid_array[0], uid_array[1]);
+            }
+
+            desc.name = entry.at("name").get<std::string>();
+            desc.material_path = entry.at("material_path").get<std::string>();
 
             return desc;
         }
