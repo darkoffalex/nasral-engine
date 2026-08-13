@@ -179,7 +179,7 @@ namespace nasral::gfx
                 .setFormat(config().offscreen_color_format)
                 .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
                 .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
-                .setStoreOp(vk::AttachmentStoreOp::eStore)                      // Хранить для показа (один под-проход)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)                      // раним для чтения во втором проходе
                 .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (цветовое вложение)
                 .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (цветовое вложение)
                 .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
@@ -192,11 +192,11 @@ namespace nasral::gfx
                 .setFormat(config().offscreen_depth_format)
                 .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
                 .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
-                .setStoreOp(vk::AttachmentStoreOp::eDontCare)                   // Хранить для показа не нужно (не показываем)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)                      // Храним для чтения во втором проходе
                 .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (только глубина)
                 .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (только глубина)
                 .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
-                .setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)); // В конце - использование в качестве вложения глубины/трафарета
+                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal));      // В конце - чтение в шейдере (на этапе пост-обработки)
 
             // Ссылки на вложения.
             // Указываем, какие вложения из ранее описанных (и в качестве чего) будет использовать под-проход.
@@ -431,10 +431,6 @@ namespace nasral::gfx
         assert(vk_device_ && "Vulkan device is not initialized");
         assert(vk_swap_chain_ && "Vulkan swap chain is not initialized");
 
-        // Получить изображения swap chain
-        const auto swap_chain_images = vk_device_->logical_device().getSwapchainImagesKHR(*vk_swap_chain_);
-        assert(!swap_chain_images.empty());
-
         // Создать первичные кадровые буферы (рендеринг)
         for (size_t i = 0; i < config().max_frames_in_flight; ++i)
         {
@@ -462,6 +458,10 @@ namespace nasral::gfx
                 config().rendering_resolution,
                 attachments));
         }
+
+        // Получить изображения swap chain
+        const auto swap_chain_images = vk_device_->logical_device().getSwapchainImagesKHR(*vk_swap_chain_);
+        assert(!swap_chain_images.empty());
 
         // Создать буферы пост-процессинга (swap chain)
         for (const auto& sci : swap_chain_images)
@@ -817,7 +817,7 @@ namespace nasral::gfx
     void Renderer::init_vk_framebuffer_bindings()
     {
         // Текстурные семплеры должны быть готовы к этому этапу
-        assert(vk_texture_samplers_[TextureSamplerType::eLinearClamp] && "Linear clamp texture sampler is not initialized");
+        assert(vk_texture_samplers_[TextureSamplerType::eLinear] && "Linear clamp texture sampler is not initialized");
         assert(vk_texture_samplers_[TextureSamplerType::eNearest] && "Nearest texture sampler is not initialized");
 
         // Сохранить наборы, связать кадровые буферы (изображения) с вложениями дескрипторных наборов пост-процессинга
@@ -832,14 +832,14 @@ namespace nasral::gfx
             // Цвет (0)
             pp_image_infos.push_back(
                 vk::DescriptorImageInfo()
-                    .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearest].get())
                     .setImageView(vk_offscreen_framebuffers_[i]->attachments()[0]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
             // Глубина (1)
             pp_image_infos.push_back(
                 vk::DescriptorImageInfo()
-                    .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearest].get())
                     .setImageView(vk_offscreen_framebuffers_[i]->attachments()[1]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
