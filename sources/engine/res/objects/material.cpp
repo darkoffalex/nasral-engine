@@ -339,29 +339,67 @@ namespace nasral::res
 
         /** 6. Смешивание цветов (прозрачность и наложение)  **/
 
-        // Параметры смешивания для цветовых вложений
-        std::array<vk::PipelineColorBlendAttachmentState, 1> attachments_blend{
-            vk::PipelineColorBlendAttachmentState()
-            .setBlendEnable(true)                                                // Включить смешивание
-            .setColorWriteMask(
-                vk::ColorComponentFlagBits::eR |
-                vk::ColorComponentFlagBits::eG |
-                vk::ColorComponentFlagBits::eB |
-                vk::ColorComponentFlagBits::eA)                                  // Запись в 4 канала
-            .setColorBlendOp(vk::BlendOp::eAdd)                                  // Аддитивное смешивание (цвет)
-            .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)                  // Исходный цвет - альфа текущего цвета
-            .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)          // Итоговый цвет - 1 - альфа исходного
-            .setAlphaBlendOp(vk::BlendOp::eAdd)                                  // Аддитивное смешивание (альфа)
-            .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)                       // Исходная альфа - множитель 1
-            .setDstAlphaBlendFactor(vk::BlendFactor::eZero)                      // Итоговая альфа - множитель 0
-        };
-
         // Настройки
         vk::PipelineColorBlendStateCreateInfo color_blending_state{};
-        color_blending_state.setAttachments(attachments_blend);
-        color_blending_state.setLogicOpEnable(false);                           // Битовые логические операции отключены
+        color_blending_state.setLogicOpEnable(false);   // Битовые логические операции отключены
 
-        /** 7. Смешивание цветов (прозрачность и наложение)  **/
+        // Параметры смешивания для цветовых вложений
+
+        // Пост-обработка (рисуем цвет на квадрате, смешивать не нужно)
+        if (base_type() == gfx::MaterialBaseType::ePostProcessing)
+        {
+            std::array<vk::PipelineColorBlendAttachmentState, 1> attachments_blend{};
+            attachments_blend[0] = vk::PipelineColorBlendAttachmentState()
+                .setBlendEnable(false)
+                .setColorWriteMask(
+                    vk::ColorComponentFlagBits::eR |
+                    vk::ColorComponentFlagBits::eG |
+                    vk::ColorComponentFlagBits::eB |
+                    vk::ColorComponentFlagBits::eA);
+
+            color_blending_state.setAttachments(attachments_blend);
+        }
+        // Обычная растеризация (смешиваем только первое вложение)
+        else
+        {
+            std::array<vk::PipelineColorBlendAttachmentState, 3> attachments_blend{};
+
+            // Цвет смешивается через альфа-канал
+            attachments_blend[0] = vk::PipelineColorBlendAttachmentState()
+                    .setBlendEnable(true)                                                // Включить смешивание
+                    .setColorWriteMask(
+                        vk::ColorComponentFlagBits::eR |
+                        vk::ColorComponentFlagBits::eG |
+                        vk::ColorComponentFlagBits::eB |
+                        vk::ColorComponentFlagBits::eA)                                  // Запись в 4 канала
+                    .setColorBlendOp(vk::BlendOp::eAdd)                                  // Аддитивное смешивание (цвет)
+                    .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)                  // Исходный цвет - альфа текущего цвета
+                    .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)          // Итоговый цвет - 1 - альфа исходного
+                    .setAlphaBlendOp(vk::BlendOp::eAdd)                                  // Аддитивное смешивание (альфа)
+                    .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)                       // Исходная альфа - множитель 1
+                    .setDstAlphaBlendFactor(vk::BlendFactor::eZero);                     // Итоговая альфа - множитель 0
+
+            // Нормали и яркие области не смешиваются
+            attachments_blend[1] = vk::PipelineColorBlendAttachmentState()
+                .setBlendEnable(false)
+                .setColorWriteMask(
+                    vk::ColorComponentFlagBits::eR |
+                    vk::ColorComponentFlagBits::eG |
+                    vk::ColorComponentFlagBits::eB |
+                    vk::ColorComponentFlagBits::eA);
+
+            attachments_blend[2] = vk::PipelineColorBlendAttachmentState()
+                .setBlendEnable(false)
+                .setColorWriteMask(
+                    vk::ColorComponentFlagBits::eR |
+                    vk::ColorComponentFlagBits::eG |
+                    vk::ColorComponentFlagBits::eB |
+                    vk::ColorComponentFlagBits::eA);
+
+            color_blending_state.setAttachments(attachments_blend);
+        }
+
+        /** 7. Динамические состояния  **/
 
         // Какие из состояния могут изменяться динамически (посредством команд)
         std::array<vk::DynamicState, 2> dynamic_states{

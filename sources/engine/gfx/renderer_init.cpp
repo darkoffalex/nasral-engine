@@ -171,37 +171,65 @@ namespace nasral::gfx
             // Вложение - изображение, в которое производится запись на стороне shader.
             // Вложение также может быть прочитано в другом под-проходе (например, для легкой пост-обработки)
             std::vector<::vk::AttachmentDescription> attachment_descriptions{};
-            attachment_descriptions.reserve(2);
+            attachment_descriptions.reserve(4);
 
             // Цвет (вложение 0)
             attachment_descriptions.push_back(
                 vk::AttachmentDescription()
                 .setFormat(config().offscreen_color_format)
-                .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
-                .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
-                .setStoreOp(vk::AttachmentStoreOp::eStore)                      // раним для чтения во втором проходе
-                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (цветовое вложение)
-                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (цветовое вложение)
-                .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
-                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal)        // В конце - чтение в шейдере (на этапе пост-обработки)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
             );
 
             // Глубина/трафарет (вложение 1)
             attachment_descriptions.push_back(
                 vk::AttachmentDescription()
                 .setFormat(config().offscreen_depth_format)
-                .setSamples(vk::SampleCountFlagBits::e1)                        // Без multisampling (1 семпл)
-                .setLoadOp(vk::AttachmentLoadOp::eClear)                        // Очистка вложение в начале под-прохода
-                .setStoreOp(vk::AttachmentStoreOp::eStore)                      // Храним для чтения во втором проходе
-                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)              // Трафарет не используем (только глубина)
-                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)            // Трафарет не используем (только глубина)
-                .setInitialLayout(vk::ImageLayout::eUndefined)                  // Изначального макета памяти еще нет
-                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal));      // В конце - чтение в шейдере (на этапе пост-обработки)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+            // Нормали (вложение 2)
+            attachment_descriptions.push_back(
+                vk::AttachmentDescription()
+                .setFormat(config().offscreen_color_format)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+            );
+
+            // Яркие области (вложение 3)
+            attachment_descriptions.push_back(
+                vk::AttachmentDescription()
+                .setFormat(config().offscreen_color_format)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+            );
 
             // Ссылки на вложения.
             // Указываем, какие вложения из ранее описанных (и в качестве чего) будет использовать под-проход.
-            constexpr std::array<vk::AttachmentReference, 1> colort_refs{
-                vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal)
+            std::array<vk::AttachmentReference, 3> colort_refs{
+                vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal),
+                vk::AttachmentReference(2, vk::ImageLayout::eColorAttachmentOptimal),
+                vk::AttachmentReference(3, vk::ImageLayout::eColorAttachmentOptimal)
             };
 
             constexpr std::array<vk::AttachmentReference, 1> depth_refs{
@@ -450,6 +478,20 @@ namespace nasral::gfx
             depth.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
             depth.aspect = vk::ImageAspectFlagBits::eDepth;
             attachments.push_back(depth);
+
+            // Вложение нормалей
+            vk::utils::Framebuffer::AttachmentInfo normal{};
+            normal.format = config().offscreen_color_format;
+            normal.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+            normal.aspect = vk::ImageAspectFlagBits::eColor;
+            attachments.push_back(normal);
+
+            // Вложение ярких областей
+            vk::utils::Framebuffer::AttachmentInfo emissive{};
+            emissive.format = config().offscreen_color_format;
+            emissive.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+            emissive.aspect = vk::ImageAspectFlagBits::eColor;
+            attachments.push_back(emissive);
 
             // Создать и добавить кадровый буфер
             vk_offscreen_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
@@ -843,6 +885,20 @@ namespace nasral::gfx
                     .setImageView(vk_offscreen_framebuffers_[i]->attachments()[1]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
+            // Нормали (2)
+            pp_image_infos.push_back(
+                vk::DescriptorImageInfo()
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearest].get())
+                    .setImageView(vk_offscreen_framebuffers_[i]->attachments()[2]->image_view())
+                    .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+            // Яркие области (3)
+            pp_image_infos.push_back(
+                vk::DescriptorImageInfo()
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearest].get())
+                    .setImageView(vk_offscreen_framebuffers_[i]->attachments()[3]->image_view())
+                    .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
             // Связать с дескрипторами набора
             pp_writes.push_back(
                 vk::WriteDescriptorSet()
@@ -861,6 +917,24 @@ namespace nasral::gfx
                     .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
                     .setDescriptorCount(1)
                     .setImageInfo(pp_image_infos[1]));
+
+            pp_writes.push_back(
+                vk::WriteDescriptorSet()
+                    .setDstSet(set.get())
+                    .setDstBinding(static_cast<uint32_t>(OffscreenTextureType::eNormal))
+                    .setDstArrayElement(0)
+                    .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                    .setDescriptorCount(1)
+                    .setImageInfo(pp_image_infos[2]));
+
+            pp_writes.push_back(
+                vk::WriteDescriptorSet()
+                    .setDstSet(set.get())
+                    .setDstBinding(static_cast<uint32_t>(OffscreenTextureType::eEmissive))
+                    .setDstArrayElement(0)
+                    .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                    .setDescriptorCount(1)
+                    .setImageInfo(pp_image_infos[3]));
 
             // Обновить набор
             vk_device_->logical_device().updateDescriptorSets(pp_writes, {});

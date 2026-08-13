@@ -19,8 +19,10 @@ layout(location = 0) in GS_OUT {
     mat3 TBN;
 } fs_in;
 
-// Выход фрагмента (цветовое вложение 0)
+// Выход фрагмента
 layout(location = 0) out vec4 color;
+layout(location = 1) out vec4 outNormal;
+layout(location = 2) out vec4 outEmissive;
 
 // Push constants
 layout(push_constant) uniform PushConstants {
@@ -77,7 +79,7 @@ layout(set = 4, binding = 1, std430) readonly buffer SLightIndices {
 };
 
 // Текстуры объекта
-layout(set = 3, binding = 0) uniform sampler2D t_aldeo[MAX_MATERIALS];
+layout(set = 3, binding = 0) uniform sampler2D t_albedo[MAX_MATERIALS];
 layout(set = 3, binding = 1) uniform sampler2D t_normal[MAX_MATERIALS];
 layout(set = 3, binding = 2) uniform sampler2D t_roughness[MAX_MATERIALS];
 layout(set = 3, binding = 3) uniform sampler2D t_height[MAX_MATERIALS];
@@ -89,7 +91,7 @@ layout(set = 3, binding = 5) uniform sampler2D t_ao[MAX_MATERIALS];
  * @details Описывает, как микронормали поверхности ориентированы относительно нормали.
  * Для гладких поверхностей микрофасеты более упорядочены, что дает резкие блики.
  *
- * @param NoH Скалярное произведение нормали поверхности (N) и полувектора (H).
+ * @param NoH Скалярное произведение нормали поверхности (N) и полу-вектора (H).
  * @return Коэффициент D для Cook-Torrance BRDF
  */
 float D_GGX(float NoH, float roughness)
@@ -103,7 +105,7 @@ float D_GGX(float NoH, float roughness)
 
 /**
  * @brief Geometry Function
- * @details Учитывает самозатенение микрофасет (когда одни неровности закрывают другие).
+ * @details Учитывает само-затенение микрофасет (когда одни неровности закрывают другие).
  * Это делает блики реалистичными на шероховатых поверхностях.
  *
  * @param NoV Скалярное произведение нормали поверхности (N) и направления взгляда (V).
@@ -125,7 +127,7 @@ float G_Smith(float NoV, float NoL, float roughness)
  * @brief Fresnel Function
  * @details Моделирует эффект Френеля, усиливая отражение при взгляде под углом.
  *
- * @param VoH Скалярное произведение направления взгляда (V) и полувектора (H).
+ * @param VoH Скалярное произведение направления взгляда (V) и полу-вектора (H).
  * @param F0 Цвет отраженного света при эффекте Френеля
  * @return Коэффициент F для Cook-Torrance BRDF
  */
@@ -136,7 +138,7 @@ vec3 F_Schlick(float VoH, vec3 F0) {
 void main()
 {
     // Данные из текстур объекта
-    vec4  tex_albedo = texture(t_aldeo[pc_push.mat_index], fs_in.uv);
+    vec4  tex_albedo = texture(t_albedo[pc_push.mat_index], fs_in.uv);
     vec3  tex_normal = texture(t_normal[pc_push.mat_index], fs_in.uv).rgb;
     float tex_roughness = texture(t_roughness[pc_push.mat_index], fs_in.uv).r;
     float tex_metallic = texture(t_metallic[pc_push.mat_index], fs_in.uv).r;
@@ -153,7 +155,7 @@ void main()
     vec3 normal = normalize(tex_normal * 2.0 - 1.0); // Из [0,1] в [-1,1]
     normal = normalize(fs_in.TBN * normal);
 
-    // Сумарная освещенность точки (фрагмента)
+    // Суммарная освещенность точки (фрагмента)
     vec3 Lo = vec3(0.0f,0.0f,0.0f);
 
     // Обработка активных источников света
@@ -174,14 +176,14 @@ void main()
         // Облученность (интенсивность освещенности) точки (фрагмента) конкретным источником
         vec3 radiance = light.color.rgb * attenuation * light.intensity;
 
-        // Коэфициенты для растчета PBR
+        // Коэффициенты для расчета PBR
         vec3 V = normalize(u_camera.position.xyz - fs_in.position); // Направление фрагмент-камера
         vec3 N = normal;                           // Нормаль
         vec3 H = normalize(light_dir + V);         // Полувектор между направлением света (L) и направлением взгляда (V)
         float NoL = max(dot(N, light_dir), 0.0);   // Скалярное произведение нормали поверхности (N) и направления к источнику света (L).
         float NoV = max(dot(N, V), 0.0);           // Скалярное произведение нормали поверхности (N) и направления взгляда (V).
-        float NoH = max(dot(N, H), 0.0);           // Скалярное произведение нормали поверхности (N) и полувектора (H).
-        float VoH = max(dot(V, H), 0.0);           // Скалярное произведение направления взгляда (V) и полувектора (H).
+        float NoH = max(dot(N, H), 0.0);           // Скалярное произведение нормали поверхности (N) и полу-вектора (H).
+        float VoH = max(dot(V, H), 0.0);           // Скалярное произведение направления взгляда (V) и полу-вектора (H).
 
         // Френель
         vec3 F0 = mix(vec3(0.04), albedo, metallic);
@@ -206,4 +208,6 @@ void main()
 
     // Итоговый цвет: вклад от всех источников
     color = vec4(col, alpha);
+    outNormal = vec4(normal * 0.5 + 0.5, 1.0);
+    outEmissive = vec4(0.0, 0.0, 0.0, 1.0);
 }

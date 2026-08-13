@@ -176,9 +176,11 @@ namespace nasral::gfx
         const auto& extent = vk_offscreen_framebuffers_[frame()]->extent();
 
         // Цвет и глубина/трафарет очистки
-        std::array<vk::ClearValue, 2> clear_values{};
+        std::array<vk::ClearValue, 4> clear_values{};
         clear_values[0].color = vk::ClearColorValue(config().clear_color.r, config().clear_color.g, config().clear_color.b, config().clear_color.a);
         clear_values[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
+        clear_values[2].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+        clear_values[3].color = vk::ClearColorValue(config().clear_color.r, config().clear_color.g, config().clear_color.b, 1.0f);
 
         // Команда начала прохода
         cmd_buffer->beginRenderPass(

@@ -541,7 +541,8 @@ namespace vk::utils
                     .setSamplerAnisotropy(true)
                     .setGeometryShader(true)
                     .setMultiViewport(true)
-                    .setFillModeNonSolid(true);
+                    .setFillModeNonSolid(true)
+                    .setIndependentBlend(true);
 
             // Включить поддержку bindless дескрипторов
             auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT()
