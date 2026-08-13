@@ -14,6 +14,7 @@ namespace nasral::gfx
         , object_ubo_ids_(kMaxObjects)
         , material_ubo_ids_(kMaxMaterials)
         , light_ubo_ids_(kMaxLights)
+        , screen_fx_material_({VK_NULL_HANDLE})
         , ecs_system_(std::make_unique<System>(this))
     {
         log_info("Initializing manager...");
@@ -57,23 +58,23 @@ namespace nasral::gfx
         return nullptr;
     }
 
-    void Manager::remove_post_processing(const UniqueId& id)
+    void Manager::remove_screen_fx(const UniqueId& id)
     {
-        post_process_pipelines_.erase(std::remove_if(post_process_pipelines_.begin(), post_process_pipelines_.end(), [&](const auto& pp) {
+        screen_fxs_.erase(std::remove_if(screen_fxs_.begin(), screen_fxs_.end(), [&](const auto& pp) {
             return pp->data_view().uid == id;
-        }), post_process_pipelines_.end());
+        }), screen_fxs_.end());
     }
 
-    void Manager::remove_post_processing(const ecs::EntityId& id)
+    void Manager::remove_screen_fx(const ecs::EntityId& id)
     {
-        post_process_pipelines_.erase(std::remove_if(post_process_pipelines_.begin(), post_process_pipelines_.end(), [&](const auto& pp) {
+        screen_fxs_.erase(std::remove_if(screen_fxs_.begin(), screen_fxs_.end(), [&](const auto& pp) {
             return pp->entity() == id;
-        }), post_process_pipelines_.end());
+        }), screen_fxs_.end());
     }
 
-    PostProcessing* Manager::find_post_processing(const UniqueId& id) const
+    ScreenFx* Manager::find_screen_fx(const UniqueId& id) const
     {
-        for (const auto& pp : post_process_pipelines_){
+        for (const auto& pp : screen_fxs_){
             if (pp->data_view().uid == id){
                 return pp.get();
             }
@@ -81,9 +82,9 @@ namespace nasral::gfx
         return nullptr;
     }
 
-    PostProcessing* Manager::find_post_processing(const ecs::EntityId& id) const
+    ScreenFx* Manager::find_screen_fx(const ecs::EntityId& id) const
     {
-        for (const auto& pp : post_process_pipelines_){
+        for (const auto& pp : screen_fxs_){
             if (pp->entity() == id){
                 return pp.get();
             }
@@ -229,9 +230,9 @@ namespace nasral::gfx
                 materials_.emplace_back(MaterialInstance::Ptr(new MaterialInstance(this, mat_desc)));
             }
 
-            // Сформировать список материалов пост-процессинга
+            // Сформировать список эффектов экрана
             for (const auto& pp_desc : proj->post_process_pipelines()){
-                post_process_pipelines_.emplace_back(PostProcessing::Ptr(new PostProcessing(this, pp_desc)));
+                screen_fxs_.emplace_back(ScreenFx::Ptr(new ScreenFx(this, pp_desc)));
             }
 
             // Список ресурсов готов
@@ -244,6 +245,17 @@ namespace nasral::gfx
     void Manager::on_display_surface_changed([[maybe_unused]] const evt::Arg& arg) const
     {
         renderer()->request_surface_refresh();
+    }
+
+    void Manager::on_screen_fx_changed(const evt::Arg& arg)
+    {
+        if (const auto scr_fx_id = evt::from_arg<UniqueId>(arg); scr_fx_id.has_value()){
+            const auto* screen_fx = find_screen_fx(scr_fx_id.value());
+            screen_fx_material_ = screen_fx->data_view().material;
+        }
+        else{
+            screen_fx_material_ = {};
+        }
     }
 
     /******************************************************************************************************************/
@@ -265,6 +277,12 @@ namespace nasral::gfx
             evt::Type::eDisplaySurfaceChanged,
             evt::bind(this, &Manager::on_display_surface_changed));
 
+        // Слушать событие изменения экранного эффекта
+        evl_sfx_chg_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eScreenFxChanged,
+            evt::bind(this, &Manager::on_screen_fx_changed));
+
         // Инициализация ECS системы
         ecs_system_->init();
 
@@ -283,9 +301,9 @@ namespace nasral::gfx
         evl_res_reg_.reset();
         evl_sfc_chg_.reset();
 
-        // Уничтожение регистра материалов
+        // Уничтожение регистров материалов и эффектов экрана
         materials_.clear();
-        post_process_pipelines_.clear();
+        screen_fxs_.clear();
 
         // Финализация ECS системы
         ecs_system_->finalize();
@@ -312,9 +330,8 @@ namespace nasral::gfx
 
         // Проход пост-обработки
         renderer()->cmd_begin_post_processing_pass();
-        if (engine()->scn()->is_post_processing_ready())
-        {
-            renderer()->cmd_bind_post_processing_material(engine()->scn()->post_processing_pipeline());
+        if (screen_fx_material_){
+            renderer()->cmd_bind_post_processing_material(screen_fx_material_);
             renderer()->cmd_draw_post_processing_quad();
         }
         renderer()->cmd_end_render_pass();

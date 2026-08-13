@@ -266,7 +266,7 @@ namespace nasral::gfx
         } pbr_settings = {};
     };
 
-    struct PostProcessingDesc
+    struct ScreenFxDesc
     {
         UniqueId unique_id = {};
         std::string name = {};

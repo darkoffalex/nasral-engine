@@ -27,6 +27,8 @@ namespace nasral::evt
         eRootSceneLoaded,
         // Поверхность отображения изменилась
         eDisplaySurfaceChanged,
+        // Изменился активный эффект экрана
+        eScreenFxChanged,
         // Событие пользователя (пользовательская логика)
         eUserEvent,
         TOTAL

@@ -245,9 +245,9 @@ namespace nasral::res
             return desc;
         }
 
-        static gfx::PostProcessingDesc parse_post_processing_entry(const nlohmann::json& entry)
+        static gfx::ScreenFxDesc parse_post_processing_entry(const nlohmann::json& entry)
         {
-            gfx::PostProcessingDesc desc = {};
+            gfx::ScreenFxDesc desc = {};
 
             // Парсинг UniqueId из массива [uint64, uint64]
             if (const auto& uid_array = entry.at("uid").get<std::vector<uint64_t>>(); uid_array.size() >= 2){

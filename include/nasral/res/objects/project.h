@@ -16,7 +16,7 @@ namespace nasral::res
         {
             std::vector<ResourceDesc> resources = {};
             std::vector<gfx::MaterialDesc> materials = {};
-            std::vector<gfx::PostProcessingDesc> post_processes = {};
+            std::vector<gfx::ScreenFxDesc> post_processes = {};
             std::string initial_scene = {};
             std::vector<inp::ActionDesc> action_bindings = {};
             float mouse_sensitivity = 0.0f;

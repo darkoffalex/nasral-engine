@@ -107,6 +107,11 @@ namespace nasral::scn
         } mesh = {};
     };
 
+    struct ScreenFxSettingsDesc
+    {
+        UniqueId default_fx_uid = {};
+    };
+
     struct Config
     {
         uint32_t initial_node_count = 100;

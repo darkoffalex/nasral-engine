@@ -29,7 +29,7 @@ namespace nasral::gfx
         void update_mtl_destroy() const;
 
         // Пост-процессинг
-        void update_pp_mtl_handles() const;
+        void update_screen_fx_handles() const;
 
         // Объекты (UBO)
         void update_obj_static_ubo() const;

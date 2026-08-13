@@ -12,11 +12,11 @@
 namespace nasral::gfx
 {
     class Manager;
-    class PostProcessing : public SubsystemObject<Manager>, public log::Loggable<PostProcessing>
+    class ScreenFx : public SubsystemObject<Manager>, public log::Loggable<ScreenFx>
     {
     public:
         friend class Manager;
-        typedef std::unique_ptr<PostProcessing> Ptr;
+        typedef std::unique_ptr<ScreenFx> Ptr;
 
         enum ResIndices : size_t
         {
@@ -27,7 +27,7 @@ namespace nasral::gfx
         {
             using Uid = ecs::UidComponent;                                        // Уникальный ID
             using Name = ecs::NameComponent;                                      // Название конкретного instance
-            using Handles = PostProcessHandlesComponent;                          // Handles материала (pipeline)
+            using Handles = ScreenFxHandlesComponent;                             // Handles материала (pipeline)
             using HandlesDirty = DirtyHandlesComponent;                           // Нужно обновить handles
             using Resources = res::ResourcesComponent;                            // Ресурсы материала (для запроса)
             using PendingDestroy = ecs::DestroyComponent;                         // Помечен к удалению
@@ -39,13 +39,14 @@ namespace nasral::gfx
                 const UniqueId& uid;
                 const std::string& name;
                 const Resources::IdsList& resources;
+                const handles::Material& material;
             };
         };
 
-        ~PostProcessing();
+        ~ScreenFx();
 
-        PostProcessing(const PostProcessing&) = delete;
-        PostProcessing& operator=(const PostProcessing&) = delete;
+        ScreenFx(const ScreenFx&) = delete;
+        ScreenFx& operator=(const ScreenFx&) = delete;
 
         [[nodiscard]] const ecs::EntityId& entity() const;
         [[nodiscard]] Components::View data_view() const;
@@ -54,11 +55,11 @@ namespace nasral::gfx
         void set_name(const std::string& name) const;
 
     protected:
-        PostProcessing(Manager* manager, const PostProcessingDesc& description);
+        ScreenFx(Manager* manager, const ScreenFxDesc& description);
 
     private:
         ecs::EntityId entity_;
     };
 }
 
-DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(gfx::PostProcessing, "GFX")
+DECLARE_SUBSYSTEM_OBJ_LOGGER_ACCESSOR(gfx::ScreenFx, "GFX")

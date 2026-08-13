@@ -16,6 +16,7 @@ namespace nasral::scn
         : Subsystem(e, config)
         , main_camera_(nullptr)
         , ecs_system_(std::make_unique<System>(this))
+        , active_screen_fx_(this)
     {
         log_info("Initializing manager...");
     }
@@ -42,9 +43,33 @@ namespace nasral::scn
         log_info("Manager initialized");
     }
 
-    void Manager::on_update(const float delta) const
+    void Manager::on_update(const float delta)
     {
-        if (engine()->run()->state().has_no(run::StateFlags::eRunning)) return;
+        // Если сессия не запущена
+        if (engine()->run()->state().has_no(run::StateFlags::eRunning))
+            return;
+
+        // Отслеживать изменение состояния активного экранного эффекта (уведомлять другие подсистемы)
+        if (active_screen_fx_.dirty_state){
+            // Запрошено и готово (ресурс готов, можно задать)
+            if (active_screen_fx_.requested && active_screen_fx_.is_ready()){
+                assert(active_screen_fx_.screen_fx_uid().has_value() && "Screen FX UID is not set");
+                engine()->events()->send(
+                    evt::Type::eScreenFxChanged,
+                    evt::Arg{active_screen_fx_.screen_fx_uid().value()});
+
+                active_screen_fx_.dirty_state = false;
+            }
+            // Не запрошено (сбросить)
+            else if (!active_screen_fx_.requested){
+                engine()->events()->send(
+                    evt::Type::eScreenFxChanged,
+                    evt::Arg{evt::ChangeReason::eRemoved});
+                active_screen_fx_.dirty_state = false;
+            }
+        }
+
+        // Обновление ECS
         ecs_system_->update(delta);
     }
 
@@ -52,7 +77,7 @@ namespace nasral::scn
         evl_session_start_.reset();
         evl_sfc_chg_.reset();
         nodes_.clear();
-        release_post_processing();
+        active_screen_fx_.reset();
         ecs_system_->finalize();
         log_info("Manager finalized");
     }
@@ -112,55 +137,6 @@ namespace nasral::scn
             }
         }
         return nullptr;
-    }
-
-    void Manager::request_post_processing(){
-        if (is_post_processing_requested()){
-            log_warn("Post-processing already requested");
-            return;
-        }
-
-        if (!engine()->ecs()->is_valid(post_processing_.pp_entity)){
-            log_warn("Invalid post-processing pipeline entity");
-            return;
-        }
-
-        post_processing_.requested = true;
-        ecs::inc_entity_refs(engine()->ecs(), post_processing_.pp_entity);
-    }
-
-    void Manager::release_post_processing()
-    {
-        if (!is_post_processing_requested()){
-            log_warn("Post-processing already released");
-            return;
-        }
-
-        if (!engine()->ecs()->is_valid(post_processing_.pp_entity)){
-            log_warn("Invalid post-processing pipeline entity");
-            return;
-        }
-
-        post_processing_.requested = false;
-        ecs::dec_entity_refs(engine()->ecs(), post_processing_.pp_entity);
-    }
-
-    bool Manager::is_post_processing_ready() const
-    {
-        auto& e = post_processing_.pp_entity;
-        return engine()->ecs()->is_valid(e)
-            && engine()->ecs()->has<gfx::PostProcessHandlesComponent, res::LoadedComponent>(e)
-            && !engine()->ecs()->has<gfx::DirtyHandlesComponent>(e);
-    }
-
-    bool Manager::is_post_processing_requested() const{
-        return post_processing_.requested;
-    }
-
-    const gfx::handles::Material& Manager::post_processing_pipeline() const{
-        auto& e = post_processing_.pp_entity;
-        auto& [material] = engine()->ecs()->get_component<gfx::PostProcessHandlesComponent>(e);
-        return material;
     }
 
     void Manager::on_session_start([[maybe_unused]] const evt::Arg& arg)
@@ -223,27 +199,82 @@ namespace nasral::scn
                 }
             }
 
-            // Найти и задать пост-процессинг сцены
-            const UniqueId pp_uid(2, 0); // <-- Временно hardcoded, позже будет браться из сцены
-            const auto* pp = engine()->gfx()->find_post_processing(pp_uid);
-            assert(pp != nullptr && "Post-processing pipeline is not found");
-            set_post_processing(pp->entity());
-            request_post_processing();
+            // Задать экранный эффект по умолчанию
+            const auto* screen_fx = engine()->gfx()->find_screen_fx(scene->screen_fx_settings().default_fx_uid);
+            active_screen_fx_.set_fx(screen_fx->entity());
 
             // Ресурс сцены более не нужен в RAM
             engine()->res()->release(res->id());
         });
     }
 
-    void Manager::set_post_processing(const ecs::EntityId& entity)
+    Manager::ScreenFxState::ScreenFxState(Manager* m)
+        : SubsystemObject(m)
+        , fx_entity(ecs::EntityId::invalid())
+        , requested(false)
+        , dirty_state(false)
+    {}
+
+    Manager::ScreenFxState::~ScreenFxState(){
+        if (requested){
+            reset();
+        }
+    }
+
+    bool Manager::ScreenFxState::is_ready() const
     {
-        // Уменьшить ссылки на предыдущий объект конвейера пост-обработки
-        if (is_post_processing_requested()){
-            release_post_processing();
+        if (!requested){
+            return false;
         }
 
-        // Установить новый объект
-        post_processing_.pp_entity = entity;
-        post_processing_.requested = false;
+        return engine()->ecs()->is_valid(fx_entity)
+            && engine()->ecs()->has<gfx::ScreenFxHandlesComponent, res::LoadedComponent>(fx_entity)
+            && !engine()->ecs()->has<gfx::DirtyHandlesComponent>(fx_entity);
+    }
+
+    bool Manager::ScreenFxState::is_error() const
+    {
+        if (!requested){
+            return false;
+        }
+
+        return engine()->ecs()->is_valid(fx_entity)
+            && engine()->ecs()->has<gfx::ScreenFxHandlesComponent, res::ErrorComponent>(fx_entity);
+    }
+
+    std::optional<UniqueId> Manager::ScreenFxState::screen_fx_uid() const
+    {
+        using Uid = ecs::UidComponent;                   // Уникальный ID
+        using Handles = gfx::ScreenFxHandlesComponent;   // Handles материала (pipeline)
+
+        if (!is_ready()){
+            return std::nullopt;
+        }
+
+        const auto& [uid, m] = engine()->ecs()->get_components<Uid, Handles>(fx_entity);
+        return uid.id;
+    }
+
+    void Manager::ScreenFxState::set_fx(const ecs::EntityId& entity)
+    {
+        if (requested){
+            reset();
+        }
+
+        fx_entity = entity;
+        requested = true;
+        dirty_state = true;
+
+        assert(engine()->ecs()->is_valid(fx_entity) && "Screen FX entity is invalid");
+        ecs::inc_entity_refs(engine()->ecs(), fx_entity);
+    }
+
+    void Manager::ScreenFxState::reset()
+    {
+        assert(engine()->ecs()->is_valid(fx_entity) && "Screen FX entity is invalid");
+        ecs::dec_entity_refs(engine()->ecs(), fx_entity);
+        fx_entity = ecs::EntityId::invalid();
+        requested = false;
+        dirty_state = true;
     }
 }

@@ -7,7 +7,7 @@
 #include <nasral/gfx/renderer.h>
 #include <nasral/gfx/system.h>
 #include <nasral/gfx/objects/material.h>
-#include <nasral/gfx/objects/post_processing.h>
+#include <nasral/gfx/objects/screen_fx.h>
 #include <nasral/evt/objects/listener.h>
 
 namespace nasral::gfx
@@ -44,10 +44,10 @@ namespace nasral::gfx
         [[nodiscard]] MaterialInstance* find_material(const UniqueId& id) const;
         [[nodiscard]] MaterialInstance* find_material(const ecs::EntityId& id) const;
 
-        void remove_post_processing(const UniqueId& id);
-        void remove_post_processing(const ecs::EntityId& id);
-        [[nodiscard]] PostProcessing* find_post_processing(const UniqueId& id) const;
-        [[nodiscard]] PostProcessing* find_post_processing(const ecs::EntityId& id) const;
+        void remove_screen_fx(const UniqueId& id);
+        void remove_screen_fx(const ecs::EntityId& id);
+        [[nodiscard]] ScreenFx* find_screen_fx(const UniqueId& id) const;
+        [[nodiscard]] ScreenFx* find_screen_fx(const ecs::EntityId& id) const;
 
         void on_init();
         void on_update(float delta);
@@ -57,6 +57,7 @@ namespace nasral::gfx
     protected:
         void on_res_registry_changed(const evt::Arg& arg);
         void on_display_surface_changed(const evt::Arg& arg) const;
+        void on_screen_fx_changed(const evt::Arg& arg);
 
     private:
         // Рендерер
@@ -75,11 +76,14 @@ namespace nasral::gfx
         // Слушатели событий (загрузка проекта, смена размеров поверхности отображения)
         evt::Listener::Ptr evl_res_reg_;
         evt::Listener::Ptr evl_sfc_chg_;
+        evt::Listener::Ptr evl_sfx_chg_;
 
-        // Глобальный реестр материалов (конвейеров) растеризации (общий для проекта)
+        // Глобальные реестры материалов сцены (основные проходы) и эффектов экрана (пост-обработка)
         std::vector<MaterialInstance::Ptr> materials_;
-        // Глобальный реестр материалов (конвейеров) пост-процессинга (общий для проекта)
-        std::vector<PostProcessing::Ptr> post_process_pipelines_;
+        std::vector<ScreenFx::Ptr> screen_fxs_;
+
+        // Конвейер (vulkan pipeline) активного эффекта экрана
+        handles::Material screen_fx_material_;
 
         // ECS-система
         System::Ptr ecs_system_;

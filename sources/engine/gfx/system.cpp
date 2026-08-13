@@ -31,7 +31,7 @@ namespace nasral::gfx
         update_mtl_destroy();
 
         // Материалы (пост-процессинг)
-        update_pp_mtl_handles();
+        update_screen_fx_handles();
 
         // Объекты
         update_obj_static_ubo();
@@ -196,10 +196,10 @@ namespace nasral::gfx
         }
     }
 
-    void System::update_pp_mtl_handles() const
+    void System::update_screen_fx_handles() const
     {
         // Алиасы компонентов
-        using Handles   = PostProcessHandlesComponent;
+        using Handles   = ScreenFxHandlesComponent;
         using Resources = res::ResourcesComponent;
         using Dirty     = DirtyHandlesComponent;
         using Loaded    = res::LoadedComponent;

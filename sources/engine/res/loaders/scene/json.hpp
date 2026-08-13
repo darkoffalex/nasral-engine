@@ -28,9 +28,14 @@ namespace nasral::res
                 nlohmann::json json;
                 file >> json;
 
+                // Узлы
                 for (const auto& node_entry : json.at("nodes")){
                     data.nodes.push_back(parse_node_entry(node_entry));
                 }
+
+                // Активный эффект экрана (временный hard code)
+                // TODO: Читать из файла
+                data.screen_fx_settings.default_fx_uid = UniqueId{2, 0};
 
                 file.close();
             }

@@ -6,7 +6,7 @@ namespace nasral::gfx
 {
     struct RenderComponent{};
 
-    struct PostProcessHandlesComponent
+    struct ScreenFxHandlesComponent
     {
         handles::Material material = {};
     };

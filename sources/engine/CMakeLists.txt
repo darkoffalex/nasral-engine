@@ -41,7 +41,7 @@ add_library(Engine OBJECT
         gfx/renderer.cpp
         gfx/renderer_init.cpp
         gfx/objects/material.cpp
-        gfx/objects/post_processing.cpp
+        gfx/objects/screen_fx.cpp
         gfx/system.cpp
         gfx/utils.cpp
 

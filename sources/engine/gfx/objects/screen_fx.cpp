@@ -1,12 +1,12 @@
 #include "pch.h"
-#include <nasral/gfx/objects/post_processing.h>
+#include <nasral/gfx/objects/screen_fx.h>
 #include <nasral/gfx/manager.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/engine.h>
 
 namespace nasral::gfx
 {
-    PostProcessing::PostProcessing(Manager* manager, const PostProcessingDesc& description)
+    ScreenFx::ScreenFx(Manager* manager, const ScreenFxDesc& description)
         : SubsystemObject(manager)
         , entity_(ecs::EntityId::invalid())
     {
@@ -41,10 +41,10 @@ namespace nasral::gfx
                 {});
 
         // Информация о добавлении
-        log_info("Post-processing instance registered (" + info() + ")");
+        log_info("Screen FX instance registered (" + info() + ")");
     }
 
-    PostProcessing::~PostProcessing()
+    ScreenFx::~ScreenFx()
     {
         // Если есть загруженные ресурсы на момент уничтожения объекта:
         // - Добавить в список освобождаемых
@@ -60,30 +60,32 @@ namespace nasral::gfx
             engine()->ecs()->add_components_immediate<ecs::DestroyComponent>(entity_, {});
         }
 
-        log_info("Post-processing instance unregistered (" + info(false) + ")");
+        log_info("Screen FX instance unregistered (" + info(false) + ")");
     }
 
-    const ecs::EntityId& PostProcessing::entity() const{
+    const ecs::EntityId& ScreenFx::entity() const{
         return entity_;
     }
 
-    PostProcessing::Components::View PostProcessing::data_view() const
+    ScreenFx::Components::View ScreenFx::data_view() const
     {
         const auto* ecs = subsystem()->engine()->ecs();
-        const auto [id, name, res] = ecs->get_components<
+        const auto [id, name, res, handles] = ecs->get_components<
             Components::Uid,
             Components::Name,
-            Components::Resources
+            Components::Resources,
+            Components::Handles
         >(entity_);
 
         return {
             id.id,
             name.name,
-            res.ids
+            res.ids,
+            handles.material
         };
     }
 
-    std::string PostProcessing::info(const bool full) const
+    std::string ScreenFx::info(const bool full) const
     {
         const auto data = data_view();
 
@@ -98,7 +100,7 @@ namespace nasral::gfx
         return ss.str();
     }
 
-    void PostProcessing::set_name(const std::string& name) const
+    void ScreenFx::set_name(const std::string& name) const
     {
         const auto* ecs = subsystem()->engine()->ecs();
         auto& [name_c] = ecs->get_component<Components::Name>(entity_);
