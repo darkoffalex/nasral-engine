@@ -40,6 +40,7 @@ namespace nasral::gfx
         void cmd_bind_rasterization_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
         void cmd_draw_geometry(uint32_t index_offset, uint32_t index_count);
         void cmd_draw_post_processing_quad();
+        void cmd_gen_framebuffer_mipmaps(const OffscreenTextureType& type) const;
         void cmd_wait_for_all() const;
 
         void request_surface_refresh();

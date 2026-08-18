@@ -470,6 +470,7 @@ namespace nasral::gfx
             color.format = config().offscreen_color_format;
             color.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
             color.aspect = vk::ImageAspectFlagBits::eColor;
+            color.mip_levels = 4;
             attachments.push_back(color);
 
             // Вложение глубины (не передаем image, оно будет создано внутри Framebuffer)
@@ -477,6 +478,7 @@ namespace nasral::gfx
             depth.format = config().offscreen_depth_format;
             depth.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
             depth.aspect = vk::ImageAspectFlagBits::eDepth;
+            depth.mip_levels = 4;
             attachments.push_back(depth);
 
             // Вложение нормалей
@@ -484,6 +486,7 @@ namespace nasral::gfx
             normal.format = config().offscreen_color_format;
             normal.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
             normal.aspect = vk::ImageAspectFlagBits::eColor;
+            normal.mip_levels = 4;
             attachments.push_back(normal);
 
             // Вложение ярких областей
@@ -491,6 +494,7 @@ namespace nasral::gfx
             emissive.format = config().offscreen_color_format;
             emissive.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
             emissive.aspect = vk::ImageAspectFlagBits::eColor;
+            emissive.mip_levels = 4;
             attachments.push_back(emissive);
 
             // Создать и добавить кадровый буфер
@@ -874,28 +878,28 @@ namespace nasral::gfx
             // Цвет (0)
             pp_image_infos.push_back(
                 vk::DescriptorImageInfo()
-                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearest].get())
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearestClamp].get())
                     .setImageView(vk_offscreen_framebuffers_[i]->attachments()[0]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
             // Глубина (1)
             pp_image_infos.push_back(
                 vk::DescriptorImageInfo()
-                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearest].get())
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearestClamp].get())
                     .setImageView(vk_offscreen_framebuffers_[i]->attachments()[1]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
             // Нормали (2)
             pp_image_infos.push_back(
                 vk::DescriptorImageInfo()
-                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearest].get())
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearestClamp].get())
                     .setImageView(vk_offscreen_framebuffers_[i]->attachments()[2]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
             // Яркие области (3)
             pp_image_infos.push_back(
                 vk::DescriptorImageInfo()
-                    .setSampler(vk_texture_samplers_[TextureSamplerType::eNearest].get())
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
                     .setImageView(vk_offscreen_framebuffers_[i]->attachments()[3]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 

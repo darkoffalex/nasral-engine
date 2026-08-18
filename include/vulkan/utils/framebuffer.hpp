@@ -41,6 +41,7 @@ namespace vk::utils
             vk::Format format;            ///< Формат вложения
             vk::ImageUsageFlags usage;    ///< Флаги использования изображения
             vk::ImageAspectFlags aspect;  ///< Аспекты вложения (цвет/глубина/трафарет)
+            uint32_t mip_levels = 0;      ///< Кол-во потенциальных мип-уровней вложения (0 - автоматически)
         };
 
         /** @brief Конструктор по умолчанию */
@@ -75,21 +76,41 @@ namespace vk::utils
             std::vector<uint32_t> queue_family_indices = device->queue_family_indices(queue_grough_indices);
 
             // Создать вложения и подготовить массив image-view
-            std::vector<vk::ImageView> attachment_views;
+            std::vector<vk::ImageView> views;
             for (const auto& info : attachment_infos)
             {
                 Image::Ptr attachment = nullptr;
+                UniqueImageView attachment_view{};
+
                 // На базе существующего изображения
                 if(info.image){
+                    // Создаст только image-view для семплинга в шейдере
                     attachment = std::make_unique<Image>(
                             device,
                             Image::Type::e2D,
                             info.image,
                             info.format,
                             info.aspect);
+
+                    // Создать image-vew вложения кадрового буфера
+                    attachment_view = device->logical_device().createImageViewUnique(
+                            ImageViewCreateInfo()
+                            .setImage(info.image)
+                            .setViewType(vk::ImageViewType::e2D)
+                            .setFormat(info.format)
+                            .setSubresourceRange(
+                                    ImageSubresourceRange()
+                                    .setAspectMask(info.aspect)
+                                    .setBaseMipLevel(0)
+                                    .setLevelCount(1)
+                                    .setBaseArrayLayer(0)
+                                    .setLayerCount(1)
+                            )
+                    );
                 }
                 // Создать новое изображение
                 else{
+                    // Выделяет память ресурса изображения + image-view для семплинга в шейдере
                     attachment = std::make_unique<Image>(
                             device,
                             Image::Type::e2D,
@@ -101,20 +122,42 @@ namespace vk::utils
                             vk::MemoryPropertyFlagBits::eDeviceLocal,
                             vk::ImageLayout::eUndefined,
                             vk::SampleCountFlagBits::e1,
-                            1, 1,
+                            info.mip_levels,
+                            1,
                             queue_family_indices);
+
+                    // Создать image-vew вложения кадрового буфера
+                    attachment_view = device->logical_device().createImageViewUnique(
+                            ImageViewCreateInfo()
+                            .setImage(attachment->image())
+                            .setViewType(vk::ImageViewType::e2D)
+                            .setFormat(info.format)
+                            .setSubresourceRange(
+                                    ImageSubresourceRange()
+                                    .setAspectMask(info.aspect)
+                                    .setBaseMipLevel(0)
+                                    .setLevelCount(1)
+                                    .setBaseArrayLayer(0)
+                                    .setLayerCount(1)
+                            )
+                    );
                 }
 
                 // Добавить объекты в списки
-                attachment_views.push_back(attachment->image_view());
                 attachments_.emplace_back(std::move(attachment));
+                attachment_views_.emplace_back(std::move(attachment_view));
+            }
+
+            // Сформировать список views для инициализации буфера
+            for (auto& view : attachment_views_){
+                views.push_back(view.get());
             }
 
             // Создать кадровый буфер
             framebuffer_ = device->logical_device().createFramebufferUnique(
                     vk::FramebufferCreateInfo()
                     .setRenderPass(render_pass)
-                    .setAttachments(attachment_views)
+                    .setAttachments(views)
                     .setWidth(extent_.width)
                     .setHeight(extent_.height)
                     .setLayers(1));
@@ -154,9 +197,10 @@ namespace vk::utils
         }
 
     protected:
-        vk::Extent2D extent_;                    ///< Размеры фрейм-буфера
-        vk::UniqueFramebuffer framebuffer_;      ///< Handle фрейм-буфера
-        std::vector<Image::Ptr> attachments_;    ///< Список вложений
+        vk::Extent2D extent_;                           ///< Размеры фрейм-буфера
+        vk::UniqueFramebuffer framebuffer_;             ///< Handle фрейм-буфера
+        std::vector<Image::Ptr> attachments_;           ///< Список вложений
+        std::vector<UniqueImageView> attachment_views_; ///< Список views вложений
 
     };
 }

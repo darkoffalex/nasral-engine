@@ -471,6 +471,142 @@ namespace vk::utils
         }
 
         /**
+         * Запись команд генерации мип уровней в командный буфер (должен быть открыт)
+         * @param cmd_buffer Целевой командный буфер
+         * @param initial_extent Изначальное разрешение первого слоя
+         * @param initial_layout Изначальное размещение памяти изображения (eTransferDstOptimal, eColorAttachmentOptimal)
+         * @param initial_access Изначальный доступ к изображению (eTransferWrite, eShaderWrite)
+         * @param initial_stage Изначальная стадия конвейера (eTransfer, eFragmentShader)
+         * @param aspect Аспект изображения для разметки (цвет, глубина и прочее)
+         * @param layer_count Кол-во слоев
+         */
+        void write_gen_mipmaps_commands(const vk::CommandBuffer& cmd_buffer
+                                        , const vk::Extent3D& initial_extent
+                                        , const vk::ImageLayout& initial_layout
+                                        , const vk::AccessFlagBits& initial_access
+                                        , const vk::PipelineStageFlagBits& initial_stage
+                                        , const vk::ImageAspectFlags& aspect
+                                        , const uint32_t layer_count = 1) const
+        {
+            // Предполагается, что базовый мип-уровень (0) уже заполнен данными и находится в initial_layout
+            vk::ImageMemoryBarrier barrier{};
+            barrier.setImage(image())
+                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setSubresourceRange(
+                    vk::ImageSubresourceRange()
+                        .setAspectMask(aspect)
+                        .setBaseMipLevel(0)
+                        .setLevelCount(1)
+                        .setBaseArrayLayer(0)
+                        .setLayerCount(layer_count));
+
+            // Перевести базовый мип-уровень в eTransferSrcOptimal (если не сделано ранее)
+            barrier.setOldLayout(initial_layout)
+                .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+                .setSrcAccessMask(initial_access)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferRead);
+
+            cmd_buffer.pipelineBarrier(
+                initial_stage,
+                vk::PipelineStageFlagBits::eTransfer,
+                {}, 0, nullptr, 0, nullptr, 1, &barrier);
+
+            // Цикл по мип-уровням
+            vk::Extent2D current_extent{initial_extent.width, initial_extent.height};
+            for (uint32_t mip_level = 1; mip_level < mip_levels_; ++mip_level)
+            {
+                // Вычислить размеры следующего мип-уровня
+                const vk::Extent2D next_extent{
+                    std::max(1u, current_extent.width / 2),
+                    std::max(1u, current_extent.height / 2)
+                };
+
+                // 1. Перевести следующий мип-уровень в eTransferDstOptimal
+                barrier.setSubresourceRange(
+                    vk::ImageSubresourceRange()
+                        .setAspectMask(aspect)
+                        .setBaseMipLevel(mip_level)
+                        .setLevelCount(1)
+                        .setBaseArrayLayer(0)
+                        .setLayerCount(layer_count))
+                    .setOldLayout(vk::ImageLayout::eUndefined)
+                    .setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+                    .setSrcAccessMask(vk::AccessFlagBits::eNone)
+                    .setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
+
+                cmd_buffer.pipelineBarrier(
+                    vk::PipelineStageFlagBits::eTransfer,
+                    vk::PipelineStageFlagBits::eTransfer,
+                    {}, 0, nullptr, 0, nullptr, 1, &barrier);
+
+                // 2. Выполнить blit из предыдущего мип-уровня в текущий
+                vk::ImageBlit blit_region{};
+                blit_region.setSrcSubresource(
+                        vk::ImageSubresourceLayers()
+                            .setAspectMask(aspect)
+                            .setMipLevel(mip_level - 1)
+                            .setBaseArrayLayer(0)
+                            .setLayerCount(layer_count))
+                    .setSrcOffsets({
+                        vk::Offset3D{0, 0, 0},
+                        vk::Offset3D{static_cast<int32_t>(current_extent.width)
+                            , static_cast<int32_t>(current_extent.height)
+                            , 1}
+                    })
+                    .setDstSubresource(
+                        vk::ImageSubresourceLayers()
+                            .setAspectMask(aspect)
+                            .setMipLevel(mip_level)
+                            .setBaseArrayLayer(0)
+                            .setLayerCount(layer_count))
+                    .setDstOffsets({
+                        vk::Offset3D{0, 0, 0},
+                        vk::Offset3D{static_cast<int32_t>(next_extent.width)
+                            , static_cast<int32_t>(next_extent.height)
+                            , 1}
+                    });
+
+                cmd_buffer.blitImage(
+                    image(), vk::ImageLayout::eTransferSrcOptimal,
+                    image(), vk::ImageLayout::eTransferDstOptimal,
+                    1, &blit_region, vk::Filter::eLinear);
+
+                // 3. Перевести текущий мип-уровень в eTransferSrcOptimal для следующей итерации
+                barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+                    .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+                    .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+                    .setDstAccessMask(vk::AccessFlagBits::eTransferRead);
+
+                cmd_buffer.pipelineBarrier(
+                    vk::PipelineStageFlagBits::eTransfer,
+                    vk::PipelineStageFlagBits::eTransfer,
+                    {}, 0, nullptr, 0, nullptr, 1, &barrier);
+
+                // Обновить текущий размер для следующей итерации
+                current_extent = next_extent;
+            }
+
+            // 4. Перевести все мип-уровни в eShaderReadOnlyOptimal для использования в шейдерах
+            barrier.setSubresourceRange(
+                vk::ImageSubresourceRange()
+                    .setAspectMask(aspect)
+                    .setBaseMipLevel(0)
+                    .setLevelCount(mip_levels_)
+                    .setBaseArrayLayer(0)
+                    .setLayerCount(layer_count))
+                .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
+                .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+                .setSrcAccessMask(vk::AccessFlagBits::eTransferRead)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+
+            cmd_buffer.pipelineBarrier(
+                vk::PipelineStageFlagBits::eTransfer,
+                vk::PipelineStageFlagBits::eFragmentShader,
+                {}, 0, nullptr, 0, nullptr, 1, &barrier);
+        }
+
+        /**
          * Генерация мип-уровней для изображения
          * @warning Изображение должно быть создано с мип-уровнями
          * @param queue_group Группа очередей устройства с поддержкой команд копирования/перемещения
@@ -514,122 +650,14 @@ namespace vk::utils
                     vk::CommandBufferBeginInfo()
                         .setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
-                // Предполагается, что базовый мип-уровень (0) уже заполнен данными и находится в eTransferSrcOptimal
-                vk::ImageMemoryBarrier barrier{};
-                barrier.setImage(image())
-                    .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                    .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                    .setSubresourceRange(
-                        vk::ImageSubresourceRange()
-                            .setAspectMask(aspect)
-                            .setBaseMipLevel(0)
-                            .setLevelCount(1)
-                            .setBaseArrayLayer(0)
-                            .setLayerCount(layer_count));
-
-                // Перевести базовый мип-уровень в eTransferSrcOptimal (если не сделано ранее)
-                barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
-                    .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                    .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-                    .setDstAccessMask(vk::AccessFlagBits::eTransferRead);
-
-                cmd_buffer->pipelineBarrier(
-                    vk::PipelineStageFlagBits::eTransfer,
-                    vk::PipelineStageFlagBits::eTransfer,
-                    {}, 0, nullptr, 0, nullptr, 1, &barrier);
-
-                // Цикл по мип-уровням
-                vk::Extent2D current_extent{initial_extent.width, initial_extent.height};
-                for (uint32_t mip_level = 1; mip_level < mip_levels_; ++mip_level)
-                {
-                    // Вычислить размеры следующего мип-уровня
-                    const vk::Extent2D next_extent{
-                        std::max(1u, current_extent.width / 2),
-                        std::max(1u, current_extent.height / 2)
-                    };
-
-                    // 1. Перевести следующий мип-уровень в eTransferDstOptimal
-                    barrier.setSubresourceRange(
-                        vk::ImageSubresourceRange()
-                            .setAspectMask(aspect)
-                            .setBaseMipLevel(mip_level)
-                            .setLevelCount(1)
-                            .setBaseArrayLayer(0)
-                            .setLayerCount(layer_count))
-                        .setOldLayout(vk::ImageLayout::eUndefined)
-                        .setNewLayout(vk::ImageLayout::eTransferDstOptimal)
-                        .setSrcAccessMask(vk::AccessFlagBits::eNone)
-                        .setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
-
-                    cmd_buffer->pipelineBarrier(
-                        vk::PipelineStageFlagBits::eTransfer,
-                        vk::PipelineStageFlagBits::eTransfer,
-                        {}, 0, nullptr, 0, nullptr, 1, &barrier);
-
-                    // 2. Выполнить blit из предыдущего мип-уровня в текущий
-                    vk::ImageBlit blit_region{};
-                    blit_region.setSrcSubresource(
-                            vk::ImageSubresourceLayers()
-                                .setAspectMask(aspect)
-                                .setMipLevel(mip_level - 1)
-                                .setBaseArrayLayer(0)
-                                .setLayerCount(layer_count))
-                        .setSrcOffsets({
-                            vk::Offset3D{0, 0, 0},
-                            vk::Offset3D{static_cast<int32_t>(current_extent.width)
-                                , static_cast<int32_t>(current_extent.height)
-                                , 1}
-                        })
-                        .setDstSubresource(
-                            vk::ImageSubresourceLayers()
-                                .setAspectMask(aspect)
-                                .setMipLevel(mip_level)
-                                .setBaseArrayLayer(0)
-                                .setLayerCount(layer_count))
-                        .setDstOffsets({
-                            vk::Offset3D{0, 0, 0},
-                            vk::Offset3D{static_cast<int32_t>(next_extent.width)
-                                , static_cast<int32_t>(next_extent.height)
-                                , 1}
-                        });
-
-                    cmd_buffer->blitImage(
-                        image(), vk::ImageLayout::eTransferSrcOptimal,
-                        image(), vk::ImageLayout::eTransferDstOptimal,
-                        1, &blit_region, vk::Filter::eLinear);
-
-                    // 3. Перевести текущий мип-уровень в eTransferSrcOptimal для следующей итерации
-                    barrier.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
-                        .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                        .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-                        .setDstAccessMask(vk::AccessFlagBits::eTransferRead);
-
-                    cmd_buffer->pipelineBarrier(
-                        vk::PipelineStageFlagBits::eTransfer,
-                        vk::PipelineStageFlagBits::eTransfer,
-                        {}, 0, nullptr, 0, nullptr, 1, &barrier);
-
-                    // Обновить текущий размер для следующей итерации
-                    current_extent = next_extent;
-                }
-
-                // 4. Перевести все мип-уровни в eShaderReadOnlyOptimal для использования в шейдерах
-                barrier.setSubresourceRange(
-                    vk::ImageSubresourceRange()
-                        .setAspectMask(aspect)
-                        .setBaseMipLevel(0)
-                        .setLevelCount(mip_levels_)
-                        .setBaseArrayLayer(0)
-                        .setLayerCount(layer_count))
-                    .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
-                    .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-                    .setSrcAccessMask(vk::AccessFlagBits::eTransferRead)
-                    .setDstAccessMask(vk::AccessFlagBits::eShaderRead);
-
-                cmd_buffer->pipelineBarrier(
-                    vk::PipelineStageFlagBits::eTransfer,
-                    vk::PipelineStageFlagBits::eFragmentShader,
-                    {}, 0, nullptr, 0, nullptr, 1, &barrier);
+                // Команды генерации мип-уровней
+                write_gen_mipmaps_commands(cmd_buffer.get()
+                    , initial_extent
+                    , vk::ImageLayout::eTransferDstOptimal
+                    , vk::AccessFlagBits::eTransferWrite
+                    , vk::PipelineStageFlagBits::eTransfer
+                    , aspect
+                    , layer_count);
 
                 // Завершить запись команд
                 cmd_buffer->end();

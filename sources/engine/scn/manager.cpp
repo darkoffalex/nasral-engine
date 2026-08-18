@@ -50,7 +50,8 @@ namespace nasral::scn
             return;
 
         // Отслеживать изменение состояния активного экранного эффекта (уведомлять другие подсистемы)
-        if (active_screen_fx_.dirty_state){
+        if (active_screen_fx_.dirty_state)
+        {
             // Запрошено и готово (ресурс готов, можно задать)
             if (active_screen_fx_.requested && active_screen_fx_.is_ready()){
                 assert(active_screen_fx_.screen_fx_uid().has_value() && "Screen FX UID is not set");

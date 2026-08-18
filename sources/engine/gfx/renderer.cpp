@@ -180,7 +180,7 @@ namespace nasral::gfx
         clear_values[0].color = vk::ClearColorValue(config().clear_color.r, config().clear_color.g, config().clear_color.b, config().clear_color.a);
         clear_values[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
         clear_values[2].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-        clear_values[3].color = vk::ClearColorValue(config().clear_color.r, config().clear_color.g, config().clear_color.b, 1.0f);
+        clear_values[3].color = vk::ClearColorValue(1.0f, 1.0f, 1.0f, 1.0f);
 
         // Команда начала прохода
         cmd_buffer->beginRenderPass(
@@ -391,6 +391,25 @@ namespace nasral::gfx
 
         auto& cmd_buffer = vk_command_buffers_[frame()];
         cmd_buffer->draw(6, 1, 0, 0);
+    }
+
+    void Renderer::cmd_gen_framebuffer_mipmaps(const OffscreenTextureType& type) const
+    {
+        if (!ready_for_commands()){
+            return;
+        }
+
+        const auto& cmd_buffer = vk_command_buffers_[frame()];
+        const auto& framebuffer = vk_offscreen_framebuffers_[frame()];
+        const auto& attachment = framebuffer->attachments()[static_cast<size_t>(type)];
+        const auto& extent = framebuffer->extent();
+
+        attachment->write_gen_mipmaps_commands(cmd_buffer.get()
+            , {extent.width, extent.height, 1}
+            , vk::ImageLayout::eShaderReadOnlyOptimal
+            , vk::AccessFlagBits::eShaderWrite
+            , vk::PipelineStageFlagBits::eFragmentShader
+            , vk::ImageAspectFlagBits::eColor);
     }
 
     void Renderer::cmd_wait_for_all() const

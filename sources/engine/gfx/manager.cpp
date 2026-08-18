@@ -249,10 +249,12 @@ namespace nasral::gfx
 
     void Manager::on_screen_fx_changed(const evt::Arg& arg)
     {
+        // Эффект задан
         if (const auto scr_fx_id = evt::from_arg<UniqueId>(arg); scr_fx_id.has_value()){
             const auto* screen_fx = find_screen_fx(scr_fx_id.value());
             screen_fx_material_ = screen_fx->data_view().material;
         }
+        // Эффект сброшен
         else{
             screen_fx_material_ = {};
         }
@@ -327,6 +329,9 @@ namespace nasral::gfx
         renderer()->cmd_begin_rasterization_pass();
         ecs_system()->render();
         renderer()->cmd_end_render_pass();
+
+        // Генерация мип-уровней для кадровых буферов
+        renderer()->cmd_gen_framebuffer_mipmaps(OffscreenTextureType::eEmissive);
 
         // Проход пост-обработки
         renderer()->cmd_begin_post_processing_pass();
