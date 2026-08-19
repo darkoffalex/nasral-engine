@@ -470,7 +470,7 @@ namespace nasral::gfx
             color.format = config().offscreen_color_format;
             color.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
             color.aspect = vk::ImageAspectFlagBits::eColor;
-            color.mip_levels = 4;
+            color.mip_levels = 5;
             attachments.push_back(color);
 
             // Вложение глубины (не передаем image, оно будет создано внутри Framebuffer)
@@ -478,7 +478,7 @@ namespace nasral::gfx
             depth.format = config().offscreen_depth_format;
             depth.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
             depth.aspect = vk::ImageAspectFlagBits::eDepth;
-            depth.mip_levels = 4;
+            depth.mip_levels = 5;
             attachments.push_back(depth);
 
             // Вложение нормалей
@@ -486,7 +486,7 @@ namespace nasral::gfx
             normal.format = config().offscreen_color_format;
             normal.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
             normal.aspect = vk::ImageAspectFlagBits::eColor;
-            normal.mip_levels = 4;
+            normal.mip_levels = 5;
             attachments.push_back(normal);
 
             // Вложение ярких областей
@@ -494,7 +494,7 @@ namespace nasral::gfx
             emissive.format = config().offscreen_color_format;
             emissive.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
             emissive.aspect = vk::ImageAspectFlagBits::eColor;
-            emissive.mip_levels = 4;
+            emissive.mip_levels = 5;
             attachments.push_back(emissive);
 
             // Создать и добавить кадровый буфер

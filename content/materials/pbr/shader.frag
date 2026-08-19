@@ -7,6 +7,8 @@
 #define MAX_OBJECTS 1000
 #define MAX_MATERIALS 100
 #define MAX_LIGHTS 100
+#define LUMINANCE_VECTOR vec3(0.2126, 0.7152, 0.0722) // Коэффициенты человеческого восприятия яркости
+#define BRIGHT_THRESHOLD 0.5                          // Граница яркости для отправки в буфер свечения
 
 // Входные данные фрагмента
 layout(location = 0) in GS_OUT {
@@ -150,6 +152,7 @@ void main()
     vec3  albedo = material.color.rgb * tex_albedo.rgb;
     float roughness = clamp(material.roughness * tex_roughness, 0.0f, 1.0f);
     float metallic = clamp(material.metallic * tex_metallic, 0.0f, 1.0f);
+    vec3 emission = material.emission * albedo;
 
     // Преобразуем нормаль из пространства касательных в мировое пространство
     vec3 normal = normalize(tex_normal * 2.0 - 1.0); // Из [0,1] в [-1,1]
@@ -201,13 +204,19 @@ void main()
         Lo += (diffuse + specular) * NoL * radiance * tex_ao;
     }
 
-    // Компрессия (на текущий момент нет HDR)
-    vec3 col = Lo;
-    col = col / (col + vec3(1.0));
-    col = pow(col, vec3(1.0/2.2));
-
     // Итоговый цвет: вклад от всех источников
+    vec3 col = Lo;
+    // Яркость фрагмента
+    float pbr_brightness = dot(Lo, LUMINANCE_VECTOR);
+    // Яркий компонент фрагмента (для передачи в буфер свечения), равен нулю если недостаточно яркий
+    vec3 bright_pbr = max(Lo - vec3(BRIGHT_THRESHOLD), vec3(0.0));
+
+    // Компрессия (на текущий момент нет HDR)
+    //col = col / (col + vec3(1.0));
+    //col = pow(col, vec3(1.0/2.2));
+
+    // Запись во вложения
     color = vec4(col, alpha);
     outNormal = vec4(normal * 0.5 + 0.5, 1.0);
-    outEmissive = vec4(0.0, 0.0, 0.0, 1.0);
+    outEmissive = vec4(emission + bright_pbr, 1.0);
 }
