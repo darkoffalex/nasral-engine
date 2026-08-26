@@ -33,7 +33,8 @@ namespace nasral::gfx
         void cmd_begin_frame();
         void cmd_end_frame();
         void cmd_begin_rasterization_pass();
-        void cmd_begin_post_processing_pass();
+        void cmd_begin_screen_fx_mid_pass();
+        void cmd_begin_screen_fx_final_pass();
         void cmd_end_render_pass();
         void cmd_bind_rasterization_material(const handles::Material& handles, uint32_t uniform_idx);
         void cmd_bind_post_processing_material(const handles::Material& handles);
@@ -51,9 +52,11 @@ namespace nasral::gfx
         [[nodiscard]] const auto& vk_instance() const noexcept{ return *vk_instance_; }
         [[nodiscard]] auto& vk_device() const noexcept{ return *vk_device_; }
         [[nodiscard]] const auto& vk_rasterization_pass() const noexcept{ return *vk_rasterization_pass_; }
-        [[nodiscard]] const auto& vk_post_processing_pass() const noexcept{ return *vk_post_processing_pass_; }
+        [[nodiscard]] const auto& vk_intermediate_pass() const noexcept{ return *vk_screen_fx_mid_pass_; }
+        [[nodiscard]] const auto& vk_post_processing_pass() const noexcept{ return *vk_screen_fx_final_pass_; }
         [[nodiscard]] const auto& vk_surface() const noexcept{ return *vk_surface_; }
         [[nodiscard]] const auto& vk_offscreen_framebuffer(const size_t index) const noexcept{ return *vk_offscreen_framebuffers_[index]; }
+        [[nodiscard]] const auto& vk_intermediate_framebuffer(const size_t index) const noexcept{ return *vk_intermediate_framebuffers_[index]; }
         [[nodiscard]] const auto& vk_swapchain_framebuffer(const size_t index) const noexcept{ return *vk_swapchain_framebuffers_[index]; }
         [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{ return *vk_texture_samplers_[type]; }
         [[nodiscard]] const auto& vk_uniform_layout(const UniformLayoutType& type) const noexcept{ return *vk_uniform_layouts_[type]; }
@@ -105,10 +108,12 @@ namespace nasral::gfx
         vk::UniqueSurfaceKHR vk_surface_;
         vk::utils::Device::Ptr vk_device_;
         vk::UniqueRenderPass vk_rasterization_pass_;
-        vk::UniqueRenderPass vk_post_processing_pass_;
+        vk::UniqueRenderPass vk_screen_fx_mid_pass_;
+        vk::UniqueRenderPass vk_screen_fx_final_pass_;
         vk::UniqueSwapchainKHR vk_swap_chain_;
-        std::vector<vk::utils::Framebuffer::Ptr> vk_offscreen_framebuffers_;
-        std::vector<vk::utils::Framebuffer::Ptr> vk_swapchain_framebuffers_;
+        std::vector<vk::utils::Framebuffer::Ptr> vk_offscreen_framebuffers_;     //< Основные вложения (цвет, нормали, глубина)
+        std::vector<vk::utils::Framebuffer::Ptr> vk_intermediate_framebuffers_;  //< Буферы промежуточного прохода (размытие и прочее)
+        std::vector<vk::utils::Framebuffer::Ptr> vk_swapchain_framebuffers_;     //< Буферы вывода на экран (финальный проход)
 
         // Макеты конвейеров (для растеризации, пост-процессинга и прочего)
         EnumArray<UniformLayoutType, vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;

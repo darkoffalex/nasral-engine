@@ -334,7 +334,7 @@ namespace nasral::gfx
         renderer()->cmd_gen_framebuffer_mipmaps(OffscreenTextureType::eEmissive);
 
         // Проход пост-обработки
-        renderer()->cmd_begin_post_processing_pass();
+        renderer()->cmd_begin_screen_fx_final_pass();
         if (screen_fx_materials_[ScreenFxPassType::eFinal]){
             renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxPassType::eFinal]);
             renderer()->cmd_draw_post_processing_quad(0);

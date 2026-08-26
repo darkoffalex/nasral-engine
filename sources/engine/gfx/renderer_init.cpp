@@ -343,7 +343,87 @@ namespace nasral::gfx
                 .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
             );
 
-            vk_post_processing_pass_ = vk_device_->logical_device().createRenderPassUnique(
+            vk_screen_fx_final_pass_ = vk_device_->logical_device().createRenderPassUnique(
+                vk::RenderPassCreateInfo()
+                .setAttachments(attachment_descriptions)
+                .setSubpasses(subpass_descriptions)
+                .setDependencies(subpass_dependencies));
+        }
+
+        // 3. ПРОМЕЖУТОЧНЫЙ ПРОХОД ПОСТ-ПРОЦЕССИНГА (Intermediate Post-Processing Render Pass / Bilateral Blur)
+        {
+            // Описания вложений: 2 цветовых вложения (ping-pong для горизонтального и вертикального размытия)
+            std::vector<::vk::AttachmentDescription> attachment_descriptions{};
+            attachment_descriptions.reserve(2);
+
+            // Вложение 0 (первый проход размытия / ping)
+            attachment_descriptions.push_back(
+                vk::AttachmentDescription()
+                .setFormat(config().offscreen_color_format)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+            );
+
+            // Вложение 1 (второй проход размытия / pong)
+            attachment_descriptions.push_back(
+                vk::AttachmentDescription()
+                .setFormat(config().offscreen_color_format)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)
+                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+            );
+
+            // Ссылки на вложения (цвета)
+            std::array<vk::AttachmentReference, 2> color_refs{
+                vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal),
+                vk::AttachmentReference(1, vk::ImageLayout::eColorAttachmentOptimal)
+            };
+
+            // Под-проходы (1 под-проход)
+            std::vector<vk::SubpassDescription> subpass_descriptions{};
+            subpass_descriptions.push_back(
+                vk::SubpassDescription()
+                .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+                .setColorAttachments(color_refs));
+
+            // Зависимости под-проходов
+            std::vector<vk::SubpassDependency> subpass_dependencies{};
+            subpass_dependencies.reserve(2);
+
+            // Переход из внешнего (неявного) в основной (первый/нулевой)
+            subpass_dependencies.push_back(
+                vk::SubpassDependency()
+                .setSrcSubpass(VK_SUBPASS_EXTERNAL)                                   // Исходный под-проход (внешний)
+                .setDstSubpass(0)                                                     // Целевой (первый)
+                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eFragmentShader)
+                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eShaderRead)
+                .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eFragmentShader)
+                .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eShaderRead)
+                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)
+            );
+
+            // Переход из основного во внешний (неявный)
+            subpass_dependencies.push_back(
+                vk::SubpassDependency()
+                .setSrcSubpass(0)                                                     // Исходный под-проход (первый)
+                .setDstSubpass(VK_SUBPASS_EXTERNAL)                                   // Целевой (внешний)
+                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап ожидания операций (запись)
+                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции записи
+                .setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)          // Этап выполнения операций целевого под-прохода
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead)                    // Операции чтения в шейдере следующего этапа
+                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)
+            );
+
+            vk_screen_fx_mid_pass_ = vk_device_->logical_device().createRenderPassUnique(
                 vk::RenderPassCreateInfo()
                 .setAttachments(attachment_descriptions)
                 .setSubpasses(subpass_descriptions)
@@ -505,6 +585,36 @@ namespace nasral::gfx
                 attachments));
         }
 
+        // Создать промежуточные кадровые буферы (пост-процессинг / bilateral blur)
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i)
+        {
+            // Описать вложения кадрового буфера
+            std::vector<vk::utils::Framebuffer::AttachmentInfo> attachments{};
+
+            // Вложение 0 (первый проход размытия / ping)
+            vk::utils::Framebuffer::AttachmentInfo color0{};
+            color0.format = config().offscreen_color_format;
+            color0.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+            color0.aspect = vk::ImageAspectFlagBits::eColor;
+            color0.mip_levels = 1;
+            attachments.push_back(color0);
+
+            // Вложение 1 (второй проход размытия / pong)
+            vk::utils::Framebuffer::AttachmentInfo color1{};
+            color1.format = config().offscreen_color_format;
+            color1.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+            color1.aspect = vk::ImageAspectFlagBits::eColor;
+            color1.mip_levels = 1;
+            attachments.push_back(color1);
+
+            // Создать и добавить кадровый буфер
+            vk_intermediate_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
+                vk_device_.get(),
+                vk_screen_fx_mid_pass_.get(),
+                config().rendering_resolution,
+                attachments));
+        }
+
         // Получить изображения swap chain
         const auto swap_chain_images = vk_device_->logical_device().getSwapchainImagesKHR(*vk_swap_chain_);
         assert(!swap_chain_images.empty());
@@ -526,7 +636,7 @@ namespace nasral::gfx
             // Создать и добавить кадровый буфер
             vk_swapchain_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
                 vk_device_.get(),
-                vk_post_processing_pass_.get(),
+                vk_screen_fx_final_pass_.get(),
                 vk_device_->clamp_swapchain_extent(config().surface_provider->framebuffer_extent(), *vk_surface_),
                 attachments));
         }
@@ -725,6 +835,22 @@ namespace nasral::gfx
                             vk::DescriptorType::eCombinedImageSampler,
                             vk::ShaderStageFlagBits::eFragment,
                             vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                        },
+                        // Промежуточный результат размытия 0 (первое цветовое вложение / ping)
+                        {
+                            4,
+                            1,
+                            vk::DescriptorType::eCombinedImageSampler,
+                            vk::ShaderStageFlagBits::eFragment,
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                        },
+                        // Промежуточный результат размытия 1 (второе цветовое вложение / pong)
+                        {
+                            5,
+                            1,
+                            vk::DescriptorType::eCombinedImageSampler,
+                            vk::ShaderStageFlagBits::eFragment,
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
                         }
                     },
                     // Наборов столько, сколько может быть "кадров на лету".
@@ -756,7 +882,8 @@ namespace nasral::gfx
             // Создать pipeline layout для этапов пост-обработки
             layouts[UniformLayoutType::ePostProcessing] = std::make_unique<vk::utils::UniformLayout>(
                 vk_device_,
-                set_layouts);
+                set_layouts,
+                push_constants);
         }
     }
 
@@ -893,8 +1020,8 @@ namespace nasral::gfx
             auto& set = vk_post_process_frame_d_sets_[i];
             std::vector<vk::DescriptorImageInfo> pp_image_infos{};
             std::vector<vk::WriteDescriptorSet> pp_writes{};
-            pp_image_infos.reserve(static_cast<uint32_t>(OffscreenTextureType::TOTAL));
-            pp_writes.reserve(static_cast<uint32_t>(OffscreenTextureType::TOTAL));
+            pp_image_infos.reserve(6);
+            pp_writes.reserve(6);
 
             // Цвет (0)
             pp_image_infos.push_back(
@@ -922,6 +1049,20 @@ namespace nasral::gfx
                 vk::DescriptorImageInfo()
                     .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
                     .setImageView(vk_offscreen_framebuffers_[i]->attachments()[3]->image_view())
+                    .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+            // Промежуточный буфер: результат 0 (4 / ping)
+            pp_image_infos.push_back(
+                vk::DescriptorImageInfo()
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
+                    .setImageView(vk_intermediate_framebuffers_[i]->attachments()[0]->image_view())
+                    .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+            // Промежуточный буфер: результат 1 (5 / pong)
+            pp_image_infos.push_back(
+                vk::DescriptorImageInfo()
+                    .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
+                    .setImageView(vk_intermediate_framebuffers_[i]->attachments()[1]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
             // Связать с дескрипторами набора
@@ -960,6 +1101,24 @@ namespace nasral::gfx
                     .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
                     .setDescriptorCount(1)
                     .setImageInfo(pp_image_infos[3]));
+
+            pp_writes.push_back(
+                vk::WriteDescriptorSet()
+                    .setDstSet(set.get())
+                    .setDstBinding(4)
+                    .setDstArrayElement(0)
+                    .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                    .setDescriptorCount(1)
+                    .setImageInfo(pp_image_infos[4]));
+
+            pp_writes.push_back(
+                vk::WriteDescriptorSet()
+                    .setDstSet(set.get())
+                    .setDstBinding(5)
+                    .setDstArrayElement(0)
+                    .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                    .setDescriptorCount(1)
+                    .setImageInfo(pp_image_infos[5]));
 
             // Обновить набор
             vk_device_->logical_device().updateDescriptorSets(pp_writes, {});

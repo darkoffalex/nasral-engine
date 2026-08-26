@@ -203,7 +203,41 @@ namespace nasral::gfx
             }, {});
     }
 
-    void Renderer::cmd_begin_post_processing_pass()
+    void Renderer::cmd_begin_screen_fx_mid_pass()
+    {
+        if (!ready_for_commands()){
+            return;
+        }
+
+        // Получить командный буфер ТЕКУЩЕГО КАДРА
+        auto& cmd_buffer = vk_command_buffers_[frame()];
+        // Размер кадрового буфера промежуточного этапа (разрешение рендеринга)
+        const auto& extent = vk_intermediate_framebuffers_[frame()]->extent();
+
+        // Очистка двух цветовых вложений
+        std::array<vk::ClearValue, 2> clear_values{};
+        clear_values[0].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+        clear_values[1].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+
+        // Команда начала прохода
+        cmd_buffer->beginRenderPass(
+            vk::RenderPassBeginInfo()
+                .setRenderPass(vk_screen_fx_mid_pass_.get())
+                .setFramebuffer(vk_intermediate_framebuffers_[frame()]->vk_framebuffer())
+                .setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), extent))
+                .setClearValues(clear_values),
+            vk::SubpassContents::eInline);
+
+        // Привязать дескриптор текстур кадрового буфера ДЛЯ ТЕКУЩЕГО КАДРА и дескриптор данных камеры
+        const auto& pipeline_l = vk_uniform_layouts_[UniformLayoutType::ePostProcessing]->vk_pipeline_layout();
+        cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_l, 0,
+            {
+                vk_post_process_frame_d_sets_[frame()].get(),
+                vk_post_process_d_sets_[UniformDSetType::eViewUBO].get(),
+            }, {});
+    }
+
+    void Renderer::cmd_begin_screen_fx_final_pass()
     {
         if (!ready_for_commands()){
             return;
@@ -221,7 +255,7 @@ namespace nasral::gfx
         // Команда начала прохода
         cmd_buffer->beginRenderPass(
             vk::RenderPassBeginInfo()
-                .setRenderPass(vk_post_processing_pass_.get())
+                .setRenderPass(vk_screen_fx_final_pass_.get())
                 .setFramebuffer(vk_swapchain_framebuffers_[available_image_index_]->vk_framebuffer())
                 .setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), extent))
                 .setClearValues(clear_values),
@@ -465,6 +499,7 @@ namespace nasral::gfx
         // Уничтожить кадровые буферы
         vk_swapchain_framebuffers_.clear();
         vk_offscreen_framebuffers_.clear();
+        vk_intermediate_framebuffers_.clear();
         log_info("Vulkan: Framebuffers cleared.");
 
         // Пере-создать swap-chain (старый будет задействован при создании нового, затем удален)
