@@ -39,7 +39,7 @@ namespace nasral::gfx
         void cmd_bind_post_processing_material(const handles::Material& handles);
         void cmd_bind_rasterization_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
         void cmd_draw_geometry(uint32_t index_offset, uint32_t index_count);
-        void cmd_draw_post_processing_quad();
+        void cmd_draw_post_processing_quad(uint32_t pass_index = 0);
         void cmd_gen_framebuffer_mipmaps(const OffscreenTextureType& type) const;
         void cmd_wait_for_all() const;
 
@@ -58,7 +58,7 @@ namespace nasral::gfx
         [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{ return *vk_texture_samplers_[type]; }
         [[nodiscard]] const auto& vk_uniform_layout(const UniformLayoutType& type) const noexcept{ return *vk_uniform_layouts_[type]; }
         [[nodiscard]] const auto& vk_rasterization_d_set(const UniformDSetType& type) const noexcept{ return *vk_rasterization_d_sets_[type]; }
-        [[nodiscard]] const auto& vk_post_process_d_set(const size_t index) const noexcept{ return *vk_post_process_d_sets_[index]; }
+        [[nodiscard]] const auto& vk_post_process_frame_d_set(const size_t frame) const noexcept{ return *vk_post_process_frame_d_sets_[frame]; }
         [[nodiscard]] auto& vk_uniform_buffer(const UniformBufferType& type) const noexcept{ return *vk_uniform_buffers_[type]; }
 
         [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
@@ -112,10 +112,11 @@ namespace nasral::gfx
 
         // Макеты конвейеров (для растеризации, пост-процессинга и прочего)
         EnumArray<UniformLayoutType, vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
-        // Дескрипторные наборы растеризации (камера, трансформации и материалы объектов, текстуры объектов)
+        // Дескрипторные наборы растеризации и пост-процессинга (камера, трансформации и материалы объектов, текстуры объектов)
         EnumArray<UniformDSetType, vk::UniqueDescriptorSet> vk_rasterization_d_sets_;
-        // Дескрипторные наборы пост-процессинга (текстуры кадровых буферов)
-        std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_post_process_d_sets_;
+        EnumArray<UniformDSetType, vk::UniqueDescriptorSet> vk_post_process_d_sets_;
+        // Дескрипторные наборы пост-процессинга на кадр (текстуры кадровых буферов)
+        std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_post_process_frame_d_sets_;
         // Uniform буферы объектов (камера, трансформации, материалы, источники света)
         EnumArray<UniformBufferType, vk::utils::Buffer::Ptr> vk_uniform_buffers_;
         // Семплеры текстур

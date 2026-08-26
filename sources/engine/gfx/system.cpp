@@ -457,12 +457,14 @@ namespace nasral::gfx
             // Итоговый UBO
             uniforms::Camera uniforms = {};
             uniforms.position = glm::vec4(sp.position, 1.0f);
-            uniforms.view = glm::inverse(cam_translate * cam_rotation);
+            uniforms.view_inverse = cam_translate * cam_rotation;
+            uniforms.view = glm::inverse(uniforms.view_inverse);
             uniforms.projection = glm::perspective(
                     glm::radians(cam.fov),
                     engine()->gfx()->renderer()->rendering_aspect(),
                     cam.near,
                     cam.far);
+            uniforms.projection_inverse = glm::inverse(uniforms.projection);
 
             // Обновить
             engine()->gfx()->update_cam_uniforms(uniforms, ui.index);

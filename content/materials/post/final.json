@@ -3,11 +3,11 @@
   "shaders" : [
     {
       "stage" : "vertex",
-      "path" : "materials/post/shader.vert.spv"
+      "path" : "materials/post/common.vert.spv"
     },
     {
       "stage" : "fragment",
-      "path" : "materials/post/shader.frag.spv"
+      "path" : "materials/post/final.frag.spv"
     }
   ]
 }

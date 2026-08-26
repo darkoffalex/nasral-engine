@@ -729,10 +729,31 @@ namespace nasral::gfx
                     },
                     // Наборов столько, сколько может быть "кадров на лету".
                     config().max_frames_in_flight
+                },
+                // set = 1: Camera (для трансформаций в пространство вида)
+                {
+                    {
+                        {
+                            0,
+                            1,
+                            vk::DescriptorType::eUniformBuffer,
+                            vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
+                        }
+                    },
+                    1
                 }
             };
 
-            // Создать pipeline layout для растеризации
+            // Push-константы layout-а пост-обработки
+            std::vector push_constants{
+                // Номер прохода (например, для bilateral blur)
+                vk::PushConstantRange()
+                    .setStageFlags(vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment)
+                    .setSize(sizeof(uint32_t))
+                    .setOffset(0)
+            };
+
+            // Создать pipeline layout для этапов пост-обработки
             layouts[UniformLayoutType::ePostProcessing] = std::make_unique<vk::utils::UniformLayout>(
                 vk_device_,
                 set_layouts);
@@ -869,7 +890,7 @@ namespace nasral::gfx
         // Сохранить наборы, связать кадровые буферы (изображения) с вложениями дескрипторных наборов пост-процессинга
         for (size_t i = 0; i < config().max_frames_in_flight; ++i)
         {
-            auto& set = vk_post_process_d_sets_[i];
+            auto& set = vk_post_process_frame_d_sets_[i];
             std::vector<vk::DescriptorImageInfo> pp_image_infos{};
             std::vector<vk::WriteDescriptorSet> pp_writes{};
             pp_image_infos.reserve(static_cast<uint32_t>(OffscreenTextureType::TOTAL));
@@ -967,8 +988,9 @@ namespace nasral::gfx
         assert(ul_rasterize && "Rasterization uniform layout is not initialized");
         assert(ul_post_process && "Post-processing uniform layout is not initialized");
 
-        // Выделить дескрипторный набор для камеры
+        // Выделить дескрипторный набор для камеры (для растеризации и пост-обработки)
         ul_rasterize->allocate_sets(0,1).front().swap(vk_rasterization_d_sets_[UniformDSetType::eViewUBO]);
+        ul_post_process->allocate_sets(1, 1).front().swap(vk_post_process_d_sets_[UniformDSetType::eViewUBO]);
         // Выделить дескрипторный набор для uniform-буферов объектов (трансформации)
         ul_rasterize->allocate_sets(1,1).front().swap(vk_rasterization_d_sets_[UniformDSetType::eObjectUBOs]);
         // Выделить дескрипторный набор для uniform-буферов материалов (блики, шероховатость и прочее)
@@ -981,8 +1003,10 @@ namespace nasral::gfx
         // Выделить дескрипторные наборы пост-процессинга (текстуры кадровых буферов)
         auto pp_sets = ul_post_process->allocate_sets(0, config().max_frames_in_flight);
         for (size_t i = 0; i < config().max_frames_in_flight; ++i){
-            pp_sets[i].swap(vk_post_process_d_sets_[i]);
+            pp_sets[i].swap(vk_post_process_frame_d_sets_[i]);
         }
+
+        // Выделить дескрипторный набор пост-процессинга (данные камеры)
 
         // Uniform буферы
         {
@@ -1046,7 +1070,7 @@ namespace nasral::gfx
         std::vector<vk::DescriptorBufferInfo> buffer_infos;
         // Зарезервировать память контейнеров перед использованием!
         buffer_infos.reserve(6);
-        writes.reserve(6);
+        writes.reserve(7);
 
         // Камера (set = 0, binding = 0)
         {
@@ -1057,6 +1081,14 @@ namespace nasral::gfx
 
             writes.emplace_back(vk::WriteDescriptorSet()
                 .setDstSet(vk_rasterization_d_sets_[UniformDSetType::eViewUBO].get())
+                .setDstBinding(0)
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorCount(1)
+                .setPBufferInfo(&buffer_infos.back()));
+
+            writes.emplace_back(vk::WriteDescriptorSet()
+                .setDstSet(vk_post_process_d_sets_[UniformDSetType::eViewUBO].get())
                 .setDstBinding(0)
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eUniformBuffer)

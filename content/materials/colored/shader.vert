@@ -34,6 +34,9 @@ struct ObjectTransforms
 layout(set = 0, binding = 0, std140) uniform UCamera {
     mat4 view;
     mat4 proj;
+    mat4 view_inverse;
+    mat4 proj_inverse;
+    vec4 position;
 } u_camera;
 
 // Storage buffer для матриц объектов

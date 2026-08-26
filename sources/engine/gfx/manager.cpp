@@ -337,7 +337,7 @@ namespace nasral::gfx
         renderer()->cmd_begin_post_processing_pass();
         if (screen_fx_materials_[ScreenFxPassType::eFinal]){
             renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxPassType::eFinal]);
-            renderer()->cmd_draw_post_processing_quad();
+            renderer()->cmd_draw_post_processing_quad(0);
         }
         renderer()->cmd_end_render_pass();
 

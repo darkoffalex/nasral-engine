@@ -227,11 +227,12 @@ namespace nasral::gfx
                 .setClearValues(clear_values),
             vk::SubpassContents::eInline);
 
-        // Привязать дескрипторы текстур кадрового буфера ДЛЯ ТЕКУЩЕГО КАДРА
+        // Привязать дескриптор текстур кадрового буфера ДЛЯ ТЕКУЩЕГО КАДРА и дескриптор данных камеры
         const auto& pipeline_l = vk_uniform_layouts_[UniformLayoutType::ePostProcessing]->vk_pipeline_layout();
         cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_l, 0,
             {
-                vk_post_process_d_sets_[frame()].get()
+                vk_post_process_frame_d_sets_[frame()].get(),
+                vk_post_process_d_sets_[UniformDSetType::eViewUBO].get(),
             }, {});
     }
 
@@ -383,13 +384,23 @@ namespace nasral::gfx
         cmd_buffer->drawIndexed(index_count, 1, index_offset, 0, 0);
     }
 
-    void Renderer::cmd_draw_post_processing_quad()
+    void Renderer::cmd_draw_post_processing_quad(const uint32_t pass_index)
     {
         if (!ready_for_commands()){
             return;
         }
 
         auto& cmd_buffer = vk_command_buffers_[frame()];
+        const auto& pipeline_l = vk_uniform_layouts_[UniformLayoutType::ePostProcessing]->vk_pipeline_layout();
+
+        // Передать индекс uniform объекта через push constant
+        cmd_buffer->pushConstants(
+            pipeline_l,
+            vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
+            0,
+            sizeof(uint32_t),
+            &pass_index);
+
         cmd_buffer->draw(6, 1, 0, 0);
     }
 

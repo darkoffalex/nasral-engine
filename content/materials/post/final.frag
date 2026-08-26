@@ -9,11 +9,25 @@ layout (location = 0) in VS_OUT {
 // Выход фрагмента (цветовое вложение 0)
 layout (location = 0) out vec4 color;
 
+// Push constants
+layout(push_constant) uniform PushConstants {
+    uint pass_index;
+} pc_push;
+
 // Текстуры кадрового буфера (в HDR формате, R16G16B16A16_SFLOAT)
 layout(set = 0, binding = 0) uniform sampler2D frame_color;
 layout(set = 0, binding = 1) uniform sampler2D frame_depth;
 layout(set = 0, binding = 2) uniform sampler2D frame_normals;
 layout(set = 0, binding = 3) uniform sampler2D frame_emission;
+
+// Uniform buffer для матриц камеры
+layout(set = 1, binding = 0, std140) uniform UCamera {
+    mat4 view;
+    mat4 proj;
+    mat4 view_inverse;
+    mat4 proj_inverse;
+    vec4 position;
+} u_camera;
 
 // Экспозиция (далее будет передаваться через Push Constants)
 const float exposure = 1.0;
