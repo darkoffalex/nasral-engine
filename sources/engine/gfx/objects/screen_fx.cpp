@@ -14,12 +14,21 @@ namespace nasral::gfx
         Components::Resources::IdsList resources_ids{};
         Components::Resources::ActiveList resources_active{};
 
-        // Ресурс материала
-        if (const auto mat_res_id = engine()->res()->find(description.material_path); mat_res_id.has_value()){
-            resources_ids[eBaseMaterial] = mat_res_id.value();
-            resources_active[eBaseMaterial] = true;
-        }else{
-            throw std::runtime_error("Material resource not found (" + description.material_path + ")");
+        // Ресурсы материалов
+        for (const auto type : magic_enum::enum_values<ScreenFxPassType>()){
+            if (type == ScreenFxPassType::TOTAL) continue;
+
+            if (description.material_paths[type].empty())
+            {
+                resources_ids[kMaterialResMap[type]] = {};
+                resources_active[kMaterialResMap[type]] = false;
+            }
+            else
+            {
+                const auto tex_res_id = engine()->res()->find(description.material_paths[type]);
+                resources_ids[kMaterialResMap[type]] = tex_res_id.value_or(res::kInvalidResourceId);
+                resources_active[kMaterialResMap[type]] = true;
+            }
         }
 
         // Создать Entity
@@ -81,7 +90,7 @@ namespace nasral::gfx
             id.id,
             name.name,
             res.ids,
-            handles.material
+            handles.materials
         };
     }
 
@@ -94,7 +103,9 @@ namespace nasral::gfx
 
         if (full){
             ss  << ", Name: " << data.name
-                << ", Resource ID: " << data.resources[eBaseMaterial];
+                << ", Final pass FX res: " << data.resources[eFinalPassMaterial]
+                << ", AO pass FX res: " << data.resources[eAOPassMaterial]
+                << ", Blur pass FX res: " << data.resources[eBlurPassMaterial];
         }
 
         return ss.str();

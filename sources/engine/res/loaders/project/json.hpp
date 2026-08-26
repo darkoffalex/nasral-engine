@@ -38,10 +38,8 @@ namespace nasral::res
                 }
 
                 // Регистр пост-процессинга
-                if (json.contains("post_processing")){
-                    for (const auto& pp_entry : json.at("post_processing")){
-                        data.post_processes.push_back(parse_post_processing_entry(pp_entry));
-                    }
+                for (const auto& screen_fx_entry : json.at("screen_effects")){
+                    data.screen_effects.push_back(parse_screen_fx_entry(screen_fx_entry));
                 }
 
                 // Настройки ввода
@@ -88,14 +86,14 @@ namespace nasral::res
             {
                 if (key_entry.find("key:") != std::string::npos)
                 {
-                    auto key_str = key_entry.substr(key_entry.find(":") + 1);
+                    auto key_str = key_entry.substr(key_entry.find(':') + 1);
                     if (auto key_e = magic_enum::enum_cast<inp::KeyCode>(key_str); key_e.has_value()){
                         binding.bindings.emplace_back(key_e.value());
                     }
                 }
                 else if (key_entry.find("mouse:") != std::string::npos)
                 {
-                    auto btn_str = key_entry.substr(key_entry.find(":") + 1);
+                    auto btn_str = key_entry.substr(key_entry.find(':') + 1);
                     if (auto btn_e = magic_enum::enum_cast<inp::MouseButton>(btn_str); btn_e.has_value()){
                         binding.bindings.emplace_back(btn_e.value());
                     }
@@ -245,17 +243,34 @@ namespace nasral::res
             return desc;
         }
 
-        static gfx::ScreenFxDesc parse_post_processing_entry(const nlohmann::json& entry)
+        static gfx::ScreenFxDesc parse_screen_fx_entry(const nlohmann::json& entry)
         {
             gfx::ScreenFxDesc desc = {};
 
             // Парсинг UniqueId из массива [uint64, uint64]
-            if (const auto& uid_array = entry.at("uid").get<std::vector<uint64_t>>(); uid_array.size() >= 2){
+            const auto& uid_array = entry.at("uid").get<std::vector<uint64_t>>();
+            if (uid_array.size() >= 2)
+            {
                 desc.unique_id.set(uid_array[0], uid_array[1]);
             }
 
             desc.name = entry.at("name").get<std::string>();
-            desc.material_path = entry.at("material_path").get<std::string>();
+
+            // Обработка материалов (заполнение EnumArray)
+            if (entry.contains("materials") && entry.at("materials").is_array())
+            {
+                for (const auto& mat_entry : entry.at("materials"))
+                {
+                    const auto type_str = mat_entry.at("type").get<std::string>();
+                    auto pass_type = magic_enum::enum_cast<gfx::ScreenFxPassType>(type_str);
+
+                    if (pass_type.has_value())
+                    {
+                        // Записываем путь к материалу
+                        desc.material_paths[pass_type.value()] = mat_entry.at("path").get<std::string>();
+                    }
+                }
+            }
 
             return desc;
         }

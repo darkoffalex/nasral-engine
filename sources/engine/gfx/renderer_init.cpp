@@ -492,7 +492,7 @@ namespace nasral::gfx
             // Вложение ярких областей
             vk::utils::Framebuffer::AttachmentInfo emissive{};
             emissive.format = config().offscreen_color_format;
-            emissive.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+            emissive.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
             emissive.aspect = vk::ImageAspectFlagBits::eColor;
             emissive.mip_levels = 5;
             attachments.push_back(emissive);

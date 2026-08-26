@@ -14,7 +14,7 @@ namespace nasral::gfx
         , object_ubo_ids_(kMaxObjects)
         , material_ubo_ids_(kMaxMaterials)
         , light_ubo_ids_(kMaxLights)
-        , screen_fx_material_({VK_NULL_HANDLE})
+        , screen_fx_materials_({})
         , ecs_system_(std::make_unique<System>(this))
     {
         log_info("Initializing manager...");
@@ -231,7 +231,7 @@ namespace nasral::gfx
             }
 
             // Сформировать список эффектов экрана
-            for (const auto& pp_desc : proj->post_process_pipelines()){
+            for (const auto& pp_desc : proj->screen_effects()){
                 screen_fxs_.emplace_back(ScreenFx::Ptr(new ScreenFx(this, pp_desc)));
             }
 
@@ -252,11 +252,11 @@ namespace nasral::gfx
         // Эффект задан
         if (const auto scr_fx_id = evt::from_arg<UniqueId>(arg); scr_fx_id.has_value()){
             const auto* screen_fx = find_screen_fx(scr_fx_id.value());
-            screen_fx_material_ = screen_fx->data_view().material;
+            screen_fx_materials_ = screen_fx->data_view().materials;
         }
         // Эффект сброшен
         else{
-            screen_fx_material_ = {};
+            screen_fx_materials_ = {};
         }
     }
 
@@ -335,8 +335,8 @@ namespace nasral::gfx
 
         // Проход пост-обработки
         renderer()->cmd_begin_post_processing_pass();
-        if (screen_fx_material_){
-            renderer()->cmd_bind_post_processing_material(screen_fx_material_);
+        if (screen_fx_materials_[ScreenFxPassType::eFinal]){
+            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxPassType::eFinal]);
             renderer()->cmd_draw_post_processing_quad();
         }
         renderer()->cmd_end_render_pass();

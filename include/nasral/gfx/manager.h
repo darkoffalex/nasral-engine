@@ -78,12 +78,13 @@ namespace nasral::gfx
         evt::Listener::Ptr evl_sfc_chg_;
         evt::Listener::Ptr evl_sfx_chg_;
 
-        // Глобальные реестры материалов сцены (основные проходы) и эффектов экрана (пост-обработка)
+        // Глобальный реестр материалов сцены (используются при рендеринге в основных проходах)
         std::vector<MaterialInstance::Ptr> materials_;
+        // Глобальный реестр эффектов экрана (проходы пост-обработки)
         std::vector<ScreenFx::Ptr> screen_fxs_;
 
-        // Конвейер (vulkan pipeline) активного эффекта экрана
-        handles::Material screen_fx_material_;
+        // Handles активного эффекта материала
+        EnumArray<ScreenFxPassType, handles::Material> screen_fx_materials_;
 
         // ECS-система
         System::Ptr ecs_system_;

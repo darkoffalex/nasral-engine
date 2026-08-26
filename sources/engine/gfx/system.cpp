@@ -205,7 +205,7 @@ namespace nasral::gfx
         using Loaded    = res::LoadedComponent;
 
         // Алиасы для индексов ресурсов
-        using ResIndices = MaterialInstance::ResIndices;
+        using ResIndices = ScreenFx::ResIndices;
 
         // Пройти по всем сущностям с компонентами:
         // - Handles материала
@@ -214,20 +214,31 @@ namespace nasral::gfx
         // - Ресурсы загружены
         for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
         {
-            // Материал должен быть загружен
+            // Материал для финального этапа пост-обработки должен быть загружен
             if (kDebugBuild){
-                assert(rsc.active[ResIndices::eBaseMaterial]);
-                assert(rsc.ids[ResIndices::eBaseMaterial] != res::kInvalidResourceId);
+                assert(rsc.active[ResIndices::eFinalPassMaterial]);
+                assert(rsc.ids[ResIndices::eFinalPassMaterial] != res::kInvalidResourceId);
             }
 
-            // Ресурс материала (должен быть доступен)
-            const auto* mat_res = engine()->res()->get<res::Material>(rsc.ids[ResIndices::eBaseMaterial]);
-            assert(mat_res != nullptr && "Bad material");
-            // Если загружен - обновить handles, если нет - fallback
-            if (mat_res->status() == res::Status::eLoaded){
-                mh.material = mat_res->render_handles();
-            }else{
-                // TODO: Fallback
+            // Итерация по типам проходов экранного эффекта пост-обработки (для каждого прохода свой материал)
+            for (const auto type : magic_enum::enum_values<ScreenFxPassType>()){
+                if (type == ScreenFxPassType::TOTAL) continue;
+                const auto res_index = ScreenFx::kMaterialResMap[type];
+                // Если текстура используется
+                if (rsc.active[res_index]){
+                    assert(rsc.ids[res_index] != res::kInvalidResourceId);
+                    const auto* mat_res = engine()->res()->get<res::Material>(rsc.ids[res_index]);
+                    assert(mat_res != nullptr && "Bad material");
+                    if (mat_res->status() == res::Status::eLoaded){
+                        mh.materials[type] = mat_res->render_handles();
+                    }
+                    else{
+                        // TODO: Fallback
+                    }
+                }
+                else{
+                    mh.materials[type] = {};
+                }
             }
 
             // Обновлено

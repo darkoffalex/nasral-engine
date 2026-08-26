@@ -20,7 +20,15 @@ namespace nasral::gfx
 
         enum ResIndices : size_t
         {
-            eBaseMaterial = 0,
+            eFinalPassMaterial  = 0,
+            eAOPassMaterial     = 1,
+            eBlurPassMaterial   = 2,
+        };
+
+        static constexpr EnumArray<ScreenFxPassType, ResIndices> kMaterialResMap = {
+            eFinalPassMaterial,     // key: ScreenFxPassType::eFinal
+            eAOPassMaterial,        // key: ScreenFxPassType::eAO
+            eBlurPassMaterial,      // key: ScreenFxPassType::eBlur
         };
 
         struct Components
@@ -39,7 +47,7 @@ namespace nasral::gfx
                 const UniqueId& uid;
                 const std::string& name;
                 const Resources::IdsList& resources;
-                const handles::Material& material;
+                const EnumArray<ScreenFxPassType, handles::Material>& materials;
             };
         };
 

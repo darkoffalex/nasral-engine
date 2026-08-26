@@ -22,7 +22,7 @@
     {"type": "eShader", "path": "materials/pbr/shader.geom.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/pbr/shader.frag.spv", "load_params": {}},
 
-    {"type": "eMaterial", "path": "materials/post/material.json", "load_params": {}},
+    {"type": "eMaterial", "path": "materials/post/final.json", "load_params": {}},
     {"type": "eShader", "path": "materials/post/shader.vert.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/post/shader.frag.spv", "load_params": {}},
 
@@ -62,11 +62,20 @@
     {"type": "eScene", "path": "scenes/hallway.json", "load_params": {}}
   ],
 
-  "post_processing": [
+  "screen_effects" : [
     {
       "uid" : [2,0],
       "name" : "Basic",
-      "material_path" : "materials/post/material.json"
+      "materials" : [{
+        "type" : "eFinal",
+        "path" : "materials/post/final.json"
+      },{
+        "type" : "eAO",
+        "path" : ""
+      },{
+        "type" : "eBlur",
+        "path" : ""
+      }]
     }
   ],
 

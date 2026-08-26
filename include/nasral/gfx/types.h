@@ -84,6 +84,14 @@ namespace nasral::gfx
         TOTAL
     };
 
+    enum class ScreenFxPassType : uint32_t
+    {
+        eFinal = 0,
+        eAO,
+        eBlur,
+        TOTAL
+    };
+
     enum class OffscreenTextureType : uint32_t
     {
         eColor = 0,
@@ -270,7 +278,7 @@ namespace nasral::gfx
     {
         UniqueId unique_id = {};
         std::string name = {};
-        std::string material_path = {};
+        EnumArray<ScreenFxPassType, std::string> material_paths;
     };
 
     struct Config
