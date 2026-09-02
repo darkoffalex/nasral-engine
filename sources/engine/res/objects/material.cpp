@@ -10,6 +10,7 @@ namespace nasral::res
         : Resource(manager, id, Type::eMaterial)
         , loader_(std::move(loader))
         , base_type_(gfx::MaterialBaseType::eDummy)
+        , screen_fx_pass_type_(gfx::ScreenFxPassType::eFinal)
         , polygon_mode_(gfx::PolygonMode::eFill)
         , line_width_(1.0f)
         , vert_shader_id_(std::nullopt)
@@ -46,6 +47,7 @@ namespace nasral::res
 
             // Параметры материала (используются при инициализации vulkan pipeline)
             base_type_ = data.value().base_type;
+            screen_fx_pass_type_ = data.value().screen_fx_pass_type;
             polygon_mode_ = data.value().polygon_mode;
             line_width_ = data.value().line_width;
 
@@ -183,9 +185,6 @@ namespace nasral::res
 
         // Получить renderer и устройство
         const auto* renderer = subsystem()->engine()->gfx()->renderer();
-        // Определить тип макета конвейера по базовому типу материала
-        auto ul_type = base_type() == gfx::MaterialBaseType::ePostProcessing ? gfx::UniformLayoutType::ePostProcessing : gfx::UniformLayoutType::eRasterization;
-        const auto& ul = renderer->vk_uniform_layout(ul_type);
         auto& vd = renderer->vk_device();
 
         /** 1. Входные данные **/
@@ -348,7 +347,7 @@ namespace nasral::res
         // Пост-обработка (рисуем цвет на квадрате, смешивать не нужно)
         if (base_type() == gfx::MaterialBaseType::ePostProcessing)
         {
-            std::array<vk::PipelineColorBlendAttachmentState, 1> attachments_blend{};
+            std::array<vk::PipelineColorBlendAttachmentState, 2> attachments_blend{};
             attachments_blend[0] = vk::PipelineColorBlendAttachmentState()
                 .setBlendEnable(false)
                 .setColorWriteMask(
@@ -357,7 +356,16 @@ namespace nasral::res
                     vk::ColorComponentFlagBits::eB |
                     vk::ColorComponentFlagBits::eA);
 
-            color_blending_state.setAttachments(attachments_blend);
+            attachments_blend[1] = vk::PipelineColorBlendAttachmentState()
+                .setBlendEnable(false)
+                .setColorWriteMask(
+                    vk::ColorComponentFlagBits::eR |
+                    vk::ColorComponentFlagBits::eG |
+                    vk::ColorComponentFlagBits::eB |
+                    vk::ColorComponentFlagBits::eA);
+
+            color_blending_state.setPAttachments(attachments_blend.data());
+            color_blending_state.setAttachmentCount(screen_fx_pass_type() == gfx::ScreenFxPassType::eFinal ? 1 : 2);
         }
         // Обычная растеризация (смешиваем только первое вложение)
         else
@@ -415,10 +423,6 @@ namespace nasral::res
         // Попытка инициализации графического конвейера
         try
         {
-            if (!ul.vk_pipeline_layout()){
-                throw std::runtime_error("Can't create graphics pipeline. Pipeline layout is not initialized!");
-            }
-
             auto result = vd.logical_device().createGraphicsPipelineUnique(
                 {},
                 vk::GraphicsPipelineCreateInfo()
@@ -431,8 +435,8 @@ namespace nasral::res
                 .setPMultisampleState(&multisampling_state)
                 .setPColorBlendState(&color_blending_state)
                 .setPDynamicState(&dynamic_states_info)
-                .setLayout(ul.vk_pipeline_layout())
-                .setRenderPass(base_type() == gfx::MaterialBaseType::ePostProcessing ? renderer->vk_post_processing_pass() : renderer->vk_rasterization_pass())
+                .setLayout(find_pipeline_layout())
+                .setRenderPass(find_render_pass())
                 .setSubpass(0));
 
             if (result.result != vk::Result::eSuccess){
@@ -455,5 +459,50 @@ namespace nasral::res
         set_status(Status::eLoaded);
         set_error(Error::eNone);
         RES_LOG_LOADED();
+    }
+
+    VkRenderPass Material::find_render_pass() const
+    {
+        if (base_type() == gfx::MaterialBaseType::ePostProcessing)
+        {
+            if (screen_fx_pass_type() == gfx::ScreenFxPassType::eFinal)
+            {
+                return subsystem()
+                    ->engine()
+                    ->gfx()
+                    ->renderer()
+                    ->vk_post_processing_pass();
+            }
+
+            return subsystem()
+                ->engine()
+                ->gfx()
+                ->renderer()
+                ->vk_intermediate_pass();
+        }
+
+        return subsystem()
+            ->engine()
+            ->gfx()
+            ->renderer()
+            ->vk_rasterization_pass();
+    }
+
+    VkPipelineLayout Material::find_pipeline_layout() const
+    {
+        if (base_type() == gfx::MaterialBaseType::ePostProcessing)
+        {
+            return subsystem()
+                ->engine()
+                ->gfx()
+                ->renderer()
+                ->vk_uniform_layout(gfx::UniformLayoutType::ePostProcessing).vk_pipeline_layout();
+        }
+
+        return subsystem()
+            ->engine()
+            ->gfx()
+            ->renderer()
+            ->vk_uniform_layout(gfx::UniformLayoutType::eRasterization).vk_pipeline_layout();
     }
 }

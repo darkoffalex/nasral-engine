@@ -28,8 +28,12 @@ namespace nasral::res
                 file >> json;
 
                 using MBT = gfx::MaterialBaseType;
+                using SPT = gfx::ScreenFxPassType;
                 auto base_type_str = json.at("base_type").get<std::string>();
+                auto pass_type_str = json.contains("pass_type") ? json.at("pass_type").get<std::string>() : "eFinal";
+
                 data.base_type = magic_enum::enum_cast<MBT>(base_type_str).value_or(MBT::eDummy);
+                data.screen_fx_pass_type = magic_enum::enum_cast<SPT>(pass_type_str).value_or(SPT::eFinal);
 
                 if (json.contains("shaders") && json.at("shaders").is_array())
                 {

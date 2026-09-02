@@ -20,6 +20,10 @@ layout(set = 0, binding = 1) uniform sampler2D frame_depth;
 layout(set = 0, binding = 2) uniform sampler2D frame_normals;
 layout(set = 0, binding = 3) uniform sampler2D frame_emission;
 
+// Текстуры промежуточных данных (ping pong) для двух-проходных эффектов (bilateral blur и прочие)
+layout(set = 0, binding = 4) uniform sampler2D frame_ping;
+layout(set = 0, binding = 5) uniform sampler2D frame_pong;
+
 // Uniform buffer для матриц камеры
 layout(set = 1, binding = 0, std140) uniform UCamera {
     mat4 view;
@@ -100,6 +104,13 @@ vec3 mip_gauss_blur(sampler2D tex, vec2 uv){
     return result;
 }
 
+void main()
+{
+    vec3 result = texture(frame_pong, fs_in.uv).rgb;
+    color = vec4(result, 1.0);
+}
+
+/*
 // Главная функция шейдера
 void main()
 {
@@ -124,3 +135,4 @@ void main()
     // Итоговый результат: сложение основного цвета и размытого сияния (Bloom)
     color = vec4(final_color, 1.0);
 }
+*/

@@ -1,6 +1,6 @@
 {
   "base_type" : "ePostProcessing",
-  "pass_type" : "eFinal",
+  "pass_type" : "eBlur",
   "shaders" : [
     {
       "stage" : "vertex",
@@ -8,7 +8,7 @@
     },
     {
       "stage" : "fragment",
-      "path" : "materials/post/final.frag.spv"
+      "path" : "materials/post/blur.frag.spv"
     }
   ]
 }

@@ -438,6 +438,31 @@ namespace nasral::gfx
         cmd_buffer->draw(6, 1, 0, 0);
     }
 
+    void Renderer::cmd_clear_color_attachment(const uint32_t attachment_index, const vk::ClearColorValue& clear_color)
+    {
+        if (!ready_for_commands()) {
+            return;
+        }
+
+        auto& cmd_buffer = vk_command_buffers_[frame()];
+        const auto& extent = vk_intermediate_framebuffers_[frame()]->extent();
+
+        // Описание того, какое вложение и каким значением очищаем
+        vk::ClearAttachment clear_attachment{};
+        clear_attachment.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                        .setColorAttachment(attachment_index) // Индекс вложения в текущем subpass (location)
+                        .setClearValue(vk::ClearValue(clear_color));
+
+        // Описание области прямоугольника (или слоёв) для очистки
+        vk::ClearRect clear_rect{};
+        clear_rect.setRect(vk::Rect2D(vk::Offset2D(0, 0), extent))
+                  .setBaseArrayLayer(0)
+                  .setLayerCount(1);
+
+        // Запись команды
+        cmd_buffer->clearAttachments({clear_attachment}, {clear_rect});
+    }
+
     void Renderer::cmd_gen_framebuffer_mipmaps(const OffscreenTextureType& type) const
     {
         if (!ready_for_commands()){

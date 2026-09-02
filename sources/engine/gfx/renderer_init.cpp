@@ -361,7 +361,7 @@ namespace nasral::gfx
                 vk::AttachmentDescription()
                 .setFormat(config().offscreen_color_format)
                 .setSamples(vk::SampleCountFlagBits::e1)
-                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setLoadOp(vk::AttachmentLoadOp::eDontCare)
                 .setStoreOp(vk::AttachmentStoreOp::eStore)
                 .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
                 .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)

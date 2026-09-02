@@ -41,6 +41,7 @@ namespace nasral::gfx
         void cmd_bind_rasterization_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
         void cmd_draw_geometry(uint32_t index_offset, uint32_t index_count);
         void cmd_draw_post_processing_quad(uint32_t pass_index = 0);
+        void cmd_clear_color_attachment(uint32_t attachment_index, const vk::ClearColorValue& clear_color);
         void cmd_gen_framebuffer_mipmaps(const OffscreenTextureType& type) const;
         void cmd_wait_for_all() const;
 
