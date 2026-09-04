@@ -84,11 +84,18 @@ namespace nasral::gfx
         TOTAL
     };
 
-    enum class ScreenFxPassType : uint32_t
+    enum class ScreenFxType : uint32_t
     {
         eFinal = 0,
         eAO,
         eBlur,
+        TOTAL
+    };
+
+    enum class ScreenFxPassType : uint32_t
+    {
+        eFinal = 0,
+        ePingPong,
         TOTAL
     };
 
@@ -280,7 +287,7 @@ namespace nasral::gfx
     {
         UniqueId unique_id = {};
         std::string name = {};
-        EnumArray<ScreenFxPassType, std::string> material_paths;
+        EnumArray<ScreenFxType, std::string> material_paths;
     };
 
     struct Config

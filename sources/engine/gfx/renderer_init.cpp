@@ -350,26 +350,15 @@ namespace nasral::gfx
                 .setDependencies(subpass_dependencies));
         }
 
-        // 3. ПРОМЕЖУТОЧНЫЙ ПРОХОД ПОСТ-ПРОЦЕССИНГА (Intermediate Post-Processing Render Pass / Bilateral Blur)
+        // 3. ПРОМЕЖУТОЧНЫЙ ПРОХОД ПОСТ-ПРОЦЕССИНГА (Ping-Pong / Bilateral Blur and etc.)
         {
-            // Описания вложений: 2 цветовых вложения (ping-pong для горизонтального и вертикального размытия)
+            // Описания вложений.
+            // Предполагается использование одного вложения для вывода цвета.
+            // Вложение также может быть прочитано в другом под-проходе (например, для финальной пост-обработки)
             std::vector<::vk::AttachmentDescription> attachment_descriptions{};
-            attachment_descriptions.reserve(2);
+            attachment_descriptions.reserve(1);
 
-            // Вложение 0 (первый проход размытия / ping)
-            attachment_descriptions.push_back(
-                vk::AttachmentDescription()
-                .setFormat(config().offscreen_color_format)
-                .setSamples(vk::SampleCountFlagBits::e1)
-                .setLoadOp(vk::AttachmentLoadOp::eDontCare)
-                .setStoreOp(vk::AttachmentStoreOp::eStore)
-                .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-                .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-                .setInitialLayout(vk::ImageLayout::eUndefined)
-                .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-            );
-
-            // Вложение 1 (второй проход размытия / pong)
+            // Цвет (вложение 0)
             attachment_descriptions.push_back(
                 vk::AttachmentDescription()
                 .setFormat(config().offscreen_color_format)
@@ -382,20 +371,21 @@ namespace nasral::gfx
                 .setFinalLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
             );
 
-            // Ссылки на вложения (цвета)
-            std::array<vk::AttachmentReference, 2> color_refs{
+            // Ссылки на вложения.
+            // Указываем, какие вложения из ранее описанных (и в качестве чего) будет использовать под-проход.
+            std::array<vk::AttachmentReference, 1> colort_refs{
                 vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal),
-                vk::AttachmentReference(1, vk::ImageLayout::eColorAttachmentOptimal)
             };
 
-            // Под-проходы (1 под-проход)
+            // Под-проходы (1 под проход на текущий момент)
             std::vector<vk::SubpassDescription> subpass_descriptions{};
             subpass_descriptions.push_back(
-                vk::SubpassDescription()
-                .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-                .setColorAttachments(color_refs));
+                vk::SubpassDescription().
+                setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+                .setColorAttachments(colort_refs));
 
-            // Зависимости под-проходов
+            // Зависимости под-проходов.
+            // Синхронизация: гарантируем, что запись цвета завершится до того, как следующий прохож начнет читать текстуру
             std::vector<vk::SubpassDependency> subpass_dependencies{};
             subpass_dependencies.reserve(2);
 
@@ -404,26 +394,27 @@ namespace nasral::gfx
                 vk::SubpassDependency()
                 .setSrcSubpass(VK_SUBPASS_EXTERNAL)                                   // Исходный под-проход (внешний)
                 .setDstSubpass(0)                                                     // Целевой (первый)
-                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eFragmentShader)
-                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eShaderRead)
-                .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eFragmentShader)
-                .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eShaderRead)
-                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)
+                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап ожидания операций прохода рендеринга
+                .setSrcAccessMask(vk::AccessFlagBits::eNone)                          // Нет операций для ожидания (вложение очищается)
+                .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап выполнения операций целевого под-прохода
+                .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции целевого под-прохода
+                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
             );
 
             // Переход из основного во внешний (неявный)
             subpass_dependencies.push_back(
                 vk::SubpassDependency()
-                .setSrcSubpass(0)                                                     // Исходный под-проход (первый)
-                .setDstSubpass(VK_SUBPASS_EXTERNAL)                                   // Целевой (внешний)
-                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап ожидания операций (запись)
-                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции записи
-                .setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)          // Этап выполнения операций целевого под-прохода
-                .setDstAccessMask(vk::AccessFlagBits::eShaderRead)                    // Операции чтения в шейдере следующего этапа
+                .setSrcSubpass(0)
+                .setDstSubpass(VK_SUBPASS_EXTERNAL)
+                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+                .setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead)
                 .setDependencyFlags(vk::DependencyFlagBits::eByRegion)
             );
 
-            vk_screen_fx_mid_pass_ = vk_device_->logical_device().createRenderPassUnique(
+            // Создать проход
+            vk_screen_fx_ping_pong_pass_ = vk_device_->logical_device().createRenderPassUnique(
                 vk::RenderPassCreateInfo()
                 .setAttachments(attachment_descriptions)
                 .setSubpasses(subpass_descriptions)
@@ -585,34 +576,33 @@ namespace nasral::gfx
                 attachments));
         }
 
-        // Создать промежуточные кадровые буферы (пост-процессинг / bilateral blur)
+        // Создать промежуточные кадровые буферы (ping-pong / bilateral blur)
         for (size_t i = 0; i < config().max_frames_in_flight; ++i)
         {
-            // Описать вложения кадрового буфера
-            std::vector<vk::utils::Framebuffer::AttachmentInfo> attachments{};
+            // Подготовить массив из двух кадровых буферов (на один кадр in flight)
+            vk_ping_pong_framebuffers_.emplace_back();
 
-            // Вложение 0 (первый проход размытия / ping)
-            vk::utils::Framebuffer::AttachmentInfo color0{};
-            color0.format = config().offscreen_color_format;
-            color0.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-            color0.aspect = vk::ImageAspectFlagBits::eColor;
-            color0.mip_levels = 1;
-            attachments.push_back(color0);
+            // Создать 2 отдельных кадровых буфера с 1 вложением
+            for (size_t p = 0; p < 2; ++p)
+            {
+                // Описать вложения кадрового буфера
+                std::vector<vk::utils::Framebuffer::AttachmentInfo> attachments{};
 
-            // Вложение 1 (второй проход размытия / pong)
-            vk::utils::Framebuffer::AttachmentInfo color1{};
-            color1.format = config().offscreen_color_format;
-            color1.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-            color1.aspect = vk::ImageAspectFlagBits::eColor;
-            color1.mip_levels = 1;
-            attachments.push_back(color1);
+                // Вложение 0
+                vk::utils::Framebuffer::AttachmentInfo color0{};
+                color0.format = config().offscreen_color_format;
+                color0.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+                color0.aspect = vk::ImageAspectFlagBits::eColor;
+                color0.mip_levels = 1;
+                attachments.push_back(color0);
 
-            // Создать и добавить кадровый буфер
-            vk_intermediate_framebuffers_.emplace_back(std::make_unique<vk::utils::Framebuffer>(
-                vk_device_.get(),
-                vk_screen_fx_mid_pass_.get(),
-                config().rendering_resolution,
-                attachments));
+                // Создать и добавить кадровый буфер
+                vk_ping_pong_framebuffers_[i][p] = std::make_unique<vk::utils::Framebuffer>(
+                    vk_device_.get(),
+                    vk_screen_fx_ping_pong_pass_.get(),
+                    config().rendering_resolution,
+                    attachments);
+            }
         }
 
         // Получить изображения swap chain
@@ -1055,14 +1045,14 @@ namespace nasral::gfx
             pp_image_infos.push_back(
                 vk::DescriptorImageInfo()
                     .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                    .setImageView(vk_intermediate_framebuffers_[i]->attachments()[0]->image_view())
+                    .setImageView(vk_ping_pong_framebuffers_[i][0]->attachments()[0]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
             // Промежуточный буфер: результат 1 (5 / pong)
             pp_image_infos.push_back(
                 vk::DescriptorImageInfo()
                     .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                    .setImageView(vk_intermediate_framebuffers_[i]->attachments()[1]->image_view())
+                    .setImageView(vk_ping_pong_framebuffers_[i][1]->attachments()[0]->image_view())
                     .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
             // Связать с дескрипторами набора

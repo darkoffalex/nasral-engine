@@ -59,9 +59,11 @@
 
     {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/hallway/hallway.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/corridor/corridor_fbt.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
 
     {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}},
-    {"type": "eScene", "path": "scenes/hallway.json", "load_params": {}}
+    {"type": "eScene", "path": "scenes/hallway.json", "load_params": {}},
+    {"type": "eScene", "path": "scenes/corridor.json", "load_params": {}}
   ],
 
   "screen_effects" : [
@@ -317,5 +319,5 @@
     ]
   },
 
-  "initial_scene": "scenes/hallway.json"
+  "initial_scene": "scenes/corridor.json"
 }

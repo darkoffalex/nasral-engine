@@ -25,10 +25,10 @@ namespace nasral::gfx
             eBlurPassMaterial   = 2,
         };
 
-        static constexpr EnumArray<ScreenFxPassType, ResIndices> kMaterialResMap = {
-            eFinalPassMaterial,     // key: ScreenFxPassType::eFinal
-            eAOPassMaterial,        // key: ScreenFxPassType::eAO
-            eBlurPassMaterial,      // key: ScreenFxPassType::eBlur
+        static constexpr EnumArray<ScreenFxType, ResIndices> kMaterialResMap = {
+            eFinalPassMaterial,     // key: ScreenFxType::eFinal
+            eAOPassMaterial,        // key: ScreenFxType::eAO
+            eBlurPassMaterial,      // key: ScreenFxType::eBlur
         };
 
         struct Components
@@ -47,7 +47,7 @@ namespace nasral::gfx
                 const UniqueId& uid;
                 const std::string& name;
                 const Resources::IdsList& resources;
-                const EnumArray<ScreenFxPassType, handles::Material>& materials;
+                const EnumArray<ScreenFxType, handles::Material>& materials;
             };
         };
 

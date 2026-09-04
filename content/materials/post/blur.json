@@ -1,6 +1,6 @@
 {
   "base_type" : "ePostProcessing",
-  "pass_type" : "eBlur",
+  "pass_type" : "ePingPong",
   "shaders" : [
     {
       "stage" : "vertex",

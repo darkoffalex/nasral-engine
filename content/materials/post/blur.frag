@@ -6,9 +6,8 @@ layout (location = 0) in VS_OUT {
     vec2 uv;
 } fs_in;
 
-// Выходы фрагментов (вложения 0 и 1, ping pong) для двух-проходных эффектов
-layout (location = 0) out vec4 out_ping;
-layout (location = 1) out vec4 out_pong;
+// Выходы фрагментов (влоежения кадрового буфера)
+layout (location = 0) out vec4 frame_out;
 
 // Push constants
 layout(push_constant) uniform PushConstants {
@@ -37,16 +36,17 @@ layout(set = 1, binding = 0, std140) uniform UCamera {
 // Главная функция шейдера
 void main()
 {
-    // В зависимоти от прохода читаем разные текстуры
-    vec3 emission = pc_push.pass_index == 0 ? texture(frame_emission, fs_in.uv).rgb : texture(frame_ping, fs_in.uv).rgb;
+    if(pc_push.pass_index == 0)
+    {
+        vec3 c = texture(frame_emission, fs_in.uv).rgb;
+        c.b = 0.0;
+        frame_out = vec4(c, 1.0);
+    }
+    else
+    {
+        vec3 c = texture(frame_ping, fs_in.uv).rgb;
+        c.g = 0.0;
+        frame_out = vec4(c, 1.0);
+    }
 
-    // В зависимости от прохода - обрабатываем по разному и пишем в разные вложения
-    if(pc_push.pass_index == 0) {
-        emission.b = 0.0;
-        out_ping = vec4(emission, 1.0);
-    }
-    else {
-        emission.g = 0.0;
-        out_pong = vec4(emission, 1.0);
-    }
 }

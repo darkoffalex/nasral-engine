@@ -84,7 +84,7 @@ namespace nasral::gfx
         std::vector<ScreenFx::Ptr> screen_fxs_;
 
         // Handles активного эффекта материала
-        EnumArray<ScreenFxPassType, handles::Material> screen_fx_materials_;
+        EnumArray<ScreenFxType, handles::Material> screen_fx_materials_;
 
         // ECS-система
         System::Ptr ecs_system_;

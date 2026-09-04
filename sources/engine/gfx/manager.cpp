@@ -334,26 +334,26 @@ namespace nasral::gfx
         // renderer()->cmd_gen_framebuffer_mipmaps(OffscreenTextureType::eEmissive);
 
         // Проход размытия
-        if (screen_fx_materials_[ScreenFxPassType::eBlur])
+        if (screen_fx_materials_[ScreenFxType::eBlur])
         {
             // 1. Размытие по горизонтали (ping)
-            renderer()->cmd_begin_screen_fx_mid_pass();
+            renderer()->cmd_begin_screen_fx_ping_pong_pass(0);
             //renderer()->cmd_clear_color_attachment(0, vk::ClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxPassType::eBlur]);
+            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur]);
             renderer()->cmd_draw_post_processing_quad(0);
             renderer()->cmd_end_render_pass();
 
             // 2. Размытие по вертикали (pong)
-            renderer()->cmd_begin_screen_fx_mid_pass();
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxPassType::eBlur]);
+            renderer()->cmd_begin_screen_fx_ping_pong_pass(1);
+            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur]);
             renderer()->cmd_draw_post_processing_quad(1);
             renderer()->cmd_end_render_pass();
         }
 
         // Финальная пост-обработка
         renderer()->cmd_begin_screen_fx_final_pass();
-        if (screen_fx_materials_[ScreenFxPassType::eFinal]){
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxPassType::eFinal]);
+        if (screen_fx_materials_[ScreenFxType::eFinal]){
+            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eFinal]);
             renderer()->cmd_draw_post_processing_quad(0);
         }
         renderer()->cmd_end_render_pass();

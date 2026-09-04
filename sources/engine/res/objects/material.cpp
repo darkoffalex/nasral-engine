@@ -347,7 +347,7 @@ namespace nasral::res
         // Пост-обработка (рисуем цвет на квадрате, смешивать не нужно)
         if (base_type() == gfx::MaterialBaseType::ePostProcessing)
         {
-            std::array<vk::PipelineColorBlendAttachmentState, 2> attachments_blend{};
+            std::array<vk::PipelineColorBlendAttachmentState, 1> attachments_blend{};
             attachments_blend[0] = vk::PipelineColorBlendAttachmentState()
                 .setBlendEnable(false)
                 .setColorWriteMask(
@@ -356,16 +356,7 @@ namespace nasral::res
                     vk::ColorComponentFlagBits::eB |
                     vk::ColorComponentFlagBits::eA);
 
-            attachments_blend[1] = vk::PipelineColorBlendAttachmentState()
-                .setBlendEnable(false)
-                .setColorWriteMask(
-                    vk::ColorComponentFlagBits::eR |
-                    vk::ColorComponentFlagBits::eG |
-                    vk::ColorComponentFlagBits::eB |
-                    vk::ColorComponentFlagBits::eA);
-
-            color_blending_state.setPAttachments(attachments_blend.data());
-            color_blending_state.setAttachmentCount(screen_fx_pass_type() == gfx::ScreenFxPassType::eFinal ? 1 : 2);
+            color_blending_state.setAttachments(attachments_blend);
         }
         // Обычная растеризация (смешиваем только первое вложение)
         else
@@ -478,7 +469,7 @@ namespace nasral::res
                 ->engine()
                 ->gfx()
                 ->renderer()
-                ->vk_intermediate_pass();
+                ->vk_ping_pong_pass();
         }
 
         return subsystem()

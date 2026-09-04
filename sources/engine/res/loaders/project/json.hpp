@@ -262,7 +262,7 @@ namespace nasral::res
                 for (const auto& mat_entry : entry.at("materials"))
                 {
                     const auto type_str = mat_entry.at("type").get<std::string>();
-                    auto pass_type = magic_enum::enum_cast<gfx::ScreenFxPassType>(type_str);
+                    auto pass_type = magic_enum::enum_cast<gfx::ScreenFxType>(type_str);
 
                     if (pass_type.has_value())
                     {

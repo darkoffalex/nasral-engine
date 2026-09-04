@@ -15,8 +15,8 @@ namespace nasral::gfx
         Components::Resources::ActiveList resources_active{};
 
         // Ресурсы материалов
-        for (const auto type : magic_enum::enum_values<ScreenFxPassType>()){
-            if (type == ScreenFxPassType::TOTAL) continue;
+        for (const auto type : magic_enum::enum_values<ScreenFxType>()){
+            if (type == ScreenFxType::TOTAL) continue;
 
             if (description.material_paths[type].empty())
             {

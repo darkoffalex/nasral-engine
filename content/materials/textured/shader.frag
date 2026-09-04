@@ -13,7 +13,9 @@ layout (location = 0) in VS_OUT {
 } fs_in;
 
 // Выход фрагмента (цветовое вложение 0)
-layout (location = 0) out vec4 color;
+layout(location = 0) out vec4 color;
+layout(location = 1) out vec4 outNormal;
+layout(location = 2) out vec4 outEmissive;
 
 // Push constants
 layout(push_constant) uniform PushConstants {
@@ -28,4 +30,5 @@ void main()
 {
     vec4 tex_color = texture(t_color[pc_push.mat_index], fs_in.uv);
     color = vec4(tex_color.rgb, 1.0);
+    outEmissive = vec4(0.0, 0.0, 0.0, 1.0);
 }

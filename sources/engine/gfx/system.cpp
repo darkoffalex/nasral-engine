@@ -221,8 +221,8 @@ namespace nasral::gfx
             }
 
             // Итерация по типам проходов экранного эффекта пост-обработки (для каждого прохода свой материал)
-            for (const auto type : magic_enum::enum_values<ScreenFxPassType>()){
-                if (type == ScreenFxPassType::TOTAL) continue;
+            for (const auto type : magic_enum::enum_values<ScreenFxType>()){
+                if (type == ScreenFxType::TOTAL) continue;
                 const auto res_index = ScreenFx::kMaterialResMap[type];
                 // Если текстура используется
                 if (rsc.active[res_index]){

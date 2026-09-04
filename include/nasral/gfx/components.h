@@ -8,7 +8,7 @@ namespace nasral::gfx
 
     struct ScreenFxHandlesComponent
     {
-        EnumArray<ScreenFxPassType, handles::Material> materials = {};
+        EnumArray<ScreenFxType, handles::Material> materials = {};
     };
 
     struct MaterialHandlesComponent

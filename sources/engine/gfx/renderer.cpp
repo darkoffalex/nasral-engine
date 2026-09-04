@@ -203,7 +203,7 @@ namespace nasral::gfx
             }, {});
     }
 
-    void Renderer::cmd_begin_screen_fx_mid_pass()
+    void Renderer::cmd_begin_screen_fx_ping_pong_pass(const size_t pass_index)
     {
         if (!ready_for_commands()){
             return;
@@ -212,18 +212,17 @@ namespace nasral::gfx
         // Получить командный буфер ТЕКУЩЕГО КАДРА
         auto& cmd_buffer = vk_command_buffers_[frame()];
         // Размер кадрового буфера промежуточного этапа (разрешение рендеринга)
-        const auto& extent = vk_intermediate_framebuffers_[frame()]->extent();
+        const auto& extent = vk_ping_pong_framebuffers_[frame()][pass_index]->extent();
 
         // Очистка двух цветовых вложений
         std::array<vk::ClearValue, 2> clear_values{};
         clear_values[0].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-        clear_values[1].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 
         // Команда начала прохода
         cmd_buffer->beginRenderPass(
             vk::RenderPassBeginInfo()
-                .setRenderPass(vk_screen_fx_mid_pass_.get())
-                .setFramebuffer(vk_intermediate_framebuffers_[frame()]->vk_framebuffer())
+                .setRenderPass(vk_screen_fx_ping_pong_pass_.get())
+                .setFramebuffer(vk_ping_pong_framebuffers_[frame()][pass_index]->vk_framebuffer())
                 .setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), extent))
                 .setClearValues(clear_values),
             vk::SubpassContents::eInline);
@@ -438,6 +437,7 @@ namespace nasral::gfx
         cmd_buffer->draw(6, 1, 0, 0);
     }
 
+    /*
     void Renderer::cmd_clear_color_attachment(const uint32_t attachment_index, const vk::ClearColorValue& clear_color)
     {
         if (!ready_for_commands()) {
@@ -462,6 +462,7 @@ namespace nasral::gfx
         // Запись команды
         cmd_buffer->clearAttachments({clear_attachment}, {clear_rect});
     }
+    */
 
     void Renderer::cmd_gen_framebuffer_mipmaps(const OffscreenTextureType& type) const
     {
@@ -524,7 +525,7 @@ namespace nasral::gfx
         // Уничтожить кадровые буферы
         vk_swapchain_framebuffers_.clear();
         vk_offscreen_framebuffers_.clear();
-        vk_intermediate_framebuffers_.clear();
+        vk_ping_pong_framebuffers_.clear();
         log_info("Vulkan: Framebuffers cleared.");
 
         // Пере-создать swap-chain (старый будет задействован при создании нового, затем удален)

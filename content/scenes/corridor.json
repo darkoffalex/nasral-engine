@@ -1,0 +1,35 @@
+{
+  "nodes": [
+    {
+      "name": "Main camera",
+      "type": "eCamera",
+      "uid": [1, 1],
+      "spatial": {
+        "position": [0.0, 1.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "camera": {
+        "type": "ePerspective",
+        "fov": 90.0,
+        "aspect": 1.0,
+        "near": 0.1,
+        "far": 1000.0
+      }
+    },
+    {
+      "name": "Corridor",
+      "type": "eMesh",
+      "uid": [1, 2],
+      "spatial": {
+        "position": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "mesh": {
+        "mesh_path": "meshes/corridor/corridor_fbt.obj",
+        "materials": [[0, 3], [0, 3], [0, 3]]
+      }
+    }
+  ]
+}
