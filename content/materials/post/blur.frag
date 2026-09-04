@@ -33,20 +33,35 @@ layout(set = 1, binding = 0, std140) uniform UCamera {
     vec4 position;
 } u_camera;
 
+// Линейное размытие (в одном направлении)
+vec3 linear_blur(sampler2D tex, vec2 uv, vec2 dir, vec2 texel_size, int samples)
+{
+    int div = samples / 2;
+    int from = -div;
+    int to = div;
+
+    vec3 result = vec3(0.0);
+    for(int i = from; i <= to; ++i){
+        vec2 offset = float(i) * dir * texel_size;
+        result += texture(tex, uv + offset).rgb;
+    }
+
+    return result / float(samples);
+}
+
 // Главная функция шейдера
 void main()
 {
     if(pc_push.pass_index == 0)
     {
-        vec3 c = texture(frame_emission, fs_in.uv).rgb;
-        c.b = 0.0;
-        frame_out = vec4(c, 1.0);
+        vec2 texel_size = 1.0 / vec2(textureSize(frame_emission, 0));
+        vec3 b = linear_blur(frame_emission, fs_in.uv, vec2(1.0, 0.0), texel_size, 11);
+        frame_out = vec4(b, 1.0);
     }
     else
     {
-        vec3 c = texture(frame_ping, fs_in.uv).rgb;
-        c.g = 0.0;
-        frame_out = vec4(c, 1.0);
+        vec2 texel_size = 1.0 / vec2(textureSize(frame_ping, 0));
+        vec3 b = linear_blur(frame_ping, fs_in.uv, vec2(0.0, 1.0), texel_size, 11);
+        frame_out = vec4(b, 1.0);
     }
-
 }

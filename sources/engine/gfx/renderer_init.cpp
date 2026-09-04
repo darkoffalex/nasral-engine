@@ -338,9 +338,9 @@ namespace nasral::gfx
                 .setDstSubpass(VK_SUBPASS_EXTERNAL)                                   // Целевой (внешний)
                 .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап ожидания операций (вывод)
                 .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции записи
-                .setDstStageMask(vk::PipelineStageFlagBits::eBottomOfPipe)            // Этап выполнения операций целевого под-прохода
-                .setDstAccessMask(vk::AccessFlagBits::eNone)                          // Операции чтения (swap chain)
-                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
+                .setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader | vk::PipelineStageFlagBits::eColorAttachmentOutput)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eColorAttachmentWrite)
+                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)
             );
 
             vk_screen_fx_final_pass_ = vk_device_->logical_device().createRenderPassUnique(
@@ -363,7 +363,7 @@ namespace nasral::gfx
                 vk::AttachmentDescription()
                 .setFormat(config().offscreen_color_format)
                 .setSamples(vk::SampleCountFlagBits::e1)
-                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setLoadOp(vk::AttachmentLoadOp::eDontCare)
                 .setStoreOp(vk::AttachmentStoreOp::eStore)
                 .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
                 .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
@@ -389,19 +389,21 @@ namespace nasral::gfx
             std::vector<vk::SubpassDependency> subpass_dependencies{};
             subpass_dependencies.reserve(2);
 
-            // Переход из внешнего (неявного) в основной (первый/нулевой)
+            // Вход в проход: ждем, пока завершатся предыдущие записи цвета (растеризация или предыдущий ping)
+            // перед тем как читать текстуры в fragment шейдере, и перед записью в аттачмент
             subpass_dependencies.push_back(
                 vk::SubpassDependency()
-                .setSrcSubpass(VK_SUBPASS_EXTERNAL)                                   // Исходный под-проход (внешний)
-                .setDstSubpass(0)                                                     // Целевой (первый)
-                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап ожидания операций прохода рендеринга
-                .setSrcAccessMask(vk::AccessFlagBits::eNone)                          // Нет операций для ожидания (вложение очищается)
-                .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)   // Этап выполнения операций целевого под-прохода
-                .setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)          // Операции целевого под-прохода
-                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)                // Синхронизация (по региону)
+                .setSrcSubpass(VK_SUBPASS_EXTERNAL)
+                .setDstSubpass(0)
+                .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+                .setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+                .setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader | vk::PipelineStageFlagBits::eColorAttachmentOutput)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eColorAttachmentWrite)
+                .setDependencyFlags(vk::DependencyFlagBits::eByRegion)
             );
 
-            // Переход из основного во внешний (неявный)
+            // Выход из прохода: гарантируем, что запись цвета завершится и станет доступна
+            // для чтения семплером в fragment шейдере следующего прохода (Pong или Final Pass)
             subpass_dependencies.push_back(
                 vk::SubpassDependency()
                 .setSrcSubpass(0)
