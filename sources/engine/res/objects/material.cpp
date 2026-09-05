@@ -232,9 +232,12 @@ namespace nasral::res
 
         // Описываем стадию входных данных
         vk::PipelineVertexInputStateCreateInfo vertex_input_state = {};
-        vertex_input_state.setVertexBindingDescriptions(vertex_input_bindings);
-        vertex_input_state.setVertexAttributeDescriptions(vertex_input_attributes);
 
+        // Для пост-обработки не требуется вхожных данных вершин
+        if (base_type() != gfx::MaterialBaseType::ePostProcessing){
+            vertex_input_state.setVertexBindingDescriptions(vertex_input_bindings);
+            vertex_input_state.setVertexAttributeDescriptions(vertex_input_attributes);
+        }
 
         /** 2. Сборка примитивов **/
 
