@@ -52,7 +52,7 @@ void main()
     mat4 model = s_objects[pc_push.obj_index].model;
     mat3 normal_mat = mat3(s_objects[pc_push.obj_index].normals);
 
-    // Нораль в мировом пространстве
+    // Положение в мировом пространстве
     vec4 world_pos = model * vec4(in_position, 1.0);
 
     // Выход

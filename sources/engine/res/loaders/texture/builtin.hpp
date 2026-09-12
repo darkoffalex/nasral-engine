@@ -26,7 +26,7 @@ namespace nasral::res
             }
             if (path.find(kBuiltinTexNormPixel) != std::string::npos){
                 return std::optional{Texture::Data{
-                        {128, 128, 128, 255},
+                        {128, 128, 255, 255},
                         1, 1, 4, 1
                 }};
             }

@@ -60,6 +60,7 @@
     {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/hallway/hallway.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/corridor/corridor_fbt.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/corridor/corridor_fbt_ems.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
 
     {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}},
     {"type": "eScene", "path": "scenes/hallway.json", "load_params": {}},
@@ -301,6 +302,24 @@
       },{
         "type" : "eRoughOrSpec",
         "path" : "textures/hallway/room-02_roughness.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,11],
+      "name": "EmissivePBR",
+      "base_material_path" : "materials/pbr/material.json",
+      "base_material_type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 0.0,
+        "ao": 0.0,
+        "emission": 1.0
+      },
+      "textures": [{
+        "type" : "eNormal",
+        "path" : "builtin:tex/normal-pixel",
         "filter" : "eLinear"
       }]
     }

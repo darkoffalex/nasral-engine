@@ -9,6 +9,8 @@
 // Входные данные фрагмента
 layout (location = 0) in VS_OUT {
     vec3 color;
+    vec3 position;
+    vec3 normal;
     vec2 uv;
 } fs_in;
 
@@ -31,4 +33,5 @@ void main()
     vec4 tex_color = texture(t_color[pc_push.mat_index], fs_in.uv);
     color = vec4(tex_color.rgb, 1.0);
     outEmissive = vec4(0.0, 0.0, 0.0, 1.0);
+    outNormal = vec4(fs_in.normal * 0.5 + 0.5, 1.0);
 }

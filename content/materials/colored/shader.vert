@@ -14,7 +14,8 @@ layout(location = 3) in vec4 in_color;
 // Выходные данные (в следующие этапы)
 layout (location = 0) out VS_OUT {
     vec3 color;
-    vec2 uv;
+    vec3 position;
+    vec3 normal;
 } vs_out;
 
 // Push constants
@@ -46,7 +47,16 @@ layout(set = 1, binding = 0, std430) readonly buffer SObjectTransforms {
 
 void main()
 {
-    gl_Position = u_camera.proj * u_camera.view * s_objects[pc_push.obj_index].model * vec4(in_position, 1.0);
+    // Матрицы модели и нормалей
+    mat4 model = s_objects[pc_push.obj_index].model;
+    mat3 normal_mat = mat3(s_objects[pc_push.obj_index].normals);
+
+    // Позиция в мировом пространстве
+    vec4 world_pos = model * vec4(in_position, 1.0);
+
+    // Выход
     vs_out.color = in_color.rgb;
-    vs_out.uv = in_uv;
+    vs_out.normal = normal_mat * in_normal;
+    vs_out.position = world_pos.xyz;
+    gl_Position = u_camera.proj * u_camera.view * world_pos;
 }
