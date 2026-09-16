@@ -333,24 +333,34 @@ namespace nasral::gfx
         // Генерация мип-уровней для кадровых буферов
         // renderer()->cmd_gen_framebuffer_mipmaps(OffscreenTextureType::eEmissive);
 
-        // Проход размытия
+        // Проход AO
+        if (screen_fx_materials_[ScreenFxType::eAO])
+        {
+            // Начать проход для нулевого буфера (ping)
+            renderer()->cmd_begin_screen_fx_ping_pong_pass(0);
+            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eAO]);
+            renderer()->cmd_draw_post_processing_quad(0);
+            renderer()->cmd_end_render_pass();
+        }
+
+        // Проход размытия (для AO, теней)
         if (screen_fx_materials_[ScreenFxType::eBlur])
         {
-            // 1. Размытие по горизонтали (ping)
-            renderer()->cmd_begin_screen_fx_ping_pong_pass(0);
+            // 1. Размытие по горизонтали, пишем в буфер 1 (pong)
+            renderer()->cmd_begin_screen_fx_ping_pong_pass(1);
             //renderer()->cmd_clear_color_attachment(0, vk::ClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
             renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur]);
             renderer()->cmd_draw_post_processing_quad(0);
             renderer()->cmd_end_render_pass();
 
-            // 2. Размытие по вертикали (pong)
-            renderer()->cmd_begin_screen_fx_ping_pong_pass(1);
+            // 2. Размытие по вертикали, пишем в буфер 0 (ping)
+            renderer()->cmd_begin_screen_fx_ping_pong_pass(0);
             renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur]);
             renderer()->cmd_draw_post_processing_quad(1);
             renderer()->cmd_end_render_pass();
         }
 
-        // Финальная пост-обработка
+        // Финальная пост-обработка, используем буфер 0 (ping)
         renderer()->cmd_begin_screen_fx_final_pass();
         if (screen_fx_materials_[ScreenFxType::eFinal]){
             renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eFinal]);

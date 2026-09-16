@@ -459,7 +459,7 @@ namespace nasral::gfx
             uniforms.position = glm::vec4(sp.position, 1.0f);
             uniforms.view_inverse = cam_translate * cam_rotation;
             uniforms.view = glm::inverse(uniforms.view_inverse);
-            uniforms.projection = glm::perspective(
+            uniforms.projection = glm::perspectiveRH_ZO(
                     glm::radians(cam.fov),
                     engine()->gfx()->renderer()->rendering_aspect(),
                     cam.near,

@@ -24,9 +24,11 @@
 
     {"type": "eMaterial", "path": "materials/post/final.json", "load_params": {}},
     {"type": "eMaterial", "path": "materials/post/blur.json", "load_params": {}},
+    {"type": "eMaterial", "path": "materials/post/ao.json", "load_params": {}},
     {"type": "eShader", "path": "materials/post/common.vert.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/post/final.frag.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/post/blur.frag.spv", "load_params": {}},
+    {"type": "eShader", "path": "materials/post/ao.frag.spv", "load_params": {}},
 
     {"type": "eTexture", "path": "textures/tiles_01/tiles_diff.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/tiles_01/tiles_diff.png:v2", "load_params": {"srgb": true, "generate_mipmaps": false}},
@@ -76,7 +78,7 @@
         "path" : "materials/post/final.json"
       },{
         "type" : "eAO",
-        "path" : ""
+        "path" : "materials/post/ao.json"
       },{
         "type" : "eBlur",
         "path" : "materials/post/blur.json"
@@ -338,5 +340,5 @@
     ]
   },
 
-  "initial_scene": "scenes/corridor.json"
+  "initial_scene": "scenes/hallway.json"
 }

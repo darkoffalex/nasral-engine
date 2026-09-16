@@ -106,7 +106,7 @@ vec3 mip_gauss_blur(sampler2D tex, vec2 uv){
 
 void main()
 {
-    vec3 result = texture(frame_pong, fs_in.uv).rgb;
+    vec3 result = texture(frame_ping, fs_in.uv).rgb;
     color = vec4(result, 1.0);
 }
 

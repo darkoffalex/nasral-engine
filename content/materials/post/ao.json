@@ -1,0 +1,14 @@
+{
+  "base_type" : "ePostProcessing",
+  "pass_type" : "ePingPong",
+  "shaders" : [
+    {
+      "stage" : "vertex",
+      "path" : "materials/post/common.vert.spv"
+    },
+    {
+      "stage" : "fragment",
+      "path" : "materials/post/ao.frag.spv"
+    }
+  ]
+}

@@ -78,7 +78,7 @@ vec3 linear_blur(sampler2D tex, vec2 uv, vec2 dir, vec2 texel_size, int samples)
 // Радиус будет меняться обратно пропорционально дистанции (далекие объекты размыты слабее)
 const float BASE_TEX_RADIUS = 2.0;
 const float BASE_KERNEL_RADIUS = 4.0;
-const float DEPTH_THRESHOLD = 2.0;
+const float DEPTH_THRESHOLD = 0.5;
 
 // Линейное размытие с учетом глубины (в одном направлении)
 // В данном алгоритме увеличивается радиус текселя выборки, в то время как ядро выборки постоянно
@@ -125,7 +125,11 @@ vec3 bilateral_blur(sampler2D tex, vec2 uv, vec2 dir, vec2 texel_size, int sampl
     // 3. Рассчитываем кол-во выборок с двух сторон от центра (радиус выборки)
     int r = samples / 2;
 
-    // 4. Аккумулировать результат с учетом переменного радиуса (как текселя так и ядра)
+    // 4. Пред-расчет параметров Гаусса (ВНЕ цикла for)
+    float sigma = kernel_dr * 0.5;
+    float two_sigma_sq = max(2.0 * sigma * sigma, 0.0001);
+
+    // 5. Аккумулировать результат с учетом переменного радиуса (как текселя так и ядра)
     vec3 result_c = vec3(0.0);
     float result_w = 0.0;
 
@@ -148,8 +152,7 @@ vec3 bilateral_blur(sampler2D tex, vec2 uv, vec2 dir, vec2 texel_size, int sampl
         vec3 sample_normal  = fetch_view_normal(sample_uv);
 
         // Пространственный вес (Гаусс)
-        float sigma = float(kernel_dr) * 0.5;
-        float w_spatial = exp(-float(i * i) / (2.0 * sigma * sigma));
+        float w_spatial = exp(-float(i * i) / two_sigma_sq);
 
         // Вес по глубине (чем больше разница глубины - тем меньше нужно учитывать вклад)
         float depth_diff = abs(depth - sample_depth);
@@ -166,7 +169,7 @@ vec3 bilateral_blur(sampler2D tex, vec2 uv, vec2 dir, vec2 texel_size, int sampl
         result_w += weight;
     }
 
-    // 5. Усреднение (деление на вес)
+    // 6. Усреднение (деление на вес)
     return result_c / max(result_w, 0.0001);
 }
 
@@ -175,14 +178,16 @@ void main()
 {
     if(pc_push.pass_index == 0)
     {
-        vec2 texel_size = 1.0 / vec2(textureSize(frame_emission, 0));
-        vec3 blurred = bilateral_blur(frame_emission, fs_in.uv, vec2(1.0, 0.0), texel_size, 16);
-        frame_out = vec4(blurred, 1.0);
+        // vec2 texel_size = 1.0 / vec2(textureSize(frame_ping, 0));
+        // vec3 blurred = bilateral_blur(frame_ping, fs_in.uv, vec2(1.0, 0.0), texel_size, 16);
+        // frame_out = vec4(blurred, 1.0);
+        frame_out = vec4(texture(frame_ping, fs_in.uv).rgb, 1.0);
     }
     else
     {
-        vec2 texel_size = 1.0 / vec2(textureSize(frame_ping, 0));
-        vec3 blurred = bilateral_blur(frame_ping, fs_in.uv, vec2(0.0, 1.0), texel_size, 16);
-        frame_out = vec4(blurred, 1.0);
+        // vec2 texel_size = 1.0 / vec2(textureSize(frame_pong, 0));
+        // vec3 blurred = bilateral_blur(frame_pong, fs_in.uv, vec2(0.0, 1.0), texel_size, 16);
+        // frame_out = vec4(blurred, 1.0);
+        frame_out = vec4(texture(frame_pong, fs_in.uv).rgb, 1.0);
     }
 }
