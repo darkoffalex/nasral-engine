@@ -43,16 +43,27 @@ vec3 fetch_view_normal(vec2 uv)
     return normalize(view_normal);
 }
 
+// Извлечь 3D-позицию во View Space
+vec3 fetch_view_pos(vec2 uv)
+{
+    float depth_sample = texture(frame_depth, uv).r;
+
+    // Vulkan ZO: NDC X in [-1..1], Y in [-1..1], Z in [0..1]
+    vec4 ndc = vec4(
+        uv.x * 2.0 - 1.0,
+        (1.0 - uv.y) * 2.0 - 1.0,
+        depth_sample, // Напрямую без * 2.0 - 1.0!
+        1.0
+    );
+
+    vec4 view_pos = u_camera.proj_inverse * ndc;
+    return view_pos.xyz / view_pos.w;
+}
+
 // Извлечь глубину в линейном пространстве (в метрах)
 float fetch_linear_depth(vec2 uv)
 {
-    float depth_sample = texture(frame_depth, uv).r;
-    // Переводим UV [0..1] и Depth [0..1] в NDC [-1..1]
-    vec4 ndc = vec4(uv * 2.0 - 1.0, depth_sample, 1.0);
-    // Восстанавливаем 3D-позицию во View Space
-    vec4 view_pos = u_camera.proj_inverse * ndc;
-    // Возвращаем физическую дистанцию до камеры вдоль оси Z (в метрах)
-    return abs(view_pos.z / view_pos.w);
+    return abs(fetch_view_pos(uv).z);
 }
 
 // Линейное размытие (в одном направлении)
@@ -77,7 +88,7 @@ vec3 linear_blur(sampler2D tex, vec2 uv, vec2 dir, vec2 texel_size, int samples)
 // Желаемый радиус размытия в пикселях для объекта на расстоянии 1 метра
 // Радиус будет меняться обратно пропорционально дистанции (далекие объекты размыты слабее)
 const float BASE_TEX_RADIUS = 2.0;
-const float BASE_KERNEL_RADIUS = 4.0;
+const float BASE_KERNEL_RADIUS = 6.0;
 const float DEPTH_THRESHOLD = 0.5;
 
 // Линейное размытие с учетом глубины (в одном направлении)
@@ -178,16 +189,16 @@ void main()
 {
     if(pc_push.pass_index == 0)
     {
-        // vec2 texel_size = 1.0 / vec2(textureSize(frame_ping, 0));
-        // vec3 blurred = bilateral_blur(frame_ping, fs_in.uv, vec2(1.0, 0.0), texel_size, 16);
-        // frame_out = vec4(blurred, 1.0);
-        frame_out = vec4(texture(frame_ping, fs_in.uv).rgb, 1.0);
+         vec2 texel_size = 1.0 / vec2(textureSize(frame_ping, 0));
+         vec3 blurred = bilateral_blur(frame_ping, fs_in.uv, vec2(1.0, 0.0), texel_size, 16);
+         frame_out = vec4(blurred, 1.0);
+        //frame_out = vec4(texture(frame_ping, fs_in.uv).rgb, 1.0);
     }
     else
     {
-        // vec2 texel_size = 1.0 / vec2(textureSize(frame_pong, 0));
-        // vec3 blurred = bilateral_blur(frame_pong, fs_in.uv, vec2(0.0, 1.0), texel_size, 16);
-        // frame_out = vec4(blurred, 1.0);
-        frame_out = vec4(texture(frame_pong, fs_in.uv).rgb, 1.0);
+         vec2 texel_size = 1.0 / vec2(textureSize(frame_pong, 0));
+         vec3 blurred = bilateral_blur(frame_pong, fs_in.uv, vec2(0.0, 1.0), texel_size, 16);
+         frame_out = vec4(blurred, 1.0);
+        //frame_out = vec4(texture(frame_pong, fs_in.uv).rgb, 1.0);
     }
 }

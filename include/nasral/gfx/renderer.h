@@ -37,7 +37,7 @@ namespace nasral::gfx
         void cmd_begin_screen_fx_final_pass();
         void cmd_end_render_pass();
         void cmd_bind_rasterization_material(const handles::Material& handles, uint32_t uniform_idx);
-        void cmd_bind_post_processing_material(const handles::Material& handles);
+        void cmd_bind_post_processing_material(const handles::Material& handles, bool final_output = false);
         void cmd_bind_rasterization_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
         void cmd_draw_geometry(uint32_t index_offset, uint32_t index_count);
         void cmd_draw_post_processing_quad(uint32_t pass_index = 0);

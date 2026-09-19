@@ -95,7 +95,7 @@ float hash12(vec2 p){
 // Получить случайный угол
 float random_angle(vec2 pixel_coord){
     vec2 cell = floor(pixel_coord / 2.0);
-    float random_value = hash12(cell);
+    float random_value = ign_noise(cell);
     float angle_index = floor(random_value * 16.0);
     return angle_index * (6.28318530718 / 16.0);
 }
@@ -103,6 +103,8 @@ float random_angle(vec2 pixel_coord){
 const int   KERNEL_SIZE = 16;
 const float RADIUS      = 0.3;   // 30 см
 const float BIAS        = 0.02;  // 2 см
+const float AO_MUL      = 1.0;   // Множитель итогового эффекта
+const float AO_POW      = 2.5;   // Степень эффекта
 
 // Простое фиксированное ядро (полусфера Z >= 0)
 const vec3 KERNEL[16] = vec3[16](
@@ -128,7 +130,7 @@ const vec3 KERNEL[16] = vec3[16](
 );
 
 // Классический SSAO (Screen Space Ambient Occlusion)
-float calculate_ssao(vec2 uv)
+float calculate_ssao(vec2 uv, bool normal_check)
 {
     // Пропускаем фон
     if (texture(frame_depth, uv).r >= 1.0) {
@@ -171,9 +173,9 @@ float calculate_ssao(vec2 uv)
         vec2 sample_uv = ndc_to_uv(offset.xy);
 
         // Отсекать выборку за границами экрана
-        //if (sample_uv.x < 0.0 || sample_uv.x > 1.0 || sample_uv.y < 0.0 || sample_uv.y > 1.0) {
-        //    continue;
-        //}
+        if (sample_uv.x < 0.0 || sample_uv.x > 1.0 || sample_uv.y < 0.0 || sample_uv.y > 1.0) {
+            continue;
+        }
 
         // Отекать выборку очень далёких фрагментов (небо)
         if (texture(frame_depth, sample_uv).r >= 1.0) {
@@ -186,53 +188,65 @@ float calculate_ssao(vec2 uv)
         // Получаем РЕАЛЬНУЮ 3D-точку геометрии под этим сэмплом экрана
         vec3 real_pos = fetch_view_pos(sample_uv);
 
-        // Стандартный range check: разность глубин вдоль направления взгляда.
-        /*
-        float z_distance = abs(P.z - real_pos.z);
-        float range_check = smoothstep(
-            0.0,
-            1.0,
-            RADIUS / max(z_distance, 0.001)
-        );
+        // Геометрическая проверка
+        if(normal_check)
+        {
+            // Вектор от центра фрагмента к реальной геометрии
+            vec3 diff = real_pos - P;
+            float dist = length(diff);
 
-        // В RH view space большее Z — ближе к камере.
-        // Bias имеет знак '+' именно для защиты от self-occlusion.
-        float is_occluded = real_pos.z >= sample_pos.z + BIAS ? 1.0 : 0.0;
-        occlusion += is_occluded * range_check;
-        */
+            // Проверка дальности: точка должна быть внутри радиуса сферы
+            float range_check = smoothstep(0.0, 1.0, RADIUS / max(dist, 0.001));
 
-        // Экспериментальный вариант:
-        // Вектор от центра фрагмента к реальной геометрии
-        vec3 diff = real_pos - P;
-        float dist = length(diff);
+            // Честная геометрическая проверка:
+            // Точка затеняет нас, если она выступает НАД плоскостью нашего фрагмента (dot(diff, N) > BIAS)
+            // И при этом реальная геометрия ближе к камере, чем сам сэмпл:
+            float height_above_plane = dot(diff, N);
+            if (height_above_plane > BIAS && real_pos.z >= sample_pos.z + BIAS) {
+                occlusion += range_check * clamp(height_above_plane / RADIUS, 0.0, 1.0);
+            }
+        }
+        // Упрощенная проверка
+        else
+        {
+            // Стандартный range check: разность глубин вдоль направления взгляда.
+            float z_distance = abs(P.z - real_pos.z);
+            float range_check = smoothstep(
+                0.0,
+                1.0,
+                RADIUS / max(z_distance, 0.001)
+            );
 
-        // Проверка дальности: точка должна быть внутри радиуса сферы
-        float range_check = smoothstep(0.0, 1.0, RADIUS / max(dist, 0.001));
-
-        // Честная геометрическая проверка:
-        // Точка затеняет нас, если она выступает НАД плоскостью нашего фрагмента (dot(diff, N) > BIAS)
-        // И при этом реальная геометрия ближе к камере, чем сам сэмпл:
-        float height_above_plane = dot(diff, N);
-        if (height_above_plane > BIAS && real_pos.z >= sample_pos.z + BIAS) {
-            occlusion += range_check * clamp(height_above_plane / RADIUS, 0.0, 1.0);
+            // В RH view space большее Z — ближе к камере.
+            // Bias имеет знак '+' именно для защиты от self-occlusion.
+            float is_occluded = real_pos.z >= sample_pos.z + BIAS ? 1.0 : 0.0;
+            occlusion += is_occluded * range_check;
         }
     }
 
     // Если не было валидных семплов - нет и затенения
     if (valid_samples == 0) return 1.0;
     // Усреднить результат затенения всех семплов
-    return 1.0 - clamp((occlusion / float(valid_samples)), 0.0, 1.0);
+    return pow(1.0 - clamp((occlusion / float(valid_samples)) * AO_MUL, 0.0, 1.0), AO_POW);
 }
 
 // Главная функция шейдера
 void main()
 {
     float ao = 1.0;
-    if(pc_push.pass_index == 0){
-        ao = calculate_ssao(fs_in.uv);
-    }else if(pc_push.pass_index == 1){
-        // TODO: Рассчитать GTAO
+    switch(pc_push.pass_index)
+    {
+        case 0:{
+            ao = calculate_ssao(fs_in.uv,true);
+            break;
+        }case 1:{
+            // TODO: Рассчитать GTAO
+            break;
+        }
+        default:{
+            ao = 1.0;
+            break;
+        }
     }
-
     frame_out = vec4(vec3(ao), 1.0);
 }

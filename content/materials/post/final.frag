@@ -104,24 +104,22 @@ vec3 mip_gauss_blur(sampler2D tex, vec2 uv){
     return result;
 }
 
-void main()
-{
-    vec3 result = texture(frame_ping, fs_in.uv).rgb;
-    color = vec4(result, 1.0);
-}
-
-/*
 // Главная функция шейдера
 void main()
 {
     // Считываем чистый HDR цвет кадра
     vec3 base_hdr = texture(frame_color, fs_in.uv).rgb;
 
-    // HDR цвет размытия bloom эффекта (доробный mip дает интерполяцию между 3 и 4 уровнями)
+    // Получить AO сцены
+    //float ao = texture(frame_ping, fs_in.uv).r;
+    float ao = box_blur3x3(frame_ping,fs_in.uv, 0.0).r;
+    ao = pow(ao,1.5);
+
+    // HDR цвет размытия bloom эффекта (дробный mip дает интерполяцию между 3 и 4 уровнями)
     vec3 bloom_hdr = box_blur3x3(frame_emission, fs_in.uv, 2.5);
 
     // Складываем их в ЛИНЕЙНОМ HDR пространстве
-    vec3 hdr_composite = base_hdr + bloom_hdr;
+    vec3 hdr_composite = base_hdr * ao + bloom_hdr;
 
     // Экпозиция (яркость)
     hdr_composite *= exposure;
@@ -135,4 +133,3 @@ void main()
     // Итоговый результат: сложение основного цвета и размытого сияния (Bloom)
     color = vec4(final_color, 1.0);
 }
-*/

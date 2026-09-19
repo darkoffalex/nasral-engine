@@ -235,7 +235,7 @@ namespace nasral::gfx
                 screen_fxs_.emplace_back(ScreenFx::Ptr(new ScreenFx(this, pp_desc)));
             }
 
-            // Список ресурсов готов
+            // Список материалов готов
             engine()->events()->send_deferred(
                 evt::Type::eMaterialRegistryChanged,
                 evt::ChangeReason::eInitial);
@@ -295,6 +295,12 @@ namespace nasral::gfx
     {
         // Обновление ECS системы
         ecs_system_->update(delta);
+
+        if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e0)){
+            ao_type_ = 0;
+        }else if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e1)){
+            ao_type_ = 1;
+        }
     }
 
     void Manager::on_finalize()
@@ -331,15 +337,15 @@ namespace nasral::gfx
         renderer()->cmd_end_render_pass();
 
         // Генерация мип-уровней для кадровых буферов
-        // renderer()->cmd_gen_framebuffer_mipmaps(OffscreenTextureType::eEmissive);
+        renderer()->cmd_gen_framebuffer_mipmaps(OffscreenTextureType::eEmissive);
 
         // Проход AO
         if (screen_fx_materials_[ScreenFxType::eAO])
         {
             // Начать проход для нулевого буфера (ping)
             renderer()->cmd_begin_screen_fx_ping_pong_pass(0);
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eAO]);
-            renderer()->cmd_draw_post_processing_quad(0);
+            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eAO], false);
+            renderer()->cmd_draw_post_processing_quad(ao_type_);
             renderer()->cmd_end_render_pass();
         }
 
@@ -348,14 +354,13 @@ namespace nasral::gfx
         {
             // 1. Размытие по горизонтали, пишем в буфер 1 (pong)
             renderer()->cmd_begin_screen_fx_ping_pong_pass(1);
-            //renderer()->cmd_clear_color_attachment(0, vk::ClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur]);
+            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur], false);
             renderer()->cmd_draw_post_processing_quad(0);
             renderer()->cmd_end_render_pass();
 
             // 2. Размытие по вертикали, пишем в буфер 0 (ping)
             renderer()->cmd_begin_screen_fx_ping_pong_pass(0);
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur]);
+            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur], false);
             renderer()->cmd_draw_post_processing_quad(1);
             renderer()->cmd_end_render_pass();
         }
@@ -363,7 +368,7 @@ namespace nasral::gfx
         // Финальная пост-обработка, используем буфер 0 (ping)
         renderer()->cmd_begin_screen_fx_final_pass();
         if (screen_fx_materials_[ScreenFxType::eFinal]){
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eFinal]);
+            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eFinal], true);
             renderer()->cmd_draw_post_processing_quad(0);
         }
         renderer()->cmd_end_render_pass();

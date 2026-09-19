@@ -339,7 +339,7 @@ namespace nasral::gfx
         cmd_buffer->setScissor(0, {scissor});
     }
 
-    void Renderer::cmd_bind_post_processing_material(const handles::Material& handles)
+    void Renderer::cmd_bind_post_processing_material(const handles::Material& handles, const bool final_output)
     {
         if (!ready_for_commands()){
             return;
@@ -349,7 +349,10 @@ namespace nasral::gfx
         auto& cmd_buffer = vk_command_buffers_[frame()];
 
         // Размер ДОСТУПНОГО ИЗОБРАЖЕНИЯ swap chain
-        const auto& extent = vk_swapchain_framebuffers_[available_image_index_]->extent();
+        const auto& extent = final_output ?
+            vk_swapchain_framebuffers_[available_image_index_]->extent() :
+            vk_ping_pong_framebuffers_[frame()][0]->extent();
+
         const auto& width = extent.width;
         const auto& height = extent.height;
 

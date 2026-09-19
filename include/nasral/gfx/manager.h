@@ -88,6 +88,9 @@ namespace nasral::gfx
 
         // ECS-система
         System::Ptr ecs_system_;
+
+        // Временный переключатель AO
+        uint32_t ao_type_ = 0;
     };
 }
 
