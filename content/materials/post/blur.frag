@@ -33,6 +33,22 @@ layout(set = 1, binding = 0, std140) uniform UCamera {
     vec4 position;
 } u_camera;
 
+// Uniform buffer для настроек пост-обработки
+layout(set = 2, binding = 0, std140) uniform UScreenFxSettings {
+    uint ao_type;
+    float ao_radius;
+    float ao_bias;
+    float ao_multiplier;
+    float ao_power_pre;
+    float ao_power_post;
+    uint blur_samples;
+    float blur_base_tex_radius;
+    float blur_base_kernel_radius;
+    float bloom_blur_lod;
+    float bloom_intensity;
+    float gamma;
+} u_settings;
+
 // Извлечь нормаль в пространстве вида
 vec3 fetch_view_normal(vec2 uv)
 {

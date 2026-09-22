@@ -48,6 +48,7 @@ namespace nasral::gfx
         eMaterialUBOs,
         eMaterialTextures,
         eLightUBOs,
+        eScreenFxUBO,
         TOTAL
     };
 
@@ -59,6 +60,7 @@ namespace nasral::gfx
         eMaterialsPBR,
         eLightSources,
         eLightSourcesActive,
+        eScreenFxSettings,
     };
 
     enum class TextureSamplerType : uint32_t
@@ -246,7 +248,24 @@ namespace nasral::gfx
             glm::uint32 indices[kMaxLights]{};
         };
 
+        struct ScreenFxSettings
+        {
+            glm::uint32 ao_type = 0;
+            glm::float32 ao_radius = 0.3f;
+            glm::float32 ao_bias = 0.02f;
+            glm::float32 ao_multiplier = 1.0f;
+            glm::float32 ao_power_pre = 1.0f;
+            glm::float32 ao_power_post = 1.0f;
+            glm::uint32 blur_samples = 16;
+            glm::float32 blur_base_tex_radius = 2.0f;
+            glm::float32 blur_base_kernel_radius = 6.0f;
+            glm::float32 bloom_blur_lod = 2.5f;
+            glm::float32 bloom_intensity = 1.0f;
+            glm::float32 gamma = 2.2f;
+        };
+
         static_assert(sizeof(Camera) % 16 == 0, "Camera size must be multiple of 16 bytes");
+        static_assert(sizeof(ScreenFxSettings) % 16 == 0, "ScreenFxSettings size must be multiple of 16 bytes");
     }
 
     struct TextureBindingInfo

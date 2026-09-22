@@ -31,6 +31,7 @@ namespace nasral::gfx
         void update_light_uniforms(const uniforms::LightSettings& uniforms, uint32_t index) const;
         void update_light_states_unsafe(const std::vector<uint32_t>& ids, bool active);
         void update_light_states(const std::vector<uint32_t>& ids, bool active);
+        void update_screen_fx_uniforms(const uniforms::ScreenFxSettings& uniforms) const;
 
         [[nodiscard]] Renderer* renderer() const noexcept{ return renderer_.get(); }
         [[nodiscard]] System* ecs_system() const noexcept{ return ecs_system_.get(); }

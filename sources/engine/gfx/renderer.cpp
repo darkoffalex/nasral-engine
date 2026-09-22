@@ -233,6 +233,7 @@ namespace nasral::gfx
             {
                 vk_post_process_frame_d_sets_[frame()].get(),
                 vk_post_process_d_sets_[UniformDSetType::eViewUBO].get(),
+                vk_post_process_d_sets_[UniformDSetType::eScreenFxUBO].get(),
             }, {});
     }
 
@@ -266,6 +267,7 @@ namespace nasral::gfx
             {
                 vk_post_process_frame_d_sets_[frame()].get(),
                 vk_post_process_d_sets_[UniformDSetType::eViewUBO].get(),
+                vk_post_process_d_sets_[UniformDSetType::eScreenFxUBO].get(),
             }, {});
     }
 

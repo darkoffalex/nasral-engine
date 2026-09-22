@@ -859,6 +859,18 @@ namespace nasral::gfx
                         }
                     },
                     1
+                },
+                // set = 2: Настройки экранных эффектов
+                {
+                    {
+                        {
+                            0,
+                            1,
+                            vk::DescriptorType::eUniformBuffer,
+                            vk::ShaderStageFlagBits::eFragment
+                        }
+                    },
+                    1
                 }
             };
 
@@ -1142,6 +1154,7 @@ namespace nasral::gfx
         // Выделить дескрипторный набор для камеры (для растеризации и пост-обработки)
         ul_rasterize->allocate_sets(0,1).front().swap(vk_rasterization_d_sets_[UniformDSetType::eViewUBO]);
         ul_post_process->allocate_sets(1, 1).front().swap(vk_post_process_d_sets_[UniformDSetType::eViewUBO]);
+        ul_post_process->allocate_sets(2, 1).front().swap(vk_post_process_d_sets_[UniformDSetType::eScreenFxUBO]);
         // Выделить дескрипторный набор для uniform-буферов объектов (трансформации)
         ul_rasterize->allocate_sets(1,1).front().swap(vk_rasterization_d_sets_[UniformDSetType::eObjectUBOs]);
         // Выделить дескрипторный набор для uniform-буферов материалов (блики, шероховатость и прочее)
@@ -1214,14 +1227,21 @@ namespace nasral::gfx
                 size_align(sizeof(uniforms::LightIndices), sbo_alignment),
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+            // Выделить uniform буфер для настроек экранных эффектов
+            vk_uniform_buffers_[UniformBufferType::eScreenFxSettings] = std::make_unique<vk::utils::Buffer>(
+                vk_device_.get(),
+                size_align(sizeof(uniforms::ScreenFxSettings), ubo_alignment),
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
 
         // Связать дескрипторы и буферы
         std::vector<vk::WriteDescriptorSet> writes;
         std::vector<vk::DescriptorBufferInfo> buffer_infos;
         // Зарезервировать память контейнеров перед использованием!
-        buffer_infos.reserve(6);
-        writes.reserve(7);
+        buffer_infos.reserve(7);
+        writes.reserve(8);
 
         // Камера (set = 0, binding = 0)
         {
@@ -1327,6 +1347,22 @@ namespace nasral::gfx
                 .setPBufferInfo(&buffer_infos.back()));
         }
 
+        // Настройки экранных эффектов (set = 2, binding = 1)
+        {
+            buffer_infos.emplace_back(vk::DescriptorBufferInfo()
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eScreenFxSettings]->vk_buffer())
+                .setOffset(0)
+                .setRange(sizeof(uniforms::ScreenFxSettings)));
+
+            writes.emplace_back(vk::WriteDescriptorSet()
+                .setDstSet(vk_post_process_d_sets_[UniformDSetType::eScreenFxUBO].get())
+                .setDstBinding(0)
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorCount(1)
+                .setPBufferInfo(&buffer_infos.back()));
+        }
+
         // Связать дескрипторы с буферами
         vk_device_->logical_device().updateDescriptorSets(writes, {});
 
@@ -1337,6 +1373,7 @@ namespace nasral::gfx
         vk_uniform_buffers_[UniformBufferType::eMaterialsPBR]->map_unsafe();
         vk_uniform_buffers_[UniformBufferType::eLightSources]->map_unsafe();
         vk_uniform_buffers_[UniformBufferType::eLightSourcesActive]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eScreenFxSettings]->map_unsafe();
     }
 
     /**

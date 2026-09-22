@@ -211,6 +211,18 @@ namespace nasral::gfx
         update_light_states_unsafe(ids, active);
     }
 
+    void Manager::update_screen_fx_uniforms(const uniforms::ScreenFxSettings& uniforms) const
+    {
+        const auto& pd = renderer()->vk_device().physical_device();
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eScreenFxSettings);
+        assert(ubo.is_mapped());
+
+        ubo.update_mapped(
+            ubo_offset<uniforms::ScreenFxSettings>(pd, 0),
+            aligned_ubo<uniforms::ScreenFxSettings>(pd),
+            &uniforms);
+    }
+
     void Manager::on_res_registry_changed(const evt::Arg& arg)
     {
         const auto reason = evt::from_arg<evt::ChangeReason>(arg);
