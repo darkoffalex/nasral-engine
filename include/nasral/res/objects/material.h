@@ -59,6 +59,7 @@ namespace nasral::res
         std::optional<vk::ShaderModule> vk_vert_shader_;
         std::optional<vk::ShaderModule> vk_frag_shader_;
         std::optional<vk::ShaderModule> vk_geom_shader_;
+        std::mutex pipeline_mutex_;
         std::atomic<uint8_t> base_shd_loads_needed_;
         std::atomic<uint8_t> geom_shd_loads_needed_;
     };

@@ -290,7 +290,7 @@ namespace nasral::res
         // Если загрузка ресурса завершена (успешно или нет)
         // Если есть не вызванные обработчики
         if (slot.resource &&
-            slot.resource->status_ != Status::eUnloaded &&
+            slot.resource->status() != Status::eUnloaded &&
             slot.refs.has_unhandled.load(std::memory_order_acquire))
         {
             // Захватываем мьютекс. Теперь никто параллельно не сможет пушить в вектор
@@ -542,10 +542,10 @@ namespace nasral::res
         const std::optional<ResourceId> project_rid = find_project();
         assert(project_rid.has_value());
         request(project_rid.value(), [this](Resource* res){
-            if (res->status_ == Status::eError){
+            if (res->status() == Status::eError){
                 throw std::runtime_error("Failed to load project file");
             }
-            assert(res->status_ == Status::eLoaded);
+            assert(res->status() == Status::eLoaded);
             engine()->events()->send_deferred(evt::Type::eProjectFileLoaded, res);
         });
     }

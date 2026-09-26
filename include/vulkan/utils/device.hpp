@@ -473,7 +473,8 @@ namespace vk::utils
                 device.getFeatures2(&features2);
                 if (!indexing_features.descriptorBindingPartiallyBound
                     || !indexing_features.descriptorBindingVariableDescriptorCount
-                    || !indexing_features.runtimeDescriptorArray){
+                    || !indexing_features.runtimeDescriptorArray
+                    || !indexing_features.descriptorBindingSampledImageUpdateAfterBind){
                     continue;
                 }
 
@@ -549,7 +550,8 @@ namespace vk::utils
                 .setPNext(nullptr)
                 .setDescriptorBindingPartiallyBound(true)
                 .setDescriptorBindingVariableDescriptorCount(true)
-                .setRuntimeDescriptorArray(true);
+                .setRuntimeDescriptorArray(true)
+                .setDescriptorBindingSampledImageUpdateAfterBind(true);
 
             vk::PhysicalDeviceFeatures2 features2;
             features2.setFeatures(features);

@@ -48,8 +48,8 @@ namespace nasral::res
         virtual void load() noexcept = 0;
 
         [[nodiscard]] ResourceId id() const noexcept { return id_; }
-        [[nodiscard]] Status status() const noexcept { return status_; }
-        [[nodiscard]] Error error() const noexcept { return error_; }
+        [[nodiscard]] Status status() const noexcept { return status_.load(std::memory_order_acquire); }
+        [[nodiscard]] Error error() const noexcept { return error_.load(std::memory_order_acquire); }
         [[nodiscard]] Type type() const noexcept {return type_;}
 
         [[nodiscard]] std::string id_str() const noexcept;
@@ -68,8 +68,8 @@ namespace nasral::res
     private:
         ResourceId id_;
         Type type_;
-        Status status_;
-        Error error_;
+        std::atomic<Status> status_;
+        std::atomic<Error> error_;
     };
 }
 

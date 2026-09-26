@@ -698,7 +698,7 @@ namespace nasral::gfx
                             kMaxMaterials,
                             vk::DescriptorType::eCombinedImageSampler,
                             vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound | vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind
                         },
                         // Текстуры normal для всех материалов (Phong/PBR материал)
                         {
@@ -706,7 +706,7 @@ namespace nasral::gfx
                             kMaxMaterials,
                             vk::DescriptorType::eCombinedImageSampler,
                             vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound | vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind
                         },
                         // Текстуры roughness/specular для всех материалов (Phong/PBR материал)
                         {
@@ -714,7 +714,7 @@ namespace nasral::gfx
                             kMaxMaterials,
                             vk::DescriptorType::eCombinedImageSampler,
                             vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound | vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind
                         },
                         // Текстуры displace для всех материалов (Phong/PBR материал)
                         {
@@ -722,7 +722,7 @@ namespace nasral::gfx
                             kMaxMaterials,
                             vk::DescriptorType::eCombinedImageSampler,
                             vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound | vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind
                         },
                         // Текстуры metallic для всех материалов (Phong/PBR материал)
                         {
@@ -730,7 +730,7 @@ namespace nasral::gfx
                             kMaxMaterials,
                             vk::DescriptorType::eCombinedImageSampler,
                             vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound | vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind
                         },
                         // Текстуры ambient occlusion для всех материалов (PBR материал)
                         {
@@ -738,7 +738,7 @@ namespace nasral::gfx
                             kMaxMaterials,
                             vk::DescriptorType::eCombinedImageSampler,
                             vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound | vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind
                         },
                         // Текстуры emission для всех материалов (PBR материал)
                         {
@@ -746,7 +746,7 @@ namespace nasral::gfx
                             kMaxMaterials,
                             vk::DescriptorType::eCombinedImageSampler,
                             vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound | vk::DescriptorBindingFlagBitsEXT::eUpdateAfterBind
                         },
                     },
                     1

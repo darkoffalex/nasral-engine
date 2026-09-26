@@ -157,6 +157,8 @@ namespace nasral::res
 
     void Material::try_init_vk_pipeline()
     {
+        std::unique_lock lock(pipeline_mutex_);
+
         // Если не все обязательные шейдеры запрошены - выход (ожидаем другого вызова)
         if (base_shd_loads_needed_.load(std::memory_order_acquire) > 0){
             return;

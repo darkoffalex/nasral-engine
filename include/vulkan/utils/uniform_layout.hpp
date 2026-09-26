@@ -117,7 +117,7 @@ namespace vk::utils
                     vk::DescriptorPoolCreateInfo()
                     .setMaxSets(max_sets_allocations)
                     .setPoolSizes(pool_sizes)
-                    .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet));
+                    .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet | vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind));
             }
 
             // Макет конвейера (материала/шейдера)
@@ -148,7 +148,8 @@ namespace vk::utils
                         vk_device_.createDescriptorSetLayoutUnique(
                         vk::DescriptorSetLayoutCreateInfo()
                         .setBindings(bindings)
-                        .setPNext(&flags_info)));
+                        .setPNext(&flags_info)
+                        .setFlags(vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool)));
 
                     vk_layouts.push_back(vk_descriptor_set_layouts_.back().get());
                 }

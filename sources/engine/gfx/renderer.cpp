@@ -144,12 +144,19 @@ namespace nasral::gfx
         const auto& group = vk_device_->queue_group(static_cast<size_t>(CmdGroupType::eGraphicsAndPresent));
         auto& queue = group.queues[0];
 
-        queue.submit(vk::SubmitInfo()
-            .setCommandBuffers(cmd_buffer.get())
-            .setWaitSemaphores(wait_semaphores)
-            .setWaitDstStageMask(wait_stages)
-            .setSignalSemaphores(signal_semaphores),
-            vk_frame_fence_[frame()].get());
+        try
+        {
+            queue.submit(vk::SubmitInfo()
+                .setCommandBuffers(cmd_buffer.get())
+                .setWaitSemaphores(wait_semaphores)
+                .setWaitDstStageMask(wait_stages)
+                .setSignalSemaphores(signal_semaphores),
+                vk_frame_fence_[frame()].get());
+        }
+        catch (const ::vk::Error& e)
+        {
+            log_error("Vulkan: Failed to submit command buffer to queue (" + std::string(e.what()) + ")");
+        }
 
         try {
             (void)queue.presentKHR(vk::PresentInfoKHR()

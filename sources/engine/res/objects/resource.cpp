@@ -19,11 +19,11 @@ namespace nasral::res
     }
 
     void Resource::set_status(const Status status){
-        status_ = status;
+        status_.store(status, std::memory_order_release);
     }
 
     void Resource::set_error(const Error error){
-        error_ = error;
+        error_.store(error, std::memory_order_release);
     }
 
     std::string Resource::id_str() const noexcept{
@@ -31,11 +31,11 @@ namespace nasral::res
     }
 
     std::string Resource::status_str() const noexcept{
-        return std::string(magic_enum::enum_name(status_));
+        return std::string(magic_enum::enum_name(status()));
     }
 
     std::string Resource::error_str() const noexcept{
-        return std::string(magic_enum::enum_name(error_));
+        return std::string(magic_enum::enum_name(error()));
     }
 
     std::string Resource::type_str() const noexcept{
