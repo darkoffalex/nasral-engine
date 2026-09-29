@@ -5,6 +5,7 @@
 #include <nasral/scn/components.h>
 #include <nasral/res/components.h>
 #include <nasral/ecs/view.h>
+#include <nasral/ecs/utils.h>
 #include <nasral/engine.h>
 
 namespace nasral::scn
@@ -33,14 +34,19 @@ namespace nasral::scn
         // Состояние источников света (активация/деактивация)
         update_light_states();
 
+        // Экранные эффекты
+        update_screen_fx();
+
         // Уничтожение узлов
         update_mesh_destroy();
         update_light_destroy();
+        update_screen_fx_destroy();
     }
 
     void System::on_finalize() const{
         update_mesh_destroy();
         update_light_destroy();
+        update_screen_fx_destroy();
         log_info("ECS-system finalized");
     }
 
@@ -69,6 +75,62 @@ namespace nasral::scn
         for (auto [e, n, res] : engine()->ecs()->view<Node, Resources>(ecs::kMaskOf<Request, Loading, Loaded>))
         {
             engine()->ecs()->add_components<Request>(e, {});
+        }
+    }
+
+    void System::update_screen_fx() const
+    {
+        // Алиасы компонентов
+        using ScreenFx = ScreenFxComponent;
+        using DirtyState = DirtyStateComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Экранный эффект
+        // - Обновлён (грязный)
+        for (auto[e, sfx, dirty] : engine()->ecs()->view<ScreenFx, DirtyState>())
+        {
+            // Если прежде был эффект - больше не ссылаться на него
+            if (!sfx.screen_fx_prev_released && engine()->ecs()->is_valid(sfx.screen_fx_prev)){
+                ecs::dec_entity_refs(engine()->ecs(), sfx.screen_fx_prev);
+                sfx.screen_fx_prev_released = true;
+            }
+
+            // Если новый эффект корректен - ссылаться на него
+            if (!sfx.screen_fx_requested && engine()->ecs()->is_valid(sfx.screen_fx)){
+                ecs::inc_entity_refs(engine()->ecs(), sfx.screen_fx);
+                sfx.screen_fx_requested = true;
+            }
+
+            // Когда на entity эффекта начинают ссылаться, её в определенный момент будут загружены
+            // Нужно проверять готовность screen fx entity, при загрузке (готовности) отправлять событие
+            if (sfx.screen_fx_requested
+                && engine()->ecs()->is_valid(sfx.screen_fx)
+                && engine()->ecs()->has<gfx::ScreenFxHandlesComponent, res::LoadedComponent>(sfx.screen_fx)
+                && !engine()->ecs()->has<gfx::DirtyHandlesComponent>(sfx.screen_fx))
+            {
+                // Получить UID объекта
+                assert(engine()->ecs()->has<ecs::UidComponent>(sfx.screen_fx) && "Screen FX entity must have ecs::UidComponent");
+                const auto& [uid] = engine()->ecs()->get_component<ecs::UidComponent>(sfx.screen_fx);
+
+                // Отправить событие о изменении экранного эффекта
+                engine()->events()->send(
+                    evt::Type::eScreenFxChanged,
+                    evt::Arg{uid});
+
+                // Состояние экранного эффекта обновлено
+                engine()->ecs()->remove_components<DirtyState>(e);
+            }
+            // Если новый эффект не установлен, но только лишь сброшен предыдущий
+            else if (sfx.screen_fx_prev_released)
+            {
+                // Отправить событие о сбросе экранного эффекта
+                engine()->events()->send(
+                    evt::Type::eScreenFxChanged,
+                    evt::Arg{evt::ChangeReason::eRemoved});
+
+                // Состояние экранного эффекта обновлено
+                engine()->ecs()->remove_components<DirtyState>(e);
+            }
         }
     }
 
@@ -215,6 +277,28 @@ namespace nasral::scn
             Destroy>())
         {
             engine()->gfx()->light_ubo_ids().release(ui.index);
+        }
+    }
+
+    void System::update_screen_fx_destroy() const
+    {
+        // Алиасы компонентов
+        using ScreenFx  = ScreenFxComponent;
+        using Destroy   = ecs::DestroyComponent;
+
+        // Пройти по всем настройкам экранных эффектов помеченных к удалению.
+        // Предполагается, что в конце update-итерации сущность будет удалена (повторной обработки не случится)
+        for (auto [e, sf, d_tag] : engine()->ecs()->view<
+            ScreenFx,
+            Destroy>())
+        {
+            // Уменьшить кол-вл ссылок на entity экранного эффекта
+            ecs::dec_entity_refs(engine()->ecs(), sf.screen_fx);
+
+            // Уведомить другие подсистеме о сбросе эффекта
+            engine()->events()->send(
+                evt::Type::eScreenFxChanged,
+                evt::Arg{evt::ChangeReason::eRemoved});
         }
     }
 

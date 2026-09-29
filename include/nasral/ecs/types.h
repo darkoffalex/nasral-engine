@@ -50,7 +50,9 @@ namespace nasral::ecs
         scn::SpatialComponent,
         scn::ViewComponent,
         scn::MeshComponent,
-        scn::LightComponent
+        scn::LightComponent,
+        scn::ScreenFxComponent,
+        scn::DirtyStateComponent
     >;
 
     // Проверка типов компонентов на соответствие требования (на этапе компиляции)

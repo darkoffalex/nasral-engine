@@ -89,6 +89,7 @@ namespace nasral::ecs
         }
 
         [[nodiscard]] bool is_valid(const EntityId& entity) const noexcept{
+            if (entity == EntityId::invalid()){ return false;}
             if (entity.index >= entities_.size()){ return false;}
             return entities_[entity.index].archetype != nullptr
                 && entities_[entity.index].id == entity;

@@ -29,6 +29,10 @@ namespace nasral::ecs
             return index == other.index && version == other.version;
         }
 
+        bool operator!=(const EntityId& other) const{
+            return index != other.index || version != other.version;
+        }
+
         [[nodiscard]] std::string to_string() const{
             return "[" + std::to_string(index) + "." + std::to_string(version) + "]";
         }

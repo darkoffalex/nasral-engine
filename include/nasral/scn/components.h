@@ -42,4 +42,27 @@ namespace nasral::scn
         glm::float32 quadratic = 0.1f;
         glm::vec4 color = glm::vec4(1.0f);
     };
+
+    struct ScreenFxComponent
+    {
+        ecs::EntityId screen_fx = ecs::EntityId::invalid();
+        ecs::EntityId screen_fx_prev = ecs::EntityId::invalid();
+        bool screen_fx_requested = false;
+        bool screen_fx_prev_released = false;
+        gfx::ScreenFxAoType ao_type = gfx::ScreenFxAoType::eSSAO;
+        glm::float32 ao_radius = 0.3f;
+        glm::float32 ao_bias = 0.02f;
+        glm::float32 ao_multiplier = 1.0f;
+        glm::float32 ao_power_pre = 1.0f;
+        glm::float32 ao_power_post = 1.0f;
+        glm::uint32 blur_samples = 16;
+        glm::float32 blur_base_tex_radius = 2.0f;
+        glm::float32 blur_base_kernel_radius = 6.0f;
+        glm::float32 bloom_blur_lod = 2.5f;
+        glm::float32 bloom_intensity = 1.0f;
+        glm::float32 gamma = 2.2f;
+        glm::float32 exposure = 1.0f;
+    };
+
+    struct DirtyStateComponent {};
 }

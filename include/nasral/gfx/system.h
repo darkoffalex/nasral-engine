@@ -30,6 +30,7 @@ namespace nasral::gfx
 
         // Пост-процессинг
         void update_screen_fx_handles() const;
+        void update_screen_fx_ubo() const;
 
         // Объекты (UBO)
         void update_obj_static_ubo() const;

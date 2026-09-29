@@ -33,9 +33,27 @@ namespace nasral::res
                     data.nodes.push_back(parse_node_entry(node_entry));
                 }
 
-                // Активный эффект экрана (временный hard code)
                 // TODO: Читать из файла
-                data.screen_fx_settings.default_fx_uid = UniqueId{2, 0};
+                // Активный эффект экрана (временный hard code)
+                data.screen_fx.unique_id = UniqueId::generate();
+                data.screen_fx.screen_fx_uid= UniqueId{2, 0};
+
+                data.screen_fx.ao.type = gfx::ScreenFxAoType::eSSAO;
+                data.screen_fx.ao.radius = 0.3f;
+                data.screen_fx.ao.bias = 0.02f;
+                data.screen_fx.ao.multiplier = 1.0f;
+                data.screen_fx.ao.power_pre = 1.0f;
+                data.screen_fx.ao.power_post = 1.0f;
+
+                data.screen_fx.blur.samples = 16;
+                data.screen_fx.blur.base_tex_radius = 2.0f;
+                data.screen_fx.blur.base_kernel_radius = 1.0f;
+
+                data.screen_fx.bloom.blur_lod = 2.5f;
+                data.screen_fx.bloom.intensity = 1.0f;
+
+                data.screen_fx.final.gamma = 2.2f;
+                data.screen_fx.final.exposure = 1.0f;
 
                 file.close();
             }

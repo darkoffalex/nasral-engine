@@ -55,7 +55,7 @@ namespace nasral::ecs
                 0
             });
 
-        log_debug("Entity " + entities_.back().id.to_string() + " created.");
+        // log_debug("Entity " + entities_.back().id.to_string() + " created.");
         return entities_.back().id;
     }
 

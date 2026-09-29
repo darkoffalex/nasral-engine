@@ -7,6 +7,7 @@
 #include <nasral/scn/types.h>
 #include <nasral/scn/objects/node.h>
 #include <nasral/scn/objects/camera.h>
+#include <nasral/scn/objects/screen_fx_state.h>
 #include <nasral/evt/objects/listener.h>
 
 namespace nasral::scn
@@ -14,23 +15,6 @@ namespace nasral::scn
     class Manager final : public Subsystem<Manager, Config>, public log::Loggable<Manager>
     {
     public:
-        struct ScreenFxState : SubsystemObject<Manager>
-        {
-            explicit ScreenFxState(Manager* m);
-            ~ScreenFxState();
-
-            ecs::EntityId fx_entity;  // <-- Entity экранного эффекта
-            bool requested;           // <-- Был запрос
-            bool dirty_state;         // <-- Состояние изменилось (другие системы не осведомлены)
-
-            [[nodiscard]] bool is_ready() const;
-            [[nodiscard]] bool is_error() const;
-            [[nodiscard]] std::optional<UniqueId> screen_fx_uid() const;
-
-            void set_fx(const ecs::EntityId& entity);
-            void reset();
-        };
-
         typedef std::unique_ptr<Manager> Ptr;
         explicit Manager(Engine* e, const Config& config);
         ~Manager();
@@ -39,7 +23,7 @@ namespace nasral::scn
         Manager& operator=(const Manager&) = delete;
 
         void on_init();
-        void on_update(float delta);
+        void on_update(float delta) const;
         void on_finalize();
 
         Node* spawn(const NodeDesc& desc);
@@ -65,7 +49,7 @@ namespace nasral::scn
         // ECS-система
         System::Ptr ecs_system_;
         // Активная пост-обработка сцены
-        ScreenFxState active_screen_fx_;
+        ScreenFxState::Ptr screen_fx_state_;
     };
 }
 

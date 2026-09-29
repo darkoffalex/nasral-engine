@@ -110,6 +110,14 @@ namespace nasral::gfx
         TOTAL
     };
 
+    enum class ScreenFxAoType : uint32_t
+    {
+        eNone = 0,
+        eSSAO,
+        eGTAO,
+        TOTAL
+    };
+
     enum class MaterialBaseType : uint32_t
     {
         eDummy = 0,

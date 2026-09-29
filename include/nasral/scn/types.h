@@ -64,6 +64,24 @@ namespace nasral::scn
             MeshNodeView,
             LightNodeView
         >;
+
+        struct ScreenFxStateView
+        {
+            const UniqueId& uid;
+            const gfx::ScreenFxAoType& ao_type;
+            const glm::float32& ao_radius;
+            const glm::float32& ao_bias;
+            const glm::float32& ao_multiplier;
+            const glm::float32& ao_power_pre;
+            const glm::float32& ao_power_post;
+            const glm::uint32& blur_samples;
+            const glm::float32& blur_base_tex_radius;
+            const glm::float32& blur_base_kernel_radius;
+            const glm::float32& bloom_blur_lod;
+            const glm::float32& bloom_intensity;
+            const glm::float32& gamma;
+            const glm::float32& exposure;
+        };
     }
 
     struct NodeDesc
@@ -107,9 +125,39 @@ namespace nasral::scn
         } mesh = {};
     };
 
-    struct ScreenFxSettingsDesc
+    struct ScreenFxStateDesc
     {
-        UniqueId default_fx_uid = {};
+        UniqueId unique_id = {};
+        UniqueId screen_fx_uid = {};
+
+        struct
+        {
+            gfx::ScreenFxAoType type = gfx::ScreenFxAoType::eSSAO;
+            glm::float32 radius = 0.3f;
+            glm::float32 bias = 0.02f;
+            glm::float32 multiplier = 1.0f;
+            glm::float32 power_pre = 1.0f;
+            glm::float32 power_post = 1.0f;
+        } ao;
+
+        struct
+        {
+            glm::uint32 samples = 16;
+            glm::float32 base_tex_radius = 2.0f;
+            glm::float32 base_kernel_radius = 6.0f;
+        } blur;
+
+        struct
+        {
+            glm::float32 blur_lod = 2.5f;
+            glm::float32 intensity = 1.0f;
+        } bloom;
+
+        struct
+        {
+            glm::float32 gamma = 2.2f;
+            glm::float32 exposure = 1.0f;
+        } final;
     };
 
     struct Config

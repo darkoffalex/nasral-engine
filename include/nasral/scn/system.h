@@ -21,10 +21,12 @@ namespace nasral::scn
 
     protected:
         void update_resource_requests() const;
+        void update_screen_fx() const;
         void update_cam_input(float delta) const;
         void update_light_input(float delta) const;
         void update_mesh_destroy() const;
         void update_light_destroy() const;
+        void update_screen_fx_destroy() const;
         void update_light_states();
 
     private:

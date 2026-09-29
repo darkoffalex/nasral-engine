@@ -16,7 +16,6 @@ namespace nasral::scn
         : Subsystem(e, config)
         , main_camera_(nullptr)
         , ecs_system_(std::make_unique<System>(this))
-        , active_screen_fx_(this)
     {
         log_info("Initializing manager...");
     }
@@ -27,6 +26,7 @@ namespace nasral::scn
 
     void Manager::on_init()
     {
+        // Слушать событие начала сеанса
         evl_session_start_ = evt::Listener::reg(
             engine()->events(),
             evt::Type::eSessionStarted,
@@ -43,32 +43,11 @@ namespace nasral::scn
         log_info("Manager initialized");
     }
 
-    void Manager::on_update(const float delta)
+    void Manager::on_update(const float delta) const
     {
         // Если сессия не запущена
         if (engine()->run()->state().has_no(run::StateFlags::eRunning))
             return;
-
-        // Отслеживать изменение состояния активного экранного эффекта (уведомлять другие подсистемы)
-        if (active_screen_fx_.dirty_state)
-        {
-            // Запрошено и готово (ресурс готов, можно задать)
-            if (active_screen_fx_.requested && active_screen_fx_.is_ready()){
-                assert(active_screen_fx_.screen_fx_uid().has_value() && "Screen FX UID is not set");
-                engine()->events()->send(
-                    evt::Type::eScreenFxChanged,
-                    evt::Arg{active_screen_fx_.screen_fx_uid().value()});
-
-                active_screen_fx_.dirty_state = false;
-            }
-            // Не запрошено (сбросить)
-            else if (!active_screen_fx_.requested){
-                engine()->events()->send(
-                    evt::Type::eScreenFxChanged,
-                    evt::Arg{evt::ChangeReason::eRemoved});
-                active_screen_fx_.dirty_state = false;
-            }
-        }
 
         // Обновление ECS
         ecs_system_->update(delta);
@@ -78,7 +57,6 @@ namespace nasral::scn
         evl_session_start_.reset();
         evl_sfc_chg_.reset();
         nodes_.clear();
-        active_screen_fx_.reset();
         ecs_system_->finalize();
         log_info("Manager finalized");
     }
@@ -200,82 +178,11 @@ namespace nasral::scn
                 }
             }
 
-            // Задать экранный эффект по умолчанию
-            const auto* screen_fx = engine()->gfx()->find_screen_fx(scene->screen_fx_settings().default_fx_uid);
-            active_screen_fx_.set_fx(screen_fx->entity());
+            // Настройки экранного эффекта (пост-обработка)
+            screen_fx_state_ = std::unique_ptr<ScreenFxState>(new ScreenFxState(this, scene->screen_fx()));
 
             // Ресурс сцены более не нужен в RAM
             engine()->res()->release(res->id());
         });
-    }
-
-    Manager::ScreenFxState::ScreenFxState(Manager* m)
-        : SubsystemObject(m)
-        , fx_entity(ecs::EntityId::invalid())
-        , requested(false)
-        , dirty_state(false)
-    {}
-
-    Manager::ScreenFxState::~ScreenFxState(){
-        if (requested){
-            reset();
-        }
-    }
-
-    bool Manager::ScreenFxState::is_ready() const
-    {
-        if (!requested){
-            return false;
-        }
-
-        return engine()->ecs()->is_valid(fx_entity)
-            && engine()->ecs()->has<gfx::ScreenFxHandlesComponent, res::LoadedComponent>(fx_entity)
-            && !engine()->ecs()->has<gfx::DirtyHandlesComponent>(fx_entity);
-    }
-
-    bool Manager::ScreenFxState::is_error() const
-    {
-        if (!requested){
-            return false;
-        }
-
-        return engine()->ecs()->is_valid(fx_entity)
-            && engine()->ecs()->has<gfx::ScreenFxHandlesComponent, res::ErrorComponent>(fx_entity);
-    }
-
-    std::optional<UniqueId> Manager::ScreenFxState::screen_fx_uid() const
-    {
-        using Uid = ecs::UidComponent;                   // Уникальный ID
-        using Handles = gfx::ScreenFxHandlesComponent;   // Handles материала (pipeline)
-
-        if (!is_ready()){
-            return std::nullopt;
-        }
-
-        const auto& [uid, m] = engine()->ecs()->get_components<Uid, Handles>(fx_entity);
-        return uid.id;
-    }
-
-    void Manager::ScreenFxState::set_fx(const ecs::EntityId& entity)
-    {
-        if (requested){
-            reset();
-        }
-
-        fx_entity = entity;
-        requested = true;
-        dirty_state = true;
-
-        assert(engine()->ecs()->is_valid(fx_entity) && "Screen FX entity is invalid");
-        ecs::inc_entity_refs(engine()->ecs(), fx_entity);
-    }
-
-    void Manager::ScreenFxState::reset()
-    {
-        assert(engine()->ecs()->is_valid(fx_entity) && "Screen FX entity is invalid");
-        ecs::dec_entity_refs(engine()->ecs(), fx_entity);
-        fx_entity = ecs::EntityId::invalid();
-        requested = false;
-        dirty_state = true;
     }
 }

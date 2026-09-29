@@ -52,6 +52,7 @@ add_library(Engine OBJECT
         scn/objects/camera.cpp
         scn/objects/mesh.cpp
         scn/objects/light.cpp
+        scn/objects/screen_fx_state.cpp
         scn/system.cpp
 )
 add_default_configurations(Engine demo_app)

@@ -32,6 +32,7 @@ namespace nasral::gfx
 
         // Материалы (пост-процессинг)
         update_screen_fx_handles();
+        update_screen_fx_ubo();
 
         // Объекты
         update_obj_static_ubo();
@@ -224,7 +225,7 @@ namespace nasral::gfx
             for (const auto type : magic_enum::enum_values<ScreenFxType>()){
                 if (type == ScreenFxType::TOTAL) continue;
                 const auto res_index = ScreenFx::kMaterialResMap[type];
-                // Если текстура используется
+                // Если ресурс используется
                 if (rsc.active[res_index]){
                     assert(rsc.ids[res_index] != res::kInvalidResourceId);
                     const auto* mat_res = engine()->res()->get<res::Material>(rsc.ids[res_index]);
@@ -240,6 +241,40 @@ namespace nasral::gfx
                     mh.materials[type] = {};
                 }
             }
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
+        }
+    }
+
+    void System::update_screen_fx_ubo() const
+    {
+        // Алиасы компонентов
+        using ScreenFx = scn::ScreenFxComponent;
+        using Dirty    = DirtyUnformComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Настройки экранного эффекта
+        // - Грязный (не обновленный) UBO
+        for (const auto& [e, sf, d_tag] : engine()->ecs()->view<ScreenFx, Dirty>())
+        {
+            // Получить unform данные
+            uniforms::ScreenFxSettings uniforms = {};
+            uniforms.ao_bias = sf.ao_bias;
+            uniforms.ao_radius = sf.ao_radius;
+            uniforms.ao_bias = sf.ao_bias;
+            uniforms.ao_power_pre = sf.ao_power_pre;
+            uniforms.ao_power_post = sf.ao_power_post;
+            uniforms.blur_samples = sf.blur_samples;
+            uniforms.blur_base_tex_radius = sf.blur_base_tex_radius;
+            uniforms.blur_base_kernel_radius = sf.blur_base_kernel_radius;
+            uniforms.bloom_blur_lod = sf.bloom_blur_lod;
+            uniforms.bloom_intensity = sf.bloom_intensity;
+            uniforms.gamma = sf.gamma;
+            // uniforms.exposure = sf.exposure;
+
+            // Обновить буфер
+            engine()->gfx()->update_screen_fx_uniforms(uniforms);
 
             // Обновлено
             engine()->ecs()->remove_components<Dirty>(e);
