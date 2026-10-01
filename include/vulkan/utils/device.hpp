@@ -545,9 +545,14 @@ namespace vk::utils
                     .setFillModeNonSolid(true)
                     .setIndependentBlend(true);
 
+            // Трассировка лучей
+            auto device_address_features = vk::PhysicalDeviceBufferDeviceAddressFeatures().setBufferDeviceAddress(true);
+            auto acceleration_structure_features = vk::PhysicalDeviceAccelerationStructureFeaturesKHR().setAccelerationStructure(true);
+            acceleration_structure_features.setPNext(&device_address_features);
+
             // Включить поддержку bindless дескрипторов
             auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT()
-                .setPNext(nullptr)
+                .setPNext(&acceleration_structure_features)
                 .setDescriptorBindingPartiallyBound(true)
                 .setDescriptorBindingVariableDescriptorCount(true)
                 .setRuntimeDescriptorArray(true)

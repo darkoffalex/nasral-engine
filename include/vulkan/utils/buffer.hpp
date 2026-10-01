@@ -288,6 +288,13 @@ namespace vk::utils
          */
         [[nodiscard]] const vk::DeviceMemory& vk_memory() const { return vk_memory_.get(); }
 
+        [[nodiscard]] vk::DeviceAddress device_address() const
+        {
+            assert(vk_device_);
+            assert(vk_buffer_);
+            return vk_device_.getBufferAddress(vk::BufferDeviceAddressInfo().setBuffer(vk_buffer_.get()));
+        }
+
 
     protected:
         /// Handle-объект логического устройства Vulkan

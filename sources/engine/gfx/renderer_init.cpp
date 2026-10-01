@@ -120,7 +120,14 @@ namespace nasral::gfx
         const std::vector req_extensions{
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
-            VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
+            VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+
+            // Трассировка лучей
+            VK_KHR_RAY_QUERY_EXTENSION_NAME,
+            VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+            VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME
         };
 
         // Требования к очередям команд у устройства
@@ -137,6 +144,8 @@ namespace nasral::gfx
             vk_surface_,
             queue_request_v,
             req_extensions);
+
+        vk_loader_.init(vk_device_->logical_device());
     }
 
     /**

@@ -3,6 +3,7 @@
 #include <nasral/res/objects/resource.h>
 #include <nasral/gfx/types.h>
 #include <vulkan/utils/buffer.hpp>
+#include <vulkan/utils/acceleration_structure.hpp>
 
 namespace nasral::res
 {
@@ -32,8 +33,13 @@ namespace nasral::res
         [[nodiscard]] auto vertex_count() const noexcept { return vertex_count_; }
         [[nodiscard]] auto index_count() const noexcept { return index_count_; }
         [[nodiscard]] const auto& surfaces() const noexcept { return surfaces_; }
+        [[nodiscard]] const auto& blas() const noexcept { return blas_; }
+        [[nodiscard]] bool has_blas() const noexcept { return blas_ != nullptr; }
 
         [[nodiscard]] gfx::handles::Mesh render_handles() const;
+
+    protected:
+        void build_blas();
 
     private:
         Loader<Data>::Ptr loader_;
@@ -42,5 +48,6 @@ namespace nasral::res
         uint32_t vertex_count_;
         uint32_t index_count_;
         std::vector<Surface> surfaces_ = {};
+        vk::utils::AccelerationStructure::Ptr blas_;
     };
 }
