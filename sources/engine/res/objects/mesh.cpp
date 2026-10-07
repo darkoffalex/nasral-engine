@@ -132,6 +132,7 @@ namespace nasral::res
         gfx::handles::Mesh mesh_handle{};
         mesh_handle.vertex_buffer = vk_vertex_buffer();
         mesh_handle.index_buffer = vk_index_buffer();
+        mesh_handle.blas_device_address = blas()->device_address();
 
         const auto copy_size = std::min<size_t>(surfaces_.size(), gfx::kMaxMaterialsPerMesh);
 

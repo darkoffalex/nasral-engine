@@ -32,13 +32,20 @@ namespace nasral::gfx
         void update_light_states_unsafe(const std::vector<uint32_t>& ids, bool active);
         void update_light_states(const std::vector<uint32_t>& ids, bool active);
         void update_screen_fx_uniforms(const uniforms::ScreenFxSettings& uniforms) const;
+        void update_tlas_instance(const TlasInstanceDesc& desc, uint32_t index) const;
 
         [[nodiscard]] Renderer* renderer() const noexcept{ return renderer_.get(); }
         [[nodiscard]] System* ecs_system() const noexcept{ return ecs_system_.get(); }
 
-        [[nodiscard]] auto& object_ubo_ids(){ return object_ubo_ids_; }
-        [[nodiscard]] auto& material_ubo_ids(){ return material_ubo_ids_; }
-        [[nodiscard]] auto& light_ubo_ids(){ return light_ubo_ids_; }
+        [[nodiscard]] uint32_t acquire_object_id();
+        [[nodiscard]] uint32_t acquire_material_id();
+        [[nodiscard]] uint32_t acquire_light_id();
+        [[nodiscard]] size_t acquired_objects_count() const;
+        [[nodiscard]] size_t acquired_materials_count() const;
+        [[nodiscard]] size_t acquired_lights_count() const;
+        void release_object_id(uint32_t id);
+        void release_material_id(uint32_t id);
+        void release_light_id(uint32_t id);
 
         void remove_material(const UniqueId& id);
         void remove_material(const ecs::EntityId& id);
@@ -53,7 +60,7 @@ namespace nasral::gfx
         void on_init();
         void on_update(float delta);
         void on_finalize();
-        void on_render() const;
+        void on_render();
 
     protected:
         void on_res_registry_changed(const evt::Arg& arg);

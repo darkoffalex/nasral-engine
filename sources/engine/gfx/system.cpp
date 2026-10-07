@@ -2,6 +2,7 @@
 #include <nasral/gfx/system.h>
 #include <nasral/gfx/manager.h>
 #include <nasral/gfx/objects/material.h>
+#include <nasral/gfx/utils.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/ecs/view.h>
 #include <nasral/ecs/utils.h>
@@ -193,7 +194,7 @@ namespace nasral::gfx
         // Внимание: ожидается, что в конце полной итерации update сущность удаляется (что предотвратит повторную обработку)
         for (const auto& [e, ms, ui, d_tag] : engine()->ecs()->view<Material, UniformId, Destroy>())
         {
-            engine()->gfx()->material_ubo_ids().release(ui.index);
+            engine()->gfx()->release_material_id(ui.index);
         }
     }
 
@@ -287,14 +288,16 @@ namespace nasral::gfx
         using Spatial   = scn::SpatialComponent;
         using UniformId = UniformIndexComponent;
         using Render    = RenderComponent;
+        using Handles   = MeshHandlesComponent;
         using Dirty     = DirtyUnformComponent;
 
         // Пройти по всем сущностям с компонентами:
         // - Пространственные параметры
         // - Uniform index
+        // - Handles
         // - Рендеринг
         // - Грязный (не обновленный) UBO
-        for (const auto& [e, sp, ui, r_tag, d_tag] : engine()->ecs()->view<Spatial, UniformId, Render, Dirty>())
+        for (const auto& [e, sp, ui, h, r_tag, d_tag] : engine()->ecs()->view<Spatial, UniformId, Handles, Render, Dirty>())
         {
             // Вычислить матрицы
             uniforms::Object uniforms = {};
@@ -310,6 +313,15 @@ namespace nasral::gfx
             // Обновить матрицы для объекта
             engine()->gfx()->update_obj_uniforms(uniforms, ui.index);
 
+            // Обновить TLAS instance объекта
+            engine()->gfx()->update_tlas_instance(
+            {
+                model,
+                h.mesh.blas_device_address,
+                ui.index,
+                0xFF
+            }, ui.index);
+
             // Обновлено
             engine()->ecs()->remove_components<Dirty>(e);
         }
@@ -322,6 +334,7 @@ namespace nasral::gfx
         using Spatial   = scn::SpatialComponent;
         using UniformId = UniformIndexComponent;
         using State     = UniformStateComponent;
+        using Handles   = MeshHandlesComponent;
         using Render    = RenderComponent;
 
         // Пройти по всем сущностям с компонентами:
@@ -329,7 +342,7 @@ namespace nasral::gfx
         // - Uniform index
         // - Состояние UBO
         // - Рендеринг
-        for (auto [e, sp, ui, state, r_tag] : engine()->ecs()->view<Spatial, UniformId, State, Render>())
+        for (auto [e, sp, ui, state, h, r_tag] : engine()->ecs()->view<Spatial, UniformId, State, Handles, Render>())
         {
             if (!state.is_dirty) continue;
 
@@ -346,6 +359,15 @@ namespace nasral::gfx
 
             // Обновить матрицы для объекта
             engine()->gfx()->update_obj_uniforms(uniforms, ui.index);
+
+            // Обновить TLAS instance объекта
+            engine()->gfx()->update_tlas_instance(
+            {
+                model,
+                h.mesh.blas_device_address,
+                ui.index,
+                0xFF
+            }, ui.index);
 
             // Обновлено
             state.is_dirty = false;

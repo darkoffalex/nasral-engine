@@ -69,6 +69,9 @@ namespace nasral::gfx
         init_vk_texture_samplers();
         log_info("Vulkan: Texture samplers initialized.");
 
+        init_vk_tlas();
+        log_info("Vulkan: TLAS initialized.");
+
         init_vk_uniforms();
         log_info("Vulkan: Uniforms initialized.");
 
@@ -495,6 +498,59 @@ namespace nasral::gfx
             , vk::ImageAspectFlagBits::eColor);
     }
 
+    void Renderer::cmd_build_tlas(const uint32_t instance_count, const bool initial)
+    {
+        if (!ready_for_commands()) {
+            return;
+        }
+
+        // Получить буфер инстансов для соответствующего кадра
+        const auto& instances_buffer = *vk_tlas_instance_buffers_[frame()];
+
+        // Формируем структуру геометрии инстансов для сборки
+        vk::AccelerationStructureGeometryInstancesDataKHR instances_data{};
+        instances_data.setArrayOfPointers(false).setData(instances_buffer.device_address());
+        vk::AccelerationStructureGeometryKHR geometry{};
+        geometry.setGeometryType(vk::GeometryTypeKHR::eInstances).setGeometry(instances_data);
+
+        const auto& tlas = *vk_tlas_[frame()];
+        const auto& scratch = *vk_tlas_scratch_buffers_[frame()];
+
+        vk::AccelerationStructureBuildGeometryInfoKHR build_info{};
+        build_info.setType(vk::AccelerationStructureTypeKHR::eTopLevel)
+                  .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace)
+                  .setMode(initial ? vk::BuildAccelerationStructureModeKHR::eBuild : vk::BuildAccelerationStructureModeKHR::eUpdate)
+                  .setDstAccelerationStructure(tlas.handle())
+                  .setScratchData(scratch.device_address())
+                  .setGeometries(geometry);
+
+        vk::AccelerationStructureBuildRangeInfoKHR range_info{};
+        range_info.setPrimitiveCount(instance_count)
+                  .setPrimitiveOffset(0)
+                  .setFirstVertex(0)
+                  .setTransformOffset(0);
+
+        // Записываем команду сборки прямо в cmd_buffer текущего кадра
+        auto& cmd_buffer = vk_command_buffers_[frame()];
+        const auto* range_info_ptr = &range_info;
+        cmd_buffer->buildAccelerationStructuresKHR(1, &build_info, &range_info_ptr, vk_loader_);
+
+        // Барьер памяти: гарантируем, что TLAS полностью собран перед тем,
+        // как к нему обратятся Ray Tracing / Compute / Fragment шейдеры
+        vk::MemoryBarrier barrier{};
+        barrier.setSrcAccessMask(vk::AccessFlagBits::eAccelerationStructureWriteKHR)
+               .setDstAccessMask(vk::AccessFlagBits::eAccelerationStructureReadKHR);
+
+        cmd_buffer->pipelineBarrier(
+            vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR,
+            vk::PipelineStageFlagBits::eRayTracingShaderKHR | vk::PipelineStageFlagBits::eFragmentShader,
+            {},
+            barrier,
+            nullptr,
+            nullptr
+        );
+    }
+
     void Renderer::cmd_wait_for_all() const
     {
         vk_device_->logical_device().waitIdle();
@@ -503,6 +559,13 @@ namespace nasral::gfx
     void Renderer::request_surface_refresh()
     {
         surface_refresh_needed_.store(true, std::memory_order_release);
+    }
+
+    void Renderer::mark_tlas_dirty()
+    {
+        for (size_t frame = 0; frame < config().max_frames_in_flight; ++frame){
+            vk_tlas_buffers_dirty_[frame].store(true, std::memory_order_release);
+        }
     }
 
 #pragma endregion
@@ -579,5 +642,14 @@ namespace nasral::gfx
 
         assert(frame_in_progress_ && "Frame not in progress");
         return frame_in_progress_;
+    }
+
+    bool Renderer::is_tlas_dirty(const bool exchange) noexcept
+    {
+        if (exchange){
+            return vk_tlas_buffers_dirty_[frame()].exchange(false, std::memory_order_acq_rel);
+        }
+
+        return vk_tlas_buffers_dirty_[frame()].load(std::memory_order_acquire);
     }
 }

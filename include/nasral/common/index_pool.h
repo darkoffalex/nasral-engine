@@ -17,6 +17,7 @@ namespace nasral
         explicit IndexPool(size_t size){
             indices_.reserve(size);
             indices_.resize(indices_.capacity());
+            acquired_count_.store(0, std::memory_order_relaxed);
             std::iota(indices_.rbegin(), indices_.rend(), T(0));
         }
 
@@ -24,6 +25,7 @@ namespace nasral
             assert(!indices_.empty() && "Index pool is empty");
             T index = indices_.back();
             indices_.pop_back();
+            acquired_count_.fetch_add(1, std::memory_order_relaxed);
             return index;
         }
 
@@ -40,6 +42,7 @@ namespace nasral
                 }
             }
             indices_.emplace_back(index);
+            acquired_count_.fetch_sub(1, std::memory_order_relaxed);
         }
 
         void release(const T index){
@@ -76,10 +79,15 @@ namespace nasral
             return indices_.capacity();
         }
 
+        [[nodiscard]] size_t acquired_count() const noexcept{
+            return acquired_count_.load(std::memory_order_relaxed);
+        }
+
         ~IndexPool() = default;
 
     protected:
         std::vector<T> indices_;
         std::mutex mutex_;
+        std::atomic<size_t> acquired_count_{};
     };
 }

@@ -256,7 +256,7 @@ namespace nasral::scn
             UniformId,
             Destroy>())
         {
-            engine()->gfx()->object_ubo_ids().release(ui.index);
+            engine()->gfx()->release_object_id(ui.index);
         }
     }
 
@@ -276,7 +276,7 @@ namespace nasral::scn
             UniformId,
             Destroy>())
         {
-            engine()->gfx()->light_ubo_ids().release(ui.index);
+            engine()->gfx()->release_object_id(ui.index);
         }
     }
 

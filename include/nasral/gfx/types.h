@@ -193,6 +193,7 @@ namespace nasral::gfx
 
             vk::Buffer vertex_buffer = VK_NULL_HANDLE;
             vk::Buffer index_buffer = VK_NULL_HANDLE;
+            vk::DeviceAddress blas_device_address = 0;
             std::array<Surface, kMaxMaterialsPerMesh> surfaces = {};
             uint32_t surfaces_count = 0;
 
@@ -315,6 +316,14 @@ namespace nasral::gfx
         UniqueId unique_id = {};
         std::string name = {};
         EnumArray<ScreenFxType, std::string> material_paths;
+    };
+
+    struct TlasInstanceDesc
+    {
+        glm::mat4 transform = glm::mat4(1.0f);
+        vk::DeviceAddress blas_address = 0;
+        uint32_t index = 0; // Совпадает с uniform_idx объекта
+        uint8_t mask = 0xFF;
     };
 
     struct Config

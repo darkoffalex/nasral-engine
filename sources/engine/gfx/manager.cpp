@@ -223,6 +223,76 @@ namespace nasral::gfx
             &uniforms);
     }
 
+    void Manager::update_tlas_instance(const TlasInstanceDesc& desc, const uint32_t index) const
+    {
+        // Для каждого кадра создан свой TLAS буфер
+        for (size_t frame = 0; frame < config().max_frames_in_flight; ++frame)
+        {
+            // Получить указатель на буфер TLAS
+            const auto& buffer = renderer()->vk_tlas_instance_buffer(frame);
+            auto* instances = static_cast<vk::AccelerationStructureInstanceKHR*>(buffer.mapped_ptr());
+
+            // Обновить соответствующий instance в буфере TLAS
+            auto& instance = instances[index];
+            instance.setTransform(to_vk_transform(desc.transform));
+            instance.setInstanceCustomIndex(desc.index);
+            instance.setMask(desc.mask);
+            instance.setInstanceShaderBindingTableRecordOffset(0);
+            instance.setFlags(vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable);
+            instance.setAccelerationStructureReference(desc.blas_address);
+        }
+
+        // Требуется перестроение/обновление TLAS
+        renderer()->mark_tlas_dirty();
+    }
+
+    uint32_t Manager::acquire_object_id()
+    {
+        renderer()->mark_tlas_dirty();
+        return object_ubo_ids_.acquire();
+    }
+
+    uint32_t Manager::acquire_material_id()
+    {
+        return material_ubo_ids_.acquire();
+    }
+
+    uint32_t Manager::acquire_light_id()
+    {
+        return light_ubo_ids_.acquire();
+    }
+
+    size_t Manager::acquired_objects_count() const
+    {
+        return object_ubo_ids_.acquired_count();
+    }
+
+    size_t Manager::acquired_materials_count() const
+    {
+        return material_ubo_ids_.acquired_count();
+    }
+
+    size_t Manager::acquired_lights_count() const
+    {
+        return light_ubo_ids_.acquired_count();
+    }
+
+    void Manager::release_object_id(const uint32_t id)
+    {
+        object_ubo_ids_.release(id);
+        renderer()->mark_tlas_dirty();
+    }
+
+    void Manager::release_material_id(const uint32_t id)
+    {
+        material_ubo_ids_.release(id);
+    }
+
+    void Manager::release_light_id(const uint32_t id)
+    {
+        light_ubo_ids_.release(id);
+    }
+
     void Manager::on_res_registry_changed(const evt::Arg& arg)
     {
         const auto reason = evt::from_arg<evt::ChangeReason>(arg);
@@ -335,7 +405,7 @@ namespace nasral::gfx
         log_info("Manager finalized");
     }
 
-    void Manager::on_render() const
+    void Manager::on_render()
     {
         if (!renderer()->is_active()) return;
         if (engine()->run()->state().has_no(run::StateFlags::eRunning)) return;
@@ -350,6 +420,11 @@ namespace nasral::gfx
 
         // Генерация мип-уровней для кадровых буферов
         renderer()->cmd_gen_framebuffer_mipmaps(OffscreenTextureType::eEmissive);
+
+        // Если нужно перестроить/обновить TLAS
+        if (renderer()->is_tlas_dirty(true)){
+            renderer()->cmd_build_tlas(object_ubo_ids_.acquired_count(), true);
+        }
 
         // Проход AO
         if (screen_fx_materials_[ScreenFxType::eAO])

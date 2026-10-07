@@ -23,7 +23,7 @@ namespace nasral::scn
             Components::UniformIndex>(
                 entity(),
                 {type, intensity, radius, quadratic, color},
-                {engine()->gfx()->light_ubo_ids().acquire()});
+                {engine()->gfx()->acquire_light_id()});
 
         // По динамическим объектам итерируемся всегда и проверяем не нужно ли пересчитать матрицы (dirty == true)
         // По статическим итерируемся лишь в том случае, если есть компонент DirtyUniform (редкие изменения)

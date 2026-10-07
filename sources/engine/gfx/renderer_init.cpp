@@ -1137,6 +1137,71 @@ namespace nasral::gfx
             vk_device_->logical_device().updateDescriptorSets(pp_writes, {});
         }
     }
+    
+    /**
+     * @brief Инициализация TLAS (структура ускорения трассировки лучей верхнего уровня)
+     * @details TLAS - структура, которая содержит информацию о всех объектах, которые нужно отрисовать, и позволяет
+     * быстро находить пересечения лучей с этими объектами (своего рода набор bounding box, который позволяет быстро находить
+     * пересечения лучей с объектами).
+     */
+    void Renderer::init_vk_tlas()
+    {
+        assert(vk_instance_ && "Vulkan instance is not initialized");
+        assert(vk_device_ && "Vulkan device is not initialized");
+
+        // На каждый активный кадр создаются свои независимые объекты (для параллельной работы)
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i)
+        {
+            // Буфер инстансов (Host Visible для быстрой записи CPU каждый кадр)
+            vk_tlas_instance_buffers_[i] = std::make_unique<vk::utils::Buffer>(
+                vk_device_.get(),
+                sizeof(vk::AccelerationStructureInstanceKHR) * kMaxObjects,
+                vk::BufferUsageFlagBits::eShaderDeviceAddress |
+                vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+            );
+            vk_tlas_instance_buffers_[i]->map_unsafe();
+
+
+            // Предварительный расчет максимального размера TLAS под kMaxObjects
+            vk::AccelerationStructureGeometryInstancesDataKHR instances_data{};
+            instances_data.setArrayOfPointers(false)
+                          .setData(vk_tlas_instance_buffers_[i]->device_address());
+
+            vk::AccelerationStructureGeometryKHR geometry{};
+            geometry.setGeometryType(vk::GeometryTypeKHR::eInstances)
+                    .setGeometry(instances_data);
+
+            vk::AccelerationStructureBuildGeometryInfoKHR build_info{};
+            build_info.setType(vk::AccelerationStructureTypeKHR::eTopLevel)
+                      .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace)
+                      .setMode(vk::BuildAccelerationStructureModeKHR::eBuild)
+                      .setGeometries(geometry);
+
+            const auto size_info = vk_device_->logical_device().getAccelerationStructureBuildSizesKHR(
+                vk::AccelerationStructureBuildTypeKHR::eDevice,
+                build_info,
+                kMaxObjects,
+                vk_loader_
+            );
+
+            // Создание самого TLAS
+            vk_tlas_[i] = std::make_unique<vk::utils::AccelerationStructure>(
+                vk_device_.get(),
+                vk::AccelerationStructureTypeKHR::eTopLevel,
+                size_info.accelerationStructureSize,
+                vk_loader_
+            );
+
+            // Scratch-буфер для сборки
+            vk_tlas_scratch_buffers_[i] = std::make_unique<vk::utils::Buffer>(
+                vk_device_.get(),
+                size_info.buildScratchSize,
+                vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                vk::MemoryPropertyFlagBits::eDeviceLocal
+            );
+        }
+    }
 
     /**
      * @brief Инициализирует uniform’ы: выделяет наборы, создаёт буферы и связывает их с дескрипторами.

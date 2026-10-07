@@ -545,22 +545,30 @@ namespace vk::utils
                     .setFillModeNonSolid(true)
                     .setIndependentBlend(true);
 
-            // Трассировка лучей
-            auto device_address_features = vk::PhysicalDeviceBufferDeviceAddressFeatures().setBufferDeviceAddress(true);
-            auto acceleration_structure_features = vk::PhysicalDeviceAccelerationStructureFeaturesKHR().setAccelerationStructure(true);
-            acceleration_structure_features.setPNext(&device_address_features);
-
             // Включить поддержку bindless дескрипторов
             auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT()
-                .setPNext(&acceleration_structure_features)
                 .setDescriptorBindingPartiallyBound(true)
                 .setDescriptorBindingVariableDescriptorCount(true)
                 .setRuntimeDescriptorArray(true)
                 .setDescriptorBindingSampledImageUpdateAfterBind(true);
 
-            vk::PhysicalDeviceFeatures2 features2;
-            features2.setFeatures(features);
-            features2.setPNext(&indexing_features);
+            // Трассировка лучей
+            auto device_address_features = vk::PhysicalDeviceBufferDeviceAddressFeatures()
+                .setBufferDeviceAddress(true)
+                .setPNext(&indexing_features);
+
+            auto acceleration_structure_features = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
+                .setAccelerationStructure(true)
+                .setPNext(&device_address_features);
+
+            auto raytracing_pip_features = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()
+                .setRayTracingPipeline(true)
+                .setPNext(&acceleration_structure_features);
+
+            // Общая цепочка свойств (фичей) устройства
+            auto features2 = vk::PhysicalDeviceFeatures2()
+                .setFeatures(features)
+                .setPNext(&raytracing_pip_features);
 
             // Создать устройство
             device_ = physical_device_.createDeviceUnique(

@@ -33,6 +33,16 @@ namespace nasral::gfx
         return aligned_sbo<T>(device) * index;
     }
 
+    inline vk::TransformMatrixKHR to_vk_transform(const glm::mat4& m) {
+        return vk::TransformMatrixKHR{
+            std::array<std::array<float, 4>, 3>{
+                std::array<float, 4>{ m[0][0], m[1][0], m[2][0], m[3][0] }, // строка 0
+                std::array<float, 4>{ m[0][1], m[1][1], m[2][1], m[3][1] }, // строка 1
+                std::array<float, 4>{ m[0][2], m[1][2], m[2][2], m[3][2] }  // строка 2
+            }
+        };
+    }
+
     vk::Format get_image_vk_format(uint32_t channel_count, uint32_t channel_depth, bool srgb);
 
     GeometryData gen_quad_geometry(float size = 1.0f);

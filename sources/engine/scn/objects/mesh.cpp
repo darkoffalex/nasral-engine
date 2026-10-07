@@ -43,7 +43,7 @@ namespace nasral::scn
                 {std::move(mesh_c.materials)},
                 {resources_c.ids,resources_c.active,resources_c.statuses},
                 {},
-                {engine()->gfx()->object_ubo_ids().acquire()},
+                {engine()->gfx()->acquire_object_id()},
                 {},
                 {});
 

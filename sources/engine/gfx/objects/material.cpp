@@ -78,7 +78,7 @@ namespace nasral::gfx
                 {description.name},
                 {description.base_material_type, settings, description.texture_samplers},
                 {},
-                {engine()->gfx()->material_ubo_ids().acquire()},
+                {engine()->gfx()->acquire_material_id()},
                 {},
                 {},
                 {},

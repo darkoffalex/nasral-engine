@@ -8,6 +8,7 @@
 #include <vulkan/utils/framebuffer.hpp>
 #include <vulkan/utils/uniform_layout.hpp>
 #include <vulkan/utils/buffer.hpp>
+#include <vulkan/utils/acceleration_structure.hpp>
 
 namespace nasral::gfx
 {
@@ -43,9 +44,11 @@ namespace nasral::gfx
         void cmd_draw_post_processing_quad(uint32_t pass_index = 0);
         //void cmd_clear_color_attachment(uint32_t attachment_index, const vk::ClearColorValue& clear_color);
         void cmd_gen_framebuffer_mipmaps(const OffscreenTextureType& type) const;
+        void cmd_build_tlas(uint32_t instance_count, bool initial = true);
         void cmd_wait_for_all() const;
 
         void request_surface_refresh();
+        void mark_tlas_dirty();
 
         [[nodiscard]] auto is_active() const noexcept{ return is_active_; }
         [[nodiscard]] auto frames() const noexcept{ return frame_count_; }
@@ -65,10 +68,12 @@ namespace nasral::gfx
         [[nodiscard]] const auto& vk_rasterization_d_set(const UniformDSetType& type) const noexcept{ return *vk_rasterization_d_sets_[type]; }
         [[nodiscard]] const auto& vk_post_process_frame_d_set(const size_t frame) const noexcept{ return *vk_post_process_frame_d_sets_[frame]; }
         [[nodiscard]] auto& vk_uniform_buffer(const UniformBufferType& type) const noexcept{ return *vk_uniform_buffers_[type]; }
+        [[nodiscard]] auto& vk_tlas_instance_buffer(const size_t frame) const noexcept{ return *vk_tlas_instance_buffers_[frame]; }
 
         [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
         [[nodiscard]] float rendering_aspect() const noexcept;
         [[nodiscard]] bool ready_for_commands() const noexcept;
+        [[nodiscard]] bool is_tlas_dirty(bool exchange = true) noexcept;
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
             vk::Flags<vk::DebugReportFlagBitsEXT> flags,
@@ -92,6 +97,7 @@ namespace nasral::gfx
         void init_vk_uniform_layouts();
         void init_vk_texture_samplers();
         void init_vk_framebuffer_bindings();
+        void init_vk_tlas();
         void init_vk_uniforms();
         void init_vk_command_buffers();
         void init_vk_synchronization();
@@ -124,10 +130,18 @@ namespace nasral::gfx
         EnumArray<UniformDSetType, vk::UniqueDescriptorSet> vk_post_process_d_sets_;
         // Дескрипторные наборы пост-процессинга на кадр (текстуры кадровых буферов)
         std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_post_process_frame_d_sets_;
+        // Дескрипторные наборы трассировки лучей на кадр (TLAS и прочие данные)
+        std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_ray_tracing_frame_d_sets_;
         // Uniform буферы объектов (камера, трансформации, материалы, источники света)
         EnumArray<UniformBufferType, vk::utils::Buffer::Ptr> vk_uniform_buffers_;
         // Семплеры текстур
         EnumArray<TextureSamplerType, vk::UniqueSampler> vk_texture_samplers_;
+
+        // Структуры ускорения верхнего уровня (TLAS) на каждый активный кадр и буферы для экземпляров объектов
+        std::array<vk::utils::AccelerationStructure::Ptr, kMaxFramesInFlight> vk_tlas_;
+        std::array<vk::utils::Buffer::Ptr, kMaxFramesInFlight> vk_tlas_scratch_buffers_;
+        std::array<vk::utils::Buffer::Ptr, kMaxFramesInFlight> vk_tlas_instance_buffers_;
+        std::array<std::atomic_bool, kMaxFramesInFlight> vk_tlas_buffers_dirty_ = {};
 
         // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
         size_t frame_count_;
