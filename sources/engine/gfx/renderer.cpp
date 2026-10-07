@@ -78,6 +78,9 @@ namespace nasral::gfx
         init_vk_framebuffer_bindings();
         log_info("Vulkan: Framebuffer attachments bound to post-processing descriptor sets.");
 
+        init_vk_tlas_rq_bindings();
+        log_info("Vulkan: TLAS attachments bound to ray tracing descriptor sets (ray query).");
+
         init_vk_command_buffers();
         log_info("Vulkan: Command buffers initialized.");
 
@@ -209,7 +212,8 @@ namespace nasral::gfx
                 vk_rasterization_d_sets_[UniformDSetType::eObjectUBOs].get(),
                 vk_rasterization_d_sets_[UniformDSetType::eMaterialUBOs].get(),
                 vk_rasterization_d_sets_[UniformDSetType::eMaterialTextures].get(),
-                vk_rasterization_d_sets_[UniformDSetType::eLightUBOs].get()
+                vk_rasterization_d_sets_[UniformDSetType::eLightUBOs].get(),
+                vk_ray_query_frame_d_sets_[frame()].get()
             }, {});
     }
 

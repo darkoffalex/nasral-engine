@@ -779,6 +779,20 @@ namespace nasral::gfx
                         }
                     },
                     1
+                },
+                // set = 5: Структуры ускорения трассировки лучей (для Ray Query)
+                {
+                    {
+                        // Структура ускорения верхнего уровня
+                        {
+                            0,
+                            1,
+                            vk::DescriptorType::eAccelerationStructureKHR,
+                            vk::ShaderStageFlagBits::eAll,
+                        }
+                    },
+                    // Наборов столько, сколько может быть "кадров на лету".
+                    config().max_frames_in_flight
                 }
             };
 
@@ -897,6 +911,32 @@ namespace nasral::gfx
                 vk_device_,
                 set_layouts,
                 push_constants);
+        }
+
+        // 4. Для трассировки лучи
+        {
+            std::vector<vk::utils::UniformLayout::SetLayoutInfo> set_layouts =
+            {
+                // set = 0: Структуры ускорения верхнего уровня
+                {
+                    {
+                        // Структура ускорения верхнего уровня
+                        {
+                            0,
+                            1,
+                            vk::DescriptorType::eAccelerationStructureKHR,
+                            vk::ShaderStageFlagBits::eAll,
+                        }
+                    },
+                    // Наборов столько, сколько может быть "кадров на лету".
+                    config().max_frames_in_flight
+                }
+            };
+
+            // Создать pipeline layout для трассировки лучей
+            layouts[UniformLayoutType::eRayTracing] = std::make_unique<vk::utils::UniformLayout>(
+                vk_device_,
+                set_layouts);
         }
     }
 
@@ -1137,7 +1177,67 @@ namespace nasral::gfx
             vk_device_->logical_device().updateDescriptorSets(pp_writes, {});
         }
     }
-    
+
+    void Renderer::init_vk_tlas_rt_bindings()
+    {
+        // Связать структуры ускорения трассировки лучей верхнего уровня с вложениями дескрипторных наборов трассировки лучей
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i)
+        {
+            auto& set = vk_ray_tracing_frame_d_sets_[i];
+            assert(set && "Ray tracing descriptor set is not initialized");
+            assert(vk_tlas_[i] && "TLAS is not initialized");
+
+            // Получаем нативный handle структуры ускорения для текущего кадра
+            const vk::AccelerationStructureKHR tlas_handle = vk_tlas_[i]->handle();
+
+            // Описываем структуру расширения для дескриптора AS
+            vk::WriteDescriptorSetAccelerationStructureKHR as_info{};
+            as_info.setAccelerationStructures(tlas_handle);
+
+            // Формируем запись дескриптора и подключаем as_info в pNext
+            vk::WriteDescriptorSet write{};
+            write.setPNext(&as_info)
+                 .setDstSet(set.get())
+                 .setDstBinding(0) // Индекс биндинга TLAS в вашем ray tracing layout (например, binding = 0)
+                 .setDstArrayElement(0)
+                 .setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR)
+                 .setDescriptorCount(1);
+
+            // Обновляем дескрипторный набор на логическом устройстве
+            vk_device_->logical_device().updateDescriptorSets({write}, {});
+        }
+    }
+
+    void Renderer::init_vk_tlas_rq_bindings()
+    {
+        // Связать структуры ускорения трассировки лучей верхнего уровня с вложениями дескрипторных наборов трассировки лучей
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i)
+        {
+            auto& set = vk_ray_query_frame_d_sets_[i];
+            assert(set && "Ray tracing descriptor set is not initialized");
+            assert(vk_tlas_[i] && "TLAS is not initialized");
+
+            // Получаем нативный handle структуры ускорения для текущего кадра
+            const vk::AccelerationStructureKHR tlas_handle = vk_tlas_[i]->handle();
+
+            // Описываем структуру расширения для дескриптора AS
+            vk::WriteDescriptorSetAccelerationStructureKHR as_info{};
+            as_info.setAccelerationStructures(tlas_handle);
+
+            // Формируем запись дескриптора и подключаем as_info в pNext
+            vk::WriteDescriptorSet write{};
+            write.setPNext(&as_info)
+                 .setDstSet(set.get())
+                 .setDstBinding(0) // Индекс биндинга TLAS в вашем ray tracing layout (например, binding = 0)
+                 .setDstArrayElement(0)
+                 .setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR)
+                 .setDescriptorCount(1);
+
+            // Обновляем дескрипторный набор на логическом устройстве
+            vk_device_->logical_device().updateDescriptorSets({write}, {});
+        }
+    }
+
     /**
      * @brief Инициализация TLAS (структура ускорения трассировки лучей верхнего уровня)
      * @details TLAS - структура, которая содержит информацию о всех объектах, которые нужно отрисовать, и позволяет
@@ -1221,6 +1321,7 @@ namespace nasral::gfx
         // Получить необходимые объекты (пул, макеты наборов)
         const auto& ul_rasterize = vk_uniform_layouts_[UniformLayoutType::eRasterization];
         const auto& ul_post_process = vk_uniform_layouts_[UniformLayoutType::ePostProcessing];
+        const auto& ul_ray_tracing = vk_uniform_layouts_[UniformLayoutType::eRayTracing];
 
         assert(ul_rasterize && "Rasterization uniform layout is not initialized");
         assert(ul_post_process && "Post-processing uniform layout is not initialized");
@@ -1244,7 +1345,17 @@ namespace nasral::gfx
             pp_sets[i].swap(vk_post_process_frame_d_sets_[i]);
         }
 
-        // Выделить дескрипторный набор пост-процессинга (данные камеры)
+        // Выделить дескрипторные наборы трассировки лучей (структуры ускорения верхнего уровня)
+        auto rt_sets = ul_ray_tracing->allocate_sets(0, config().max_frames_in_flight);
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i){
+            rt_sets[i].swap(vk_ray_tracing_frame_d_sets_[i]);
+        }
+
+        // Выделить дескрипторные наборы трассировки лучей (структуры ускорения верхнего уровня) для стадии растеризации (ray query)
+        auto rq_sets = ul_rasterize->allocate_sets(5, config().max_frames_in_flight);
+        for (size_t i = 0; i < config().max_frames_in_flight; ++i){
+            rq_sets[i].swap(vk_ray_query_frame_d_sets_[i]);
+        }
 
         // Uniform буферы
         {

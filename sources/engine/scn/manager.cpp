@@ -57,6 +57,7 @@ namespace nasral::scn
         evl_session_start_.reset();
         evl_sfc_chg_.reset();
         nodes_.clear();
+        screen_fx_state_.reset();
         ecs_system_->finalize();
         log_info("Manager finalized");
     }

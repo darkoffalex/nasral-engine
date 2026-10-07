@@ -97,6 +97,8 @@ namespace nasral::gfx
         void init_vk_uniform_layouts();
         void init_vk_texture_samplers();
         void init_vk_framebuffer_bindings();
+        void init_vk_tlas_rt_bindings();
+        void init_vk_tlas_rq_bindings();
         void init_vk_tlas();
         void init_vk_uniforms();
         void init_vk_command_buffers();
@@ -130,7 +132,8 @@ namespace nasral::gfx
         EnumArray<UniformDSetType, vk::UniqueDescriptorSet> vk_post_process_d_sets_;
         // Дескрипторные наборы пост-процессинга на кадр (текстуры кадровых буферов)
         std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_post_process_frame_d_sets_;
-        // Дескрипторные наборы трассировки лучей на кадр (TLAS и прочие данные)
+        // Дескрипторные наборы трассировки лучей на кадр (TLAS и прочие данные) для стадии растеризации (ray query) и трассировки
+        std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_ray_query_frame_d_sets_;
         std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_ray_tracing_frame_d_sets_;
         // Uniform буферы объектов (камера, трансформации, материалы, источники света)
         EnumArray<UniformBufferType, vk::utils::Buffer::Ptr> vk_uniform_buffers_;

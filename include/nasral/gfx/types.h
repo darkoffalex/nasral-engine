@@ -38,6 +38,7 @@ namespace nasral::gfx
         eDummy = 0,
         eRasterization,
         ePostProcessing,
+        eRayTracing,
         TOTAL
     };
 
