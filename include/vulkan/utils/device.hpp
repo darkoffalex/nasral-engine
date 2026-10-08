@@ -561,9 +561,13 @@ namespace vk::utils
                 .setAccelerationStructure(true)
                 .setPNext(&device_address_features);
 
+            auto ray_query_pip_features = vk::PhysicalDeviceRayQueryFeaturesKHR()
+                .setRayQuery(true)
+                .setPNext(&acceleration_structure_features);
+
             auto raytracing_pip_features = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()
                 .setRayTracingPipeline(true)
-                .setPNext(&acceleration_structure_features);
+                .setPNext(&ray_query_pip_features);
 
             // Общая цепочка свойств (фичей) устройства
             auto features2 = vk::PhysicalDeviceFeatures2()

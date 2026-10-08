@@ -38,12 +38,14 @@ namespace nasral::scn
             Components::Handles,
             Components::UniformIndex,
             Components::DirtyHandles,
+            Components::DirtyTlas,
             Components::RenderTag
             >(entity(),
                 {std::move(mesh_c.materials)},
                 {resources_c.ids,resources_c.active,resources_c.statuses},
                 {},
                 {engine()->gfx()->acquire_object_id()},
+                {},
                 {},
                 {});
 
@@ -138,18 +140,21 @@ namespace nasral::scn
     {
         Spatial::set_position(position);
         invalidate_ubo();
+        invalidate_tlas_instance();
     }
 
     void Mesh::set_rotation(const glm::vec3& rotation) const
     {
         Spatial::set_rotation(rotation);
         invalidate_ubo();
+        invalidate_tlas_instance();
     }
 
     void Mesh::set_scale(const glm::vec3& scale) const
     {
         Spatial::set_scale(scale);
         invalidate_ubo();
+        invalidate_tlas_instance();
     }
 
     void Mesh::set_material(const ecs::EntityId& material, const size_t index) const
@@ -201,6 +206,13 @@ namespace nasral::scn
         }
         else if (!engine()->ecs()->has<Components::DirtyUniform>(entity())){
             engine()->ecs()->add_components<Components::DirtyUniform>(entity(), {});
+        }
+    }
+
+    void Mesh::invalidate_tlas_instance() const
+    {
+        if (!engine()->ecs()->has<Components::DirtyTlas>(entity())){
+            engine()->ecs()->add_components<Components::DirtyTlas>(entity(), {});
         }
     }
 }

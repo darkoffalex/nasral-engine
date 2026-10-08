@@ -47,7 +47,7 @@ namespace nasral::res
             surfaces_ = data->materials;
 
             // Рендерер (получить)
-            const auto* renderer = subsystem()
+            auto* renderer = subsystem()
                 ->engine()
                 ->gfx()
                 ->renderer();

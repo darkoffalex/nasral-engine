@@ -36,6 +36,7 @@ namespace nasral::gfx
         void update_obj_static_ubo() const;
         void update_obj_dynamic_ubo() const;
         void update_obj_mesh_handles() const;
+        void update_obj_mesh_tlas() const;
 
         // Источники света (UBO)
         void update_light_static_ubo() const;

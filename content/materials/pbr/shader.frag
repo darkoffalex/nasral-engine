@@ -1,6 +1,8 @@
-#version 450 core
+#version 460 core
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_ray_query : enable
+#extension GL_EXT_ray_flags_primitive_culling : enable
 
 // Константы
 #define PI 3.14159
@@ -82,6 +84,9 @@ layout(set = 4, binding = 1, std430) readonly buffer SLightIndices {
     LightIndices s_light_indices;
 };
 
+// Структура ускорения для ray tracing/query
+layout(set = 5, binding = 0) uniform accelerationStructureEXT u_tlas;
+
 // Текстуры объекта
 layout(set = 3, binding = 0) uniform sampler2D t_albedo[MAX_MATERIALS];
 layout(set = 3, binding = 1) uniform sampler2D t_normal[MAX_MATERIALS];
@@ -139,6 +144,45 @@ vec3 F_Schlick(float VoH, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - VoH, 5.0);
 }
 
+/**
+ * @brief Проверка затенения точки источником света через Ray Query
+ * @param origin Мировая позиция фрагмента
+ * @param light_pos Мировая позиция источника света
+ * @return 1.0 если точка освещена, 0.0 если в тени
+ */
+float compute_shadow(vec3 origin, vec3 light_pos, vec3 normal)
+{
+    vec3 to_light = light_pos - origin;
+    float dist = length(to_light);
+    vec3 dir = to_light / dist;
+
+    // Смещение начала луча вдоль нормали для предотвращения Shadow Acne
+    vec3 ray_origin = origin + normal * 0.005;
+
+    rayQueryEXT rq;
+    rayQueryInitializeEXT(
+        rq,
+        u_tlas,
+        gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT, // Прерываем обход при первом же попадании
+        0xFF,
+        ray_origin,
+        0.001,
+        dir,
+        dist - 0.01 // Не доходим до самого центра источника
+    );
+
+    while (rayQueryProceedEXT(rq)) {
+        // Ожидание завершения обхода
+    }
+
+    // Если луч что-то встретил на пути — точка в тени
+    if (rayQueryGetIntersectionTypeEXT(rq, true) != gl_RayQueryCommittedIntersectionNoneEXT) {
+        return 0.0;
+    }
+
+    return 1.0;
+}
+
 void main()
 {
     // Данные из текстур объекта
@@ -181,6 +225,9 @@ void main()
         // Облученность (интенсивность освещенности) точки (фрагмента) конкретным источником
         vec3 radiance = light.color.rgb * attenuation * light.intensity;
 
+        // Расчет коэффициента тени через Ray Query
+        float shadow = compute_shadow(fs_in.position, light.position.xyz, normal);
+
         // Коэффициенты для расчета PBR
         vec3 V = normalize(u_camera.position.xyz - fs_in.position); // Направление фрагмент-камера
         vec3 N = normal;                           // Нормаль
@@ -203,7 +250,7 @@ void main()
         vec3 diffuse = albedo * (1.0 - metallic) * (1.0 - F) / PI;
 
         // Суммируем вклад света
-        Lo += (diffuse + specular) * NoL * radiance * tex_ao;
+        Lo += (diffuse + specular) * NoL * radiance * tex_ao * shadow;
     }
 
     // Итоговый цвет: вклад от всех источников
