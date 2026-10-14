@@ -2,15 +2,13 @@
 #include <nasral/scn/manager.h>
 #include <nasral/res/objects/project.h>
 #include <nasral/res/objects/scene.h>
-
-#include <nasral/scn/objects/node.h>
-#include <nasral/scn/objects/mesh.h>
-#include <nasral/scn/objects/camera.h>
-#include <nasral/scn/objects/light.h>
+#include <nasral/ecs/view.h>
 
 #include <nasral/scn/entities/node.h>
 #include <nasral/scn/entities/spatial.h>
 #include <nasral/scn/entities/mesh.h>
+#include <nasral/scn/entities/camera.h>
+#include <nasral/scn/entities/light.h>
 
 #include <nasral/evt/utils.h>
 #include <nasral/ecs/utils.h>
@@ -20,7 +18,7 @@ namespace nasral::scn
 {
     Manager::Manager(Engine* e, const Config& config)
         : Subsystem(e, config)
-        , main_camera_(nullptr)
+        , camera_(ecs::EntityId::invalid())
         , ecs_system_(std::make_unique<System>(this))
     {
         log_info("Initializing manager...");
@@ -60,71 +58,105 @@ namespace nasral::scn
     }
 
     void Manager::on_finalize(){
+        // Сброс слушателей события
         evl_session_start_.reset();
         evl_sfc_chg_.reset();
-        nodes_.clear();
+
+        // Очистка сцены
+        clear();
+
+        // Финализация ECS
         ecs_system_->finalize();
         log_info("Manager finalized");
     }
 
-    Node* Manager::spawn(const NodeDesc& desc)
+    ecs::EntityId Manager::spawn(const NodeDesc &desc)
     {
-        switch (desc.type)
-        {
-        case NodeType::eDummy:
-            //NodeSpawner<NodeView>::spawn(engine()->ecs(), desc);
-            nodes_.emplace_back(Node::Ptr(new Node(this, desc)));
-            break;
-        case NodeType::eSpatial:
-            //NodeSpawner<SpatialView>::spawn(engine()->ecs(), desc);
-            nodes_.emplace_back(Node::Ptr(new Spatial(this, desc)));
-            break;
-        case NodeType::eMesh:
-            // NodeSpawner<MeshView>::spawn(engine()->ecs(), desc);
-            nodes_.emplace_back(Node::Ptr(new Mesh(this, desc)));
-            break;
-        case NodeType::eCamera:
-            nodes_.emplace_back(Node::Ptr(new Camera(this, desc)));
-            break;
-        case NodeType::eLight:
-            nodes_.emplace_back(Node::Ptr(new Light(this, desc)));
-            break;
-        default:
-            return nullptr;
+        ecs::EntityId node_entity = ecs::EntityId::invalid();
+
+        switch (desc.type) {
+            case NodeType::eDummy: {
+                const auto node = NodeSpawner<NodeView>::spawn(engine()->ecs(), desc);
+                assert(node.has_value() && "Invalid node spawned");
+                node_entity = node->id();
+                break;
+            }
+            case NodeType::eSpatial: {
+                const auto node = NodeSpawner<SpatialView>::spawn(engine()->ecs(), desc);
+                assert(node.has_value() && "Invalid node spawned");
+                node_entity = node->id();
+                break;
+            }
+            case NodeType::eCamera: {
+                const auto node = NodeSpawner<CameraView>::spawn(engine()->ecs(), desc);
+                assert(node.has_value() && "Invalid node spawned");
+                node_entity = node->id();
+                break;
+            }
+            case NodeType::eMesh: {
+                const auto node = NodeSpawner<MeshView>::spawn(engine()->ecs(), desc);
+                assert(node.has_value() && "Invalid node spawned");
+                node_entity = node->id();
+                break;
+            }
+            case NodeType::eLight: {
+                const auto node = NodeSpawner<LightView>::spawn(engine()->ecs(), desc);
+                assert(node.has_value() && "Invalid node spawned");
+                node_entity = node->id();
+                break;
+            }
+            default:
+                break;
         }
 
-        return nodes_.back().get();
+        nodes_.emplace_back(node_entity);
+        return node_entity;
     }
 
-    void Manager::remove(const Node* node){
+    ecs::EntityId Manager::find(const UniqueId &id) const {
+        for (auto node : engine()->ecs()->view_wrapped<NodeView>()) {
+            if (node.uid() == id) {
+                return node.id();
+            }
+        }
+
+        /*
+        for (auto e : nodes_) {
+            if (auto node = engine()->ecs()->as_view<NodeView>(e); node.has_value()) {
+                if (node->uid() == id) {
+                    return node->id();
+                }
+            }
+        }
+        */
+
+        return ecs::EntityId::invalid();
+    }
+
+    void Manager::remove(const ecs::EntityId &id) {
         nodes_.erase(std::remove_if(nodes_.begin(), nodes_.end(), [&](const auto& n){
-            return n.get() == node;
+            return n == id;
         }), nodes_.end());
+
+        engine()->ecs()->add_components<ecs::DestroyComponent>(id, {});
     }
 
-    void Manager::remove(const UniqueId& id){
-        nodes_.erase(std::remove_if(nodes_.begin(), nodes_.end(), [&](const Node::Ptr& n){
-            const auto dv = std::get<data::DummyNodeView>(n->data_view());
-            return dv.uid == id;
-        }), nodes_.end());
+    void Manager::remove(const UniqueId &id) {
+        const auto to_erase = std::remove_if(nodes_.begin(), nodes_.end(), [&](const auto& n){
+            auto node = engine()->ecs()->as_view<NodeView>(n);
+            return node.has_value() && node->uid() == id;
+        });
+        nodes_.erase(to_erase, nodes_.end());
+        engine()->ecs()->add_components<ecs::DestroyComponent>(*to_erase, {});
     }
 
-    Node* Manager::find(const UniqueId& id) const{
-        for (const auto& n : nodes_){
-            if (const auto dv = std::get<data::DummyNodeView>(n->data_view()); dv.uid == id){
-                return n.get();
+    void Manager::clear() {
+        for (auto e : nodes_) {
+            if (auto node = engine()->ecs()->as_view<NodeView>(e); node.has_value()) {
+                node->destroy();
             }
         }
-        return nullptr;
-    }
-
-    Node* Manager::find(const std::string& name) const{
-        for (const auto& n : nodes_){
-            if (const auto dv = std::get<data::DummyNodeView>(n->data_view()); dv.name == name){
-                return n.get();
-            }
-        }
-        return nullptr;
+        nodes_.clear();
     }
 
     void Manager::on_session_start([[maybe_unused]] const evt::Arg& arg)
@@ -145,8 +177,9 @@ namespace nasral::scn
 
     void Manager::on_display_surface_changed([[maybe_unused]] const evt::Arg& arg) const
     {
-        if (main_camera_ == nullptr) return;
-        main_camera_->invalidate_ubo();
+        if (camera_ == ecs::EntityId::invalid()) return;
+        const auto cam_view = engine()->ecs()->as_view<CameraView>(camera_);
+        cam_view->invalidate_ubo();
     }
 
     void Manager::load_initial_scene([[maybe_unused]] const std::string& path)
@@ -178,12 +211,11 @@ namespace nasral::scn
             for (const auto& node_desc : scene->nodes())
             {
                 // Добавление узла
-                auto* spawned = spawn(node_desc);
+                const auto e = spawn(node_desc);
 
-                // Первая попавшаяся камера - главная
-                if (node_desc.type == NodeType::eCamera && main_camera_ == nullptr){
-                    main_camera_ = dynamic_cast<Camera*>(spawned);
-                    assert(main_camera_ != nullptr && "Main camera is not a camera");
+                // Считать основной первую попавшуюся камеру
+                if (node_desc.type == NodeType::eCamera && camera_ == ecs::EntityId::invalid()){
+                    camera_ = e;
                 }
             }
 

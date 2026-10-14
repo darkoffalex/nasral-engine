@@ -72,7 +72,7 @@ namespace nasral::scn
         // - Запрос
         // - Загрузка
         // - Загружен
-        for (auto [e, n, res] : engine()->ecs()->view<Node, Resources>(ecs::kMaskOf<Request, Loading, Loaded>))
+        for (const auto& [e, n, res] : engine()->ecs()->view<Node, Resources>(ecs::kMaskOf<Request, Loading, Loaded>))
         {
             engine()->ecs()->add_components<Request>(e, {});
         }
@@ -153,7 +153,7 @@ namespace nasral::scn
         if (!first_cam) return;
 
         // Внести изменения (если еще не внесены)
-        if (auto [e, n, spatial, cam, uniform] = *first_cam; !uniform.is_dirty)
+        if (auto&& [e, n, spatial, cam, uniform] = *first_cam; !uniform.is_dirty)
         {
             // Вектор перемещения (управление с клавиатуры)
             auto movement = engine()->inp()->get_movement_vector(
@@ -210,7 +210,7 @@ namespace nasral::scn
         if (!first_light) return;
 
         // Внести изменения (если еще не внесены)
-        if (auto [e, n, spatial, light, uniform] = *first_light; !uniform.is_dirty)
+        if (auto&& [e, n, spatial, light, uniform] = *first_light; !uniform.is_dirty)
         {
             constexpr float move_speed = 2.5f;
 
@@ -250,13 +250,25 @@ namespace nasral::scn
 
         // Пройти по всем mesh-ам, помеченным к удалению.
         // Предполагается, что в конце update-итерации сущность будет удалена (повторной обработки не случится)
-        for (auto [e, n, m, ui, d_tag] : engine()->ecs()->view<
+        for (const auto& [e, n, m, ui, d_tag] : engine()->ecs()->view<
             Node,
             Mesh,
             UniformId,
             Destroy>())
         {
+            // Освободить UBO-индекс
             engine()->gfx()->object_ubo_ids().release(ui.index);
+
+            // Уменьшить кол-во ссылок на entity материалов
+            auto& [materials, requested] = engine()->ecs()->get_component<MeshComponent>(e);
+            for (size_t i = 0; i < materials.size(); ++i){
+                if (!requested[i]) continue;
+                if (!engine()->ecs()->is_valid(materials[i])) continue;
+                ecs::dec_entity_refs(engine()->ecs(), materials[i]);
+            }
+
+            // Пометить для освобождения ресурсов
+            engine()->ecs()->add_components_immediate<res::ReleaseComponent>(e, {});
         }
     }
 
@@ -270,7 +282,7 @@ namespace nasral::scn
 
         // Пройти по всем источникам света, помеченным к удалению.
         // Предполагается, что в конце update-итерации сущность будет удалена (повторной обработки не случится)
-        for (auto [e, n, l, ui, d_tag] : engine()->ecs()->view<
+        for (const auto& [e, n, l, ui, d_tag] : engine()->ecs()->view<
             Node,
             Light,
             UniformId,
@@ -288,7 +300,7 @@ namespace nasral::scn
 
         // Пройти по всем настройкам экранных эффектов помеченных к удалению.
         // Предполагается, что в конце update-итерации сущность будет удалена (повторной обработки не случится)
-        for (auto [e, sf, d_tag] : engine()->ecs()->view<
+        for (const auto& [e, sf, d_tag] : engine()->ecs()->view<
             ScreenFx,
             Destroy>())
         {
@@ -313,7 +325,7 @@ namespace nasral::scn
 
         // Пройти по источникам, которые необходимо активировать, и сформировать список
         activate_lights_.clear();
-        for (auto [e, n, l, ui, a_tag] : engine()->ecs()->view<
+        for (const auto& [e, n, l, ui, a_tag] : engine()->ecs()->view<
             Node,
             Light,
             UniformId,
@@ -330,7 +342,7 @@ namespace nasral::scn
 
         // Пройтись по источникам, которые необходимо деактивировать, и сформировать список
         deactivate_lights_.clear();
-        for (auto [e, n, l, ui, d_tag] : engine()->ecs()->view<
+        for (const auto& [e, n, l, ui, d_tag] : engine()->ecs()->view<
             Node,
             Light,
             UniformId,

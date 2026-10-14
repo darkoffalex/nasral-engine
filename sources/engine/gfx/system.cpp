@@ -96,7 +96,7 @@ namespace nasral::gfx
         // - Список ресурсов
         // - Грязные (не обновленные) handles
         // - Ресурсы загружены
-        for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
+        for (auto&& [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
         {
             // Материал должен быть загружен
             if (kDebugBuild){
@@ -213,7 +213,7 @@ namespace nasral::gfx
         // - Список ресурсов
         // - Грязные (не обновленные) handles
         // - Ресурсы загружены
-        for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
+        for (auto&& [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
         {
             // Материал для финального этапа пост-обработки должен быть загружен
             if (kDebugBuild){
@@ -329,7 +329,7 @@ namespace nasral::gfx
         // - Uniform index
         // - Состояние UBO
         // - Рендеринг
-        for (auto [e, sp, ui, state, r_tag] : engine()->ecs()->view<Spatial, UniformId, State, Render>())
+        for (auto&& [e, sp, ui, state, r_tag] : engine()->ecs()->view<Spatial, UniformId, State, Render>())
         {
             if (!state.is_dirty) continue;
 
@@ -365,7 +365,7 @@ namespace nasral::gfx
         // - Список ресурсов
         // - Грязные (не обновленные) handles
         // - Ресурсы загружены
-        for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
+        for (auto&& [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
         {
             // Меш должен быть загружен
             if (kDebugBuild){
@@ -398,7 +398,7 @@ namespace nasral::gfx
         using Dirty     = DirtyUnformComponent;
 
         // Пройти по всем сущностям с компонентами:
-        for (auto [e, sp, l, ui, d_tag] : engine()->ecs()->view<Spatial, Light, UniformId, Dirty>())
+        for (const auto& [e, sp, l, ui, d_tag] : engine()->ecs()->view<Spatial, Light, UniformId, Dirty>())
         {
             // Параметры источника
             uniforms::LightSettings uniforms = {};
@@ -433,7 +433,7 @@ namespace nasral::gfx
         // - Источник света
         // - Uniform index
         // - Состояние UBO
-        for (auto [e, sp, l, ui, state] : engine()->ecs()->view<Spatial, Light, UniformId, State>())
+        for (auto&& [e, sp, l, ui, state] : engine()->ecs()->view<Spatial, Light, UniformId, State>())
         {
             if (!state.is_dirty) continue;
 
@@ -473,7 +473,7 @@ namespace nasral::gfx
         // - Состояние UBO
         // Где нет компонентов:
         // - Рендеринг
-        for (auto [e, cam, sp, ui, state] : engine()->ecs()->view<
+        for (auto&& [e, cam, sp, ui, state] : engine()->ecs()->view<
             Camera,
             Spatial,
             UniformId,
@@ -523,7 +523,7 @@ namespace nasral::gfx
         // - Тег рендеринга
         // Где нет компонентов:
         // - Грязные handles
-        for (auto[e, mh, ui, mesh, r_tag] : engine()->ecs()->view<
+        for (auto&& [e, mh, ui, mesh, r_tag] : engine()->ecs()->view<
             Handles,
             UniformId,
             Mesh,

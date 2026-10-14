@@ -51,12 +51,8 @@ add_library(Engine OBJECT
         scn/entities/node.cpp
         scn/entities/spatial.cpp
         scn/entities/mesh.cpp
-
-        scn/objects/node.cpp
-        scn/objects/spatial.cpp
-        scn/objects/camera.cpp
-        scn/objects/mesh.cpp
-        scn/objects/light.cpp
+        scn/entities/camera.cpp
+        scn/entities/light.cpp
         scn/objects/screen_fx_state.cpp
         scn/system.cpp
 )

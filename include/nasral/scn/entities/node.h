@@ -26,6 +26,7 @@ namespace nasral::scn
         void set_uid(const UniqueId& uid);
         void set_name(const std::string& name);
         void set_type(const NodeType& type);
+        void destroy(bool immediate = false) const;
     };
 
     template<>

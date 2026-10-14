@@ -139,10 +139,41 @@ namespace nasral::scn
         }
 
         // Задать новый и запросить
-        ids[0] = resource_id;
+        ids[res_index] = resource_id;
         engine()->ecs()->add_components<
             res::RequestComponent,
             gfx::DirtyHandlesComponent>(id(), {}, {});
+    }
+
+    void MeshView::reset_materials() const
+    {
+        auto& [materials, requested] = engine()->ecs()->get_component<MeshComponent>(id());
+        for (size_t i = 0; i < materials.size(); ++i){
+            if (!requested[i]) continue;
+            if (!engine()->ecs()->is_valid(materials[i])) continue;
+            ecs::dec_entity_refs(engine()->ecs(), materials[i]);
+        }
+    }
+
+    void MeshView::reset_mesh_resource() const
+    {
+        // Индекс ресурса меша
+        constexpr auto res_index = static_cast<size_t>(ResIndices::eMesh);
+
+        // Компонент ресурсов
+        auto& [ids, active, statuses] = engine()->ecs()->get_component<res::ResourcesComponent>(id());
+        assert(active[res_index] != false);
+
+        // Если ресурс загружался и он валиден - освобождение
+        if (statuses[res_index] != res::Status::eUnloaded &&
+            ids[res_index] != res::kInvalidResourceId)
+        {
+            engine()->res()->release(ids[res_index]);
+            statuses[res_index] = res::Status::eUnloaded;
+        }
+
+        // Инвалидировать handles
+        engine()->ecs()->add_components<gfx::DirtyHandlesComponent>(id(), {});
     }
 
     void MeshView::invalidate_ubo() const

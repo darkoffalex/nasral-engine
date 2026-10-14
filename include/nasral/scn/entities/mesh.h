@@ -47,6 +47,8 @@ namespace nasral::scn
         void set_scale(const glm::vec3& scale) const;
         void set_material(const ecs::EntityId& material, size_t index = 0) const;
         void set_mesh_resource(const res::ResourceId& resource_id) const;
+        void reset_materials() const;
+        void reset_mesh_resource() const;
 
     protected:
         void invalidate_ubo() const;

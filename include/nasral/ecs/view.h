@@ -134,9 +134,9 @@ namespace nasral::ecs
 
             value_type operator*() const {
                 // *it_ возвращает std::tuple<EntityId, CTs&...>
-                // std::apply распаковывает элементы кортежа как аргументы в конструктор ViewType
+                // std::apply распаковывает элементы кортежа как аргументы в конструктор EntityViewType
                 return std::apply([this](auto entity_id, auto&... comps) {
-                    return ViewType(entity_id, manager_, comps...);
+                    return EntityViewType(entity_id, manager_, comps...);
                 }, *it_);
             }
 

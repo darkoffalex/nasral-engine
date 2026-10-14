@@ -5,10 +5,8 @@
 #include <nasral/scn/system.h>
 #include <nasral/log/loggable.h>
 #include <nasral/scn/types.h>
-#include <nasral/scn/objects/node.h>
-#include <nasral/scn/objects/camera.h>
-#include <nasral/scn/objects/screen_fx_state.h>
 #include <nasral/evt/objects/listener.h>
+#include <nasral/scn/objects/screen_fx_state.h>
 
 namespace nasral::scn
 {
@@ -26,11 +24,11 @@ namespace nasral::scn
         void on_update(float delta) const;
         void on_finalize();
 
-        Node* spawn(const NodeDesc& desc);
-        void remove(const Node* node);
+        ecs::EntityId spawn(const NodeDesc& desc);
+        [[nodiscard]] ecs::EntityId find(const UniqueId& id) const;
+        void remove(const ecs::EntityId& id);
         void remove(const UniqueId& id);
-        [[nodiscard]] Node* find(const UniqueId& id) const;
-        [[nodiscard]] Node* find(const std::string& name) const;
+        void clear();
 
     protected:
         void on_session_start(const evt::Arg& arg);
@@ -38,10 +36,11 @@ namespace nasral::scn
         void load_initial_scene(const std::string& path);
 
     private:
-        // Список узлов
-        std::list<Node::Ptr> nodes_;
-        // Основная камера
-        Camera* main_camera_;
+        // Список узлов сцены
+        std::list<ecs::EntityId> nodes_;
+        // Активная камера
+        ecs::EntityId camera_;
+
         // Слушатель события начала сеанса
         evt::Listener::Ptr evl_session_start_;
         // Слушатель события смены размеров поверхности

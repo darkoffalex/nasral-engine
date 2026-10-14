@@ -1,6 +1,8 @@
 #include "pch.h"
 #include <nasral/scn/entities/node.h>
 
+#include "nasral/engine.h"
+
 namespace nasral::scn
 {
     NodeView NodeView::setup(ecs::Manager* ecs
@@ -43,5 +45,13 @@ namespace nasral::scn
     void NodeView::set_type(const NodeType& type)
     {
         get<NodeComponent>().type = type;
+    }
+
+    void NodeView::destroy(const bool immediate) const {
+        if (immediate) {
+            engine()->ecs()->add_components_immediate<ecs::DestroyComponent>(id(), {});
+        }else {
+            engine()->ecs()->add_components<ecs::DestroyComponent>(id(), {});
+        }
     }
 }
