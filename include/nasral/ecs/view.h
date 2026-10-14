@@ -114,4 +114,66 @@ namespace nasral::ecs
     View<CTs...> Manager::view(const ComponentMask& exclusion) {
         return View<CTs...>(this, exclusion);
     }
+
+    template<typename EntityViewType>
+    class WrappedView
+    {
+    public:
+        using UnderlyingView = typename EntityViewType::UnderlyingView;
+        using UnderlyingIterator = typename UnderlyingView::Iterator;
+
+        class Iterator
+        {
+        public:
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = EntityViewType;
+            using difference_type = std::ptrdiff_t;
+
+            Iterator() = default;
+            Iterator(UnderlyingIterator it, Manager* mgr) : it_(it), manager_(mgr) {}
+
+            value_type operator*() const {
+                // *it_ возвращает std::tuple<EntityId, CTs&...>
+                // std::apply распаковывает элементы кортежа как аргументы в конструктор ViewType
+                return std::apply([this](auto entity_id, auto&... comps) {
+                    return ViewType(entity_id, manager_, comps...);
+                }, *it_);
+            }
+
+            Iterator& operator++() {
+                ++it_;
+                return *this;
+            }
+
+            Iterator operator++(int) {
+                Iterator tmp = *this;
+                ++(*this);
+                return tmp;
+            }
+
+            bool operator==(const Iterator& other) const noexcept { return it_ == other.it_; }
+            bool operator!=(const Iterator& other) const noexcept { return !(*this == other); }
+
+        private:
+            UnderlyingIterator it_;
+            Manager* manager_ = nullptr;
+        };
+
+        explicit WrappedView(Manager* mgr, const ComponentMask& exclusion = {})
+            : manager_(mgr)
+            , underlying_(mgr, exclusion)
+        {}
+
+        Iterator begin() const noexcept { return Iterator(underlying_.begin(), manager_); }
+        Iterator end() const noexcept { return Iterator(underlying_.end(), manager_); }
+
+    private:
+        Manager* manager_ = nullptr;
+        UnderlyingView underlying_;
+    };
+
+    template<typename EVT>
+    WrappedView<EVT> Manager::view_wrapped(const ComponentMask& exclusion){
+        return WrappedView<EVT>(this, exclusion);
+    }
 }

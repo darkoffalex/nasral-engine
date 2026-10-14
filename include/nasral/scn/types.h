@@ -125,6 +125,9 @@ namespace nasral::scn
         } mesh = {};
     };
 
+    template<typename ViewType>
+    struct NodeSpawner;
+
     struct ScreenFxStateDesc
     {
         UniqueId unique_id = {};

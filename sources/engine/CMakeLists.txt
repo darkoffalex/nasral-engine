@@ -47,6 +47,11 @@ add_library(Engine OBJECT
 
         # Сцена
         scn/manager.cpp
+
+        scn/entities/node.cpp
+        scn/entities/spatial.cpp
+        scn/entities/mesh.cpp
+
         scn/objects/node.cpp
         scn/objects/spatial.cpp
         scn/objects/camera.cpp

@@ -2,10 +2,16 @@
 #include <nasral/scn/manager.h>
 #include <nasral/res/objects/project.h>
 #include <nasral/res/objects/scene.h>
+
 #include <nasral/scn/objects/node.h>
 #include <nasral/scn/objects/mesh.h>
 #include <nasral/scn/objects/camera.h>
 #include <nasral/scn/objects/light.h>
+
+#include <nasral/scn/entities/node.h>
+#include <nasral/scn/entities/spatial.h>
+#include <nasral/scn/entities/mesh.h>
+
 #include <nasral/evt/utils.h>
 #include <nasral/ecs/utils.h>
 #include <nasral/engine.h>
@@ -66,16 +72,19 @@ namespace nasral::scn
         switch (desc.type)
         {
         case NodeType::eDummy:
+            //NodeSpawner<NodeView>::spawn(engine()->ecs(), desc);
             nodes_.emplace_back(Node::Ptr(new Node(this, desc)));
             break;
         case NodeType::eSpatial:
+            //NodeSpawner<SpatialView>::spawn(engine()->ecs(), desc);
             nodes_.emplace_back(Node::Ptr(new Spatial(this, desc)));
+            break;
+        case NodeType::eMesh:
+            // NodeSpawner<MeshView>::spawn(engine()->ecs(), desc);
+            nodes_.emplace_back(Node::Ptr(new Mesh(this, desc)));
             break;
         case NodeType::eCamera:
             nodes_.emplace_back(Node::Ptr(new Camera(this, desc)));
-            break;
-        case NodeType::eMesh:
-            nodes_.emplace_back(Node::Ptr(new Mesh(this, desc)));
             break;
         case NodeType::eLight:
             nodes_.emplace_back(Node::Ptr(new Light(this, desc)));

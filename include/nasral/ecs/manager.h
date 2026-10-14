@@ -8,6 +8,18 @@ namespace nasral::ecs
     template<typename... CTs>
     class View;
 
+    template<typename EVT>
+    class WrappedView;
+
+    template<typename T, typename = void>
+    struct is_entity_view : std::false_type {};
+
+    template<typename T>
+    struct is_entity_view<T, std::void_t<typename T::RequiredComponents>> : std::true_type {};
+
+    template<typename T>
+    inline constexpr bool is_entity_view_v = is_entity_view<T>::value;
+
     class Manager final : public Subsystem<Manager, Config>, public log::Loggable<Manager>
     {
     public:
@@ -76,6 +88,11 @@ namespace nasral::ecs
             return (entities_[entity.index].mask.test(kComponentId<std::decay_t<CTs>>) || ...);
         }
 
+        template<typename V, std::enable_if_t<is_entity_view_v<V>, int> = 0>
+        std::optional<V> as_view(const EntityId& entity) const noexcept{
+            return as_view_impl<V>(entity, static_cast<typename V::RequiredComponents*>(nullptr));
+        }
+
         template<typename CT>
         CT& get_component(const EntityId& entity) const noexcept{
             const auto& slot = entities_[entity.index];
@@ -98,6 +115,9 @@ namespace nasral::ecs
         template<typename... CTs>
         View<CTs...> view(const ComponentMask& exclusion = {});
 
+        template<typename EVT>
+        WrappedView<EVT> view_wrapped(const ComponentMask& exclusion = {});
+
         void on_init();
         void on_update(float delta);
         void on_finalize();
@@ -118,6 +138,17 @@ namespace nasral::ecs
             (slot.mask.reset(kComponentId<std::decay_t<CTs>>), ...);
             auto* archetype = ensure_archetype(slot.mask);
             assign_archetype(slot, archetype);
+        }
+
+        template<typename V, typename... CTs>
+        std::optional<V> as_view_impl(const EntityId& entity, std::tuple<CTs...>*) const noexcept{
+            if (!this->has<CTs...>(entity)) {
+                return std::nullopt;
+            }
+
+            return std::apply([this, entity](auto&... comps) {
+                return V(entity, const_cast<Manager*>(this), comps...);
+            }, this->get_components<CTs...>(entity));
         }
 
         Archetype* ensure_archetype(const ComponentMask& mask);
