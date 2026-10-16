@@ -321,8 +321,8 @@ namespace nasral::gfx
 
     struct TlasInstanceDesc
     {
-        glm::mat4 transform = glm::mat4(1.0f);
-        vk::DeviceAddress blas_address = 0;
+        std::optional<glm::mat4> transform = glm::mat4(1.0f);
+        std::optional<vk::DeviceAddress> blas_address = 0;
         uint32_t index = 0; // Совпадает с uniform_idx объекта
         uint8_t mask = 0xFF;
     };

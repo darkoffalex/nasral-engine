@@ -39,7 +39,6 @@ namespace nasral::gfx
         update_obj_static_ubo();
         update_obj_dynamic_ubo();
         update_obj_mesh_handles();
-        update_obj_mesh_tlas();
 
         // Источники света
         update_light_static_ubo();
@@ -289,7 +288,7 @@ namespace nasral::gfx
         using Spatial   = scn::SpatialComponent;
         using UniformId = UniformIndexComponent;
         using Render    = RenderComponent;
-        using Handles   = MeshHandlesComponent;
+        // using Handles   = MeshHandlesComponent;
         using Dirty     = DirtyUnformComponent;
 
         // Пройти по всем сущностям с компонентами:
@@ -298,7 +297,7 @@ namespace nasral::gfx
         // - Handles
         // - Рендеринг
         // - Грязный (не обновленный) UBO
-        for (const auto& [e, sp, ui, h, r_tag, d_tag] : engine()->ecs()->view<Spatial, UniformId, Handles, Render, Dirty>())
+        for (const auto& [e, sp, ui, r_tag, d_tag] : engine()->ecs()->view<Spatial, UniformId, Render, Dirty>())
         {
             // Вычислить матрицы
             uniforms::Object uniforms = {};
@@ -313,6 +312,15 @@ namespace nasral::gfx
 
             // Обновить матрицы для объекта
             engine()->gfx()->update_obj_uniforms(uniforms, ui.index);
+
+            // Обновить TLAS (только трансформация)
+            engine()->gfx()->update_tlas_instance(
+            {
+                model,
+                std::nullopt,
+                ui.index,
+                0xFF
+            }, ui.index);
 
             // Обновлено
             engine()->ecs()->remove_components<Dirty>(e);
@@ -352,6 +360,15 @@ namespace nasral::gfx
             // Обновить матрицы для объекта
             engine()->gfx()->update_obj_uniforms(uniforms, ui.index);
 
+            // Обновить TLAS (только трансформация)
+            engine()->gfx()->update_tlas_instance(
+            {
+                model,
+                std::nullopt,
+                ui.index,
+                0xFF
+            }, ui.index);
+
             // Обновлено
             state.is_dirty = false;
         }
@@ -361,9 +378,9 @@ namespace nasral::gfx
     {
         // Алиасы компонентов
         using Handles      = MeshHandlesComponent;
+        using UniformId    = UniformIndexComponent;
         using Resources    = res::ResourcesComponent;
         using DirtyHandles = DirtyHandlesComponent;
-        using DirtyTlas    = DirtyTlasInstanceComponent;
         using Loaded       = res::LoadedComponent;
 
         // Пройти по всем сущностям с компонентами:
@@ -371,7 +388,7 @@ namespace nasral::gfx
         // - Список ресурсов
         // - Грязные (не обновленные) handles
         // - Ресурсы загружены
-        for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, DirtyHandles, Loaded>())
+        for (auto [e, mh, ui, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, UniformId, Resources, DirtyHandles, Loaded>())
         {
             // Меш должен быть загружен
             if (kDebugBuild){
@@ -384,11 +401,19 @@ namespace nasral::gfx
             assert(mesh_res != nullptr && "Bad mesh resource");
 
             // Если загружен
-            if (mesh_res->status() == res::Status::eLoaded){
+            if (mesh_res->status() == res::Status::eLoaded)
+            {
                 // Обновить handles
                 mh.mesh = mesh_res->render_handles();
-                // Нужно обновить TLAS instance (возможно задан новый BLAS)
-                engine()->ecs()->add_components<DirtyTlas>(e, {});
+
+                // Обновить TLAS (только BLAS)
+                engine()->gfx()->update_tlas_instance(
+                {
+                    std::nullopt,
+                    mh.mesh.blas_device_address,
+                    ui.index,
+                    0xFF
+                }, ui.index);
             }
             // Fallback
             else{
@@ -397,45 +422,6 @@ namespace nasral::gfx
 
             // Обновлено
             engine()->ecs()->remove_components<DirtyHandles>(e);
-        }
-    }
-
-    void System::update_obj_mesh_tlas() const
-    {
-        // Алиасы компонентов
-        using Spatial   = scn::SpatialComponent;
-        using UniformId = UniformIndexComponent;
-        using Handles   = MeshHandlesComponent;
-        using DirtyTlas = DirtyTlasInstanceComponent;
-        using Render    = RenderComponent;
-
-        // Пройти по всем сущностям с компонентами:
-        // - Пространственные параметры
-        // - Uniform index
-        // - Handles
-        // - Грязный (не обновленный) TLAS
-        // - Рендеринг
-        for (const auto& [e, sp, ui, h, d_tag, render] : engine()->ecs()->view<Spatial, UniformId, Handles, DirtyTlas, Render>())
-        {
-            // Вычислить матрицу модели
-            auto model = glm::mat4(1.0f);
-            model = glm::translate(model, sp.position);
-            model = glm::rotate(model, glm::radians(sp.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-            model = glm::rotate(model, glm::radians(sp.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-            model = glm::rotate(model, glm::radians(sp.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-            model = glm::scale(model, sp.scale);
-
-            // Обновить TLAS
-            engine()->gfx()->update_tlas_instance(
-            {
-                model,
-                h.mesh.blas_device_address,
-                ui.index,
-                0xFF
-            }, ui.index);
-
-            // Обновлено
-            engine()->ecs()->remove_components<DirtyTlas>(e);
         }
     }
 

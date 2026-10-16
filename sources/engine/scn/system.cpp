@@ -30,6 +30,7 @@ namespace nasral::scn
         // Обработка ввода
         update_cam_input(delta);
         update_light_input(delta); // <-- Временно: для отладки
+        update_mesh_input(delta); // <-- Временно: для отладки
 
         // Состояние источников света (активация/деактивация)
         update_light_states();
@@ -235,6 +236,61 @@ namespace nasral::scn
             if (engine()->inp()->is_key_pressed(inp::KeyCode::eRight))
             {
                 spatial.position.x += move_speed * delta;
+                uniform.is_dirty = true;
+            }
+        }
+    }
+
+    void System::update_mesh_input(const float delta) const
+    {
+        // Алиасы компонентов
+        using Node       = NodeComponent;
+        using Mesh       = MeshComponent;
+        using Spatial    = SpatialComponent;
+        using Uniform    = gfx::UniformStateComponent;
+
+        // Найти первый динамический mesh
+        const auto first_d_mesh = engine()->ecs()->view<
+            Node,
+            Spatial,
+            Mesh,
+            Uniform>().begin();
+
+        // Если нет - выход
+        if (!first_d_mesh) return;
+
+        // Внести изменения (если еще не внесены)
+        if (auto [e, n, spatial, light, uniform] = *first_d_mesh; !uniform.is_dirty)
+        {
+            constexpr float move_speed = 2.5f;
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp8))
+            {
+                spatial.position.y += move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp2))
+            {
+                spatial.position.y -= move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp4))
+            {
+                spatial.position.x -= move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp6))
+            {
+                spatial.position.x += move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp5))
+            {
+                spatial.rotation.y += 30.0f * delta;
                 uniform.is_dirty = true;
             }
         }

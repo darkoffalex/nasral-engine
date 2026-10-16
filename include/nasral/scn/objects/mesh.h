@@ -22,7 +22,6 @@ namespace nasral::scn
             using UniformState  = gfx::UniformStateComponent;
             using DirtyUniform  = gfx::DirtyUnformComponent;
             using DirtyHandles  = gfx::DirtyHandlesComponent;
-            using DirtyTlas     = gfx::DirtyTlasInstanceComponent;
             using RenderTag     = gfx::RenderComponent;
         };
 
@@ -45,6 +44,5 @@ namespace nasral::scn
     protected:
         Mesh(Manager* manager, const NodeDesc& description);
         void invalidate_ubo() const;
-        void invalidate_tlas_instance() const;
     };
 }

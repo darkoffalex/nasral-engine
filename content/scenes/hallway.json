@@ -42,7 +42,8 @@
       },
       "mesh": {
         "mesh_path": "meshes/chair/chair.obj",
-        "materials": [[0, 7]]
+        "materials": [[0, 7]],
+        "dynamic" : true
       }
     },
     {
@@ -75,7 +76,7 @@
       "light": {
         "dynamic" : true,
         "type": "ePointLight",
-        "intensity": 8.0,
+        "intensity": 3.0,
         "radius": 1.0,
         "quadratic": 1.0,
         "color": [1.0, 1.0, 1.0, 1.0]

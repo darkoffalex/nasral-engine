@@ -110,6 +110,7 @@ namespace nasral::res
             {
                 const auto& m = entry.at("mesh");
                 desc.mesh.mesh_path = m.at("mesh_path").get<std::string>();
+                desc.mesh.dynamic = m.value("dynamic", false);
                 for (const auto& mat_uid : m.at("materials"))
                 {
                     if (const auto& uid_arr = mat_uid.get<std::vector<uint64_t>>(); uid_arr.size() >= 2)
@@ -124,7 +125,7 @@ namespace nasral::res
             {
                 const auto& l = entry.at("light");
                 const auto light_type_str = l.at("type").get<std::string>();
-                desc.light.dynamic = l.at("dynamic").get<bool>();
+                desc.light.dynamic = l.value("dynamic", false);
                 desc.light.type = magic_enum::enum_cast<gfx::LightType>(light_type_str).value_or(gfx::LightType::ePointLight);
                 desc.light.intensity = l.at("intensity").get<float>();
                 desc.light.radius = l.at("radius").get<float>();

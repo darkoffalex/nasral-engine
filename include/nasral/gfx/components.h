@@ -44,6 +44,4 @@ namespace nasral::gfx
     struct DirtyHandlesComponent{};
 
     struct DirtyTexturesComponent{};
-
-    struct DirtyTlasInstanceComponent{};
 }
