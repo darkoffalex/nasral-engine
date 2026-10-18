@@ -129,6 +129,15 @@ namespace nasral::gfx
         TOTAL
     };
 
+    enum class ShaderProgramType : uint32_t
+    {
+        eRasterization = 0,
+        ePostProcessing,
+        eRaytracing,
+        eCompute,
+        TOTAL
+    };
+
     enum class PolygonMode : uint32_t
     {
         eFill = 0,

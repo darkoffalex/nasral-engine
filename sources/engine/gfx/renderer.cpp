@@ -580,4 +580,16 @@ namespace nasral::gfx
         assert(frame_in_progress_ && "Frame not in progress");
         return frame_in_progress_;
     }
+
+    vk::PipelineLayout Renderer::find_corresponding_pipeline_layout(const ShaderProgramType& type) const noexcept
+    {
+        const std::unordered_map<ShaderProgramType, UniformLayoutType> map = {
+            {ShaderProgramType::eRasterization, UniformLayoutType::eRasterization},
+            {ShaderProgramType::ePostProcessing, UniformLayoutType::ePostProcessing},
+            {ShaderProgramType::eRaytracing, UniformLayoutType::eDummy},
+            {ShaderProgramType::eCompute, UniformLayoutType::eDummy},
+        };
+
+        return vk_uniform_layout(map.at(type)).vk_pipeline_layout();
+    }
 }

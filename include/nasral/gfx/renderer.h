@@ -69,6 +69,8 @@ namespace nasral::gfx
         [[nodiscard]] float rendering_aspect() const noexcept;
         [[nodiscard]] bool ready_for_commands() const noexcept;
 
+        [[nodiscard]] vk::PipelineLayout find_corresponding_pipeline_layout(const ShaderProgramType& type) const noexcept;
+
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
             vk::Flags<vk::DebugReportFlagBitsEXT> flags,
             vk::DebugReportObjectTypeEXT object_type,

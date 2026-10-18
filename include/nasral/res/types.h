@@ -47,6 +47,7 @@ namespace nasral::res
         eTexture,
         eMesh,
         eShader,
+        eShaderProgram,
         eMaterial,
         eProjectFile,
         eScene,
@@ -76,9 +77,17 @@ namespace nasral::res
         bool winding_order_ccw = false;
     };
 
+    struct ShaderLoadParams
+    {
+        bool screen_space = false;
+        bool ray_tracing = false;
+        bool final_pass = false;
+    };
+
     using LoadParams = std::variant<
         TextureLoadParams,
-        MeshLoadParams
+        MeshLoadParams,
+        ShaderLoadParams
     >;
 
     struct Path
