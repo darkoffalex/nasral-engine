@@ -394,6 +394,10 @@ namespace nasral::res
             assert(slot.info.type == Type::eShader);
             return Ret{std::make_unique<ShaderSpvLoader>(manager)};
         }
+        else if constexpr (std::is_same_v<T, ShaderProgram>){
+            assert(slot.info.type == Type::eShaderProgram);
+            return Ret{std::make_unique<ShaderProgramSpvLoader>(manager, slot.loading.params)};
+        }
         else if constexpr (std::is_same_v<T, Mesh>){
             assert(slot.info.type == Type::eMesh);
             return slot.info.path.is_builtin()
@@ -454,6 +458,13 @@ namespace nasral::res
                     auto id = find(slot.info.path.view());
                     assert(id.has_value() && "Resource not found");
                     res = std::make_unique<Shader>(this, id.value(), make_res_loader<Shader>(slot, this));
+                    break;
+                }
+            case Type::eShaderProgram:
+                {
+                    auto id = find(slot.info.path.view());
+                    assert(id.has_value() && "Resource not found");
+                    res = std::make_unique<ShaderProgram>(this, id.value(), make_res_loader<ShaderProgram>(slot, this));
                     break;
                 }
             case Type::eMesh:

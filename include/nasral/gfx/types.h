@@ -298,7 +298,8 @@ namespace nasral::gfx
         UniqueId unique_id = {};
         std::string name = {};
         MaterialBaseType base_material_type = MaterialBaseType::eDummy;
-        std::string base_material_path = {};
+        std::string base_material_path = {}; // <- Deprecated!
+        std::string rasterization_shader_path = {};
         EnumArray<TextureType, std::string> texture_paths;
         EnumArray<TextureType, TextureSamplerType> texture_samplers;
 

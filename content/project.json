@@ -22,6 +22,12 @@
     {"type": "eShader", "path": "materials/pbr/shader.geom.spv", "load_params": {}},
     {"type": "eShader", "path": "materials/pbr/shader.frag.spv", "load_params": {}},
 
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/dummy.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/colored.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/unlit.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/phong.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/pbr.slang.spv", "load_params": {"type": "eRasterization"}},
+
     {"type": "eMaterial", "path": "materials/post/final.json", "load_params": {}},
     {"type": "eMaterial", "path": "materials/post/blur.json", "load_params": {}},
     {"type": "eMaterial", "path": "materials/post/ao.json", "load_params": {}},

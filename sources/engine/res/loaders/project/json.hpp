@@ -139,6 +139,17 @@ namespace nasral::res
                     }
                     break;
                 }
+            case Type::eShaderProgram:
+                {
+                    if (entry.contains("load_params") && !entry.at("load_params").empty()){
+                        ShaderLoadParams slp;
+                        auto& params_node = entry.at("load_params");
+                        const auto str_type = params_node.at("type").get<std::string>();
+                        slp.type = magic_enum::enum_cast<ShaderLoadParams::Type>(str_type).value_or(ShaderLoadParams::Type::eRasterization);
+                        params = slp;
+                    }
+                    break;
+                }
             default:
                 break;
             }
