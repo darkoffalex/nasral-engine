@@ -53,7 +53,8 @@ namespace nasral::res
             switch (program_type())
             {
             case gfx::ShaderProgramType::eRasterization:
-            case gfx::ShaderProgramType::ePostProcessing:
+            case gfx::ShaderProgramType::eScreenSpace:
+            case gfx::ShaderProgramType::eScreenOutput:
                 init_rasterization_pipeline(vk_shader_module.get(), data.value().entry_points);
                 break;
             case gfx::ShaderProgramType::eRaytracing:
@@ -81,7 +82,8 @@ namespace nasral::res
     {
         // Данный метод может только инициализировать конвейер растеризации и пост-обработки
         assert(program_type() == gfx::ShaderProgramType::eRasterization
-            || program_type() == gfx::ShaderProgramType::ePostProcessing && "Invalid shader program type");
+            || program_type() == gfx::ShaderProgramType::eScreenSpace
+            || program_type() == gfx::ShaderProgramType::eScreenOutput && "Invalid shader program type");
 
         // Получить рендерер
         const auto* renderer = subsystem()->engine()->gfx()->renderer();
@@ -228,7 +230,7 @@ namespace nasral::res
         // Параметры смешивания для цветовых вложений
 
         // Пост-обработка (рисуем цвет на квадрате, смешивать не нужно)
-        if (program_type() == gfx::ShaderProgramType::ePostProcessing)
+        if (program_type() != gfx::ShaderProgramType::eRasterization)
         {
             std::array<vk::PipelineColorBlendAttachmentState, 1> attachments_blend{};
             attachments_blend[0] = vk::PipelineColorBlendAttachmentState()
@@ -354,23 +356,40 @@ namespace nasral::res
     {
         RenderingAttachmentFormatInfo formats = {};
 
-        if (program_type() == gfx::ShaderProgramType::eRasterization)
+        // Описываем вложения с которыми будет работать конвейер в зависимости от типа шейдерной программы
+        switch (program_type())
         {
-            formats.color_formats = {
-                engine()->gfx()->config().offscreen_color_format, // location = 0: Color
-                engine()->gfx()->config().offscreen_color_format, // location = 1: Normal
-                engine()->gfx()->config().offscreen_color_format, // location = 2: Emissive
-            };
+            case gfx::ShaderProgramType::eRasterization:
+            {
+                // 3 цветовые вложения
+                formats.color_formats = {
+                    engine()->gfx()->config().offscreen_color_format, // location = 0: Color
+                    engine()->gfx()->config().offscreen_color_format, // location = 1: Normal
+                    engine()->gfx()->config().offscreen_color_format, // location = 2: Emissive
+                };
 
-            formats.depth_format = engine()->gfx()->config().offscreen_depth_format;
-        }
-        else if (program_type() == gfx::ShaderProgramType::ePostProcessing)
-        {
-            formats.color_formats = {
-               screen_fx_pass_type() == gfx::ScreenFxPassType::eFinal
-                ? engine()->gfx()->config().present_color_format
-                : engine()->gfx()->config().offscreen_color_format
-            };
+                // 1 вложение глубины
+                formats.depth_format = engine()->gfx()->config().offscreen_depth_format;
+                break;
+            }
+            case gfx::ShaderProgramType::eScreenSpace:
+            {
+                // 1 цветовое вложение (внутренний цветовой формат)
+                formats.color_formats = {
+                    engine()->gfx()->config().offscreen_color_format
+                };
+                break;
+            }
+            case gfx::ShaderProgramType::eScreenOutput: {
+                // 1 цветовое вложение (цветовой формат поверхности показа)
+                formats.color_formats = {
+                    engine()->gfx()->config().present_color_format
+                };
+                break;
+            }
+            default: {
+                break;
+            }
         }
 
         return formats;

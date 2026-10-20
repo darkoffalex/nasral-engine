@@ -79,9 +79,16 @@ namespace nasral::res
 
     struct ShaderLoadParams
     {
-        bool screen_space = false;
-        bool ray_tracing = false;
-        bool final_pass = false;
+        enum Type : uint32_t
+        {
+            eRasterization = 0,
+            eScreenSpace,
+            eScreenOutput,
+            eRaytracing,
+            eCompute,
+        };
+
+        Type type = eRasterization;
     };
 
     using LoadParams = std::variant<

@@ -18,6 +18,7 @@
 #include "res/loaders/material/json.hpp"
 #include "res/loaders/scene/json.hpp"
 #include "res/loaders/scene/builtin.hpp"
+#include "res/loaders/shader_program/spv.hpp"
 
 namespace nasral::res
 {

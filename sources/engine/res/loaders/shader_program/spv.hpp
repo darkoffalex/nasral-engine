@@ -3,7 +3,6 @@
 #include <fstream>
 #include <nasral/res/objects/shader_program.h>
 #include <nasral/res/manager.h>
-#include <nasral/engine.h>
 
 namespace nasral::res
 {
@@ -29,23 +28,26 @@ namespace nasral::res
 
             std::vector<std::uint32_t> shader_code(size / 4);
             file.seekg(0, std::ios::beg);
-            file.read(reinterpret_cast<char*>(shader_code.data()), size);
+            file.read(reinterpret_cast<char*>(shader_code.data()), static_cast<std::streamsize>(size));
             file.close();
 
             // Определить тип шейдерной программы (учитывая параметры загрузки)
             auto type = gfx::ShaderProgramType::eRasterization;
-            auto screen_fx_pass = gfx::ScreenFxPassType::ePingPong;
             if (auto* lp = params<ShaderLoadParams>()){
-                if (lp->screen_space) type = gfx::ShaderProgramType::ePostProcessing;
-                if (lp->ray_tracing) type = gfx::ShaderProgramType::eRaytracing;
-                if (lp->final_pass) screen_fx_pass = gfx::ScreenFxPassType::eFinal;
+                constexpr EnumArray<ShaderLoadParams::Type, gfx::ShaderProgramType> type_map{
+                    gfx::ShaderProgramType::eRasterization,
+                    gfx::ShaderProgramType::eScreenSpace,
+                    gfx::ShaderProgramType::eScreenOutput,
+                    gfx::ShaderProgramType::eRaytracing,
+                    gfx::ShaderProgramType::eCompute,
+                };
+                type = type_map[lp->type];
             }
 
             set_error(Error::eNone);
             return std::optional{ShaderProgram::Data{
                 shader_code,
                 type,
-                screen_fx_pass,
                 parse_spv_entry_points(shader_code)
             }};
         }
@@ -59,8 +61,8 @@ namespace nasral::res
             while (offset < spirv_code.size())
             {
                 const uint32_t instruction = spirv_code[offset];
-                const uint16_t op_code = static_cast<uint16_t>(instruction & 0xFFFF);
-                const uint16_t word_count = static_cast<uint16_t>(instruction >> 16);
+                const auto op_code = static_cast<uint16_t>(instruction & 0xFFFF);
+                const auto word_count = static_cast<uint16_t>(instruction >> 16);
 
                 if (word_count == 0) break;
 

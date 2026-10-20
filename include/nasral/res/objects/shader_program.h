@@ -21,7 +21,6 @@ namespace nasral::res
 
             std::vector<uint32_t> code = {};
             gfx::ShaderProgramType program_type = gfx::ShaderProgramType::eRasterization;
-            gfx::ScreenFxPassType screen_fx_pass_type = gfx::ScreenFxPassType::ePingPong;
             std::vector<EntryPointInfo> entry_points = {};
         };
 

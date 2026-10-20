@@ -585,7 +585,8 @@ namespace nasral::gfx
     {
         const std::unordered_map<ShaderProgramType, UniformLayoutType> map = {
             {ShaderProgramType::eRasterization, UniformLayoutType::eRasterization},
-            {ShaderProgramType::ePostProcessing, UniformLayoutType::ePostProcessing},
+            {ShaderProgramType::eScreenSpace, UniformLayoutType::ePostProcessing},
+            {ShaderProgramType::eScreenOutput, UniformLayoutType::ePostProcessing},
             {ShaderProgramType::eRaytracing, UniformLayoutType::eDummy},
             {ShaderProgramType::eCompute, UniformLayoutType::eDummy},
         };

@@ -132,7 +132,8 @@ namespace nasral::gfx
     enum class ShaderProgramType : uint32_t
     {
         eRasterization = 0,
-        ePostProcessing,
+        eScreenSpace,
+        eScreenOutput,
         eRaytracing,
         eCompute,
         TOTAL
