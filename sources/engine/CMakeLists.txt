@@ -38,13 +38,11 @@ add_library(Engine OBJECT
         res/objects/scene.cpp
 
         # Рендеринг
-        gfx/manager.cpp
+#        gfx/manager.cpp
         gfx/renderer.cpp
         gfx/renderer_init.cpp
-        gfx/objects/material.cpp
-        gfx/objects/screen_fx.cpp
         gfx/entities/material.cpp
-        gfx/system.cpp
+#        gfx/system.cpp
         gfx/utils.cpp
 
         # Сцена

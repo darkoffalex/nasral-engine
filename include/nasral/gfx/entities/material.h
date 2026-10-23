@@ -7,8 +7,9 @@
 #define GFX_MATERIAL_COMPONENTS \
     ecs::UidComponent, \
     ecs::NameComponent, \
-    gfx::MaterialSettingsComponent, \
-    gfx::MaterialHandlesComponent, \
+    gfx::MaterialComponent, \
+    gfx::TextureHandlesComponent, \
+    gfx::ShaderHandlesComponent, \
     gfx::UniformIndexComponent, \
     res::ResourcesComponent, \
     ecs::RefsCountComponent \

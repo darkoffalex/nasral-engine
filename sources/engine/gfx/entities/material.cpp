@@ -18,11 +18,11 @@ namespace nasral::gfx
         res::ResourcesComponent::ActiveList resources_active{};
 
         // Ресурс шейдерной программы
-        if (const auto mat_res_id = res->find(desc.rasterization_shader_path); mat_res_id.has_value()){
+        if (const auto mat_res_id = res->find(desc.shader_program_path); mat_res_id.has_value()){
             resources_ids[eRasterizationShader] = mat_res_id.value();
             resources_active[eRasterizationShader] = true;
         }else{
-            throw std::runtime_error("Shader program resource not found (" + desc.rasterization_shader_path + ")");
+            throw std::runtime_error("Shader program resource not found (" + desc.shader_program_path + ")");
         }
 
         // Ресурсы текстур
@@ -45,14 +45,14 @@ namespace nasral::gfx
 
         // Настройки материала
         uniforms::Material settings = {};
-        if (desc.base_material_type == MaterialBaseType::ePhong){
+        if (desc.type == MaterialType::ePhong){
             settings = uniforms::MaterialPhong{
                 desc.phong_settings.color,
                 desc.phong_settings.ambient,
                 desc.phong_settings.shininess,
                 desc.phong_settings.specular
             };
-        }else if (desc.base_material_type == MaterialBaseType::ePBR){
+        }else if (desc.type == MaterialType::ePBR){
             settings = uniforms::MaterialPbr{
                 desc.pbr_settings.color,
                 desc.pbr_settings.roughness,
@@ -66,7 +66,8 @@ namespace nasral::gfx
         ecs->add_components_immediate<GFX_MATERIAL_COMPONENTS, GFX_MATERIAL_DIRTY_TAGS>(id,
             {desc.unique_id},
             {desc.name},
-            {desc.base_material_type, settings, desc.texture_samplers},
+            {desc.type, settings, desc.texture_samplers},
+            {},
             {},
             {gfx->material_ubo_ids().acquire()},
             {resources_ids, resources_active, {res::Status::eUnloaded}},
@@ -83,12 +84,12 @@ namespace nasral::gfx
     }
 
     void MaterialView::set_uniforms(const uniforms::Material &uniforms) {
-        get<MaterialSettingsComponent>().uniforms = uniforms;
+        get<MaterialComponent>().uniforms = uniforms;
         invalidate_ubo();
     }
 
     void MaterialView::set_texture_sampler(const TextureType type, const TextureSamplerType sampler_type) {
-        get<MaterialSettingsComponent>().samplers[type] = sampler_type;
+        get<MaterialComponent>().samplers[type] = sampler_type;
         invalidate_textures();
     }
 
