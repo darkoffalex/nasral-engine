@@ -19,6 +19,7 @@ namespace nasral::gfx
     constexpr uint32_t kMaxMeshMaterials = 5;
     constexpr uint32_t kMaxLights = 64;
     constexpr uint32_t kMaxFramesInFlight = 5;
+    constexpr uint32_t kMaxSwapchainImages = 5;
 
     struct Vertex
     {
@@ -38,9 +39,9 @@ namespace nasral::gfx
         eViewUBO = 0,
         eObjectUBOs,
         eMaterialUBOs,
+        eScreenPassUBOs,
         eMaterialTextures,
         eLightUBOs,
-        eScreenPassUBOs,
         TOTAL
     };
 

@@ -21,6 +21,15 @@ namespace nasral
         static_assert(std::is_enum_v<E>, "EnumMask can only be used with enum types.");
         std::bitset<magic_enum::enum_count<E>()> bitset;
 
+        // Конструктор по умолчанию (пустая маска)
+        constexpr EnumMask() = default;
+
+        // Variadic-конструктор (принимает произвольное число enum-значений)
+        template <typename... Args, typename = std::enable_if_t<(std::is_same_v<E, Args> && ...)>>
+        explicit constexpr EnumMask(Args... args) {
+            (set(args), ...); // Fold expression: вызывает set() для каждого аргумента
+        }
+
         void set(E e, bool value = true) {
             bitset.set(static_cast<std::size_t>(magic_enum::enum_integer(e)), value);
         }

@@ -34,7 +34,6 @@ namespace nasral::res
 
         [[nodiscard]] const auto& vk_pipeline() const noexcept { return *vk_pipeline_; }
         [[nodiscard]] const auto& program_type() const noexcept { return program_type_; }
-        [[nodiscard]] const auto& screen_fx_pass_type() const noexcept { return screen_fx_pass_type_; }
 
     private:
         struct RenderingAttachmentFormatInfo
@@ -61,7 +60,6 @@ namespace nasral::res
     protected:
         Loader<Data>::Ptr loader_;
         gfx::ShaderProgramType program_type_;
-        gfx::ScreenFxPassType screen_fx_pass_type_;
         vk::UniquePipeline vk_pipeline_;
     };
 }

@@ -7,8 +7,8 @@ namespace nasral::res
 {
     ShaderProgram::ShaderProgram(Manager* manager, const ResourceId& id, Loader<Data>::Ptr loader)
         : Resource(manager, id, Type::eShaderProgram)
+        , loader_(std::move(loader))
         , program_type_(gfx::ShaderProgramType::eRasterization)
-        , screen_fx_pass_type_(gfx::ScreenFxPassType::eFinal)
     {}
 
     ShaderProgram::~ShaderProgram()
