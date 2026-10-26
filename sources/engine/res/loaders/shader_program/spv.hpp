@@ -36,7 +36,7 @@ namespace nasral::res
             if (auto* lp = params<ShaderLoadParams>()){
                 constexpr EnumArray<ShaderLoadParams::Type, gfx::ShaderProgramType> type_map{
                     gfx::ShaderProgramType::eRasterization,
-                    gfx::ShaderProgramType::eScreenSpace,
+                    gfx::ShaderProgramType::eScreenPass,
                     gfx::ShaderProgramType::eScreenOutput,
                     gfx::ShaderProgramType::eRaytracing,
                     gfx::ShaderProgramType::eCompute,

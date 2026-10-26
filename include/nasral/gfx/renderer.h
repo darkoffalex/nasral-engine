@@ -9,6 +9,18 @@
 #include <vulkan/utils/uniform_layout.hpp>
 #include <vulkan/utils/buffer.hpp>
 
+#ifndef FOREACH_FRAME
+#define FOREACH_FRAME for (size_t FRAME = 0; FRAME < config().max_frames_in_flight; ++FRAME) {
+#endif
+
+#ifndef FOREACH_IMAGE
+#define FOREACH_IMAGE for (size_t IMAGE = 0; IMAGE < config().swap_chain_images; ++IMAGE) {
+#endif
+
+#ifndef END_FOREACH
+#define END_FOREACH }
+#endif
+
 namespace nasral::gfx
 {
     class Manager;
@@ -44,6 +56,7 @@ namespace nasral::gfx
         void cmd_wait_for_all() const;
 
         [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
+        [[nodiscard]] const vk::Extent2D& output_resolution() const noexcept;
         [[nodiscard]] float rendering_aspect() const noexcept;
         [[nodiscard]] bool ready_for_commands() const noexcept;
 
@@ -68,8 +81,8 @@ namespace nasral::gfx
         [[nodiscard]] const auto* vk_offscreen_image(const FrameAttachmentType& frame_type) const noexcept{
             return vk_offscreen_images_[frame_type][frame_index()].get();
         }
-        [[nodiscard]] const auto& vk_swapchain_image() const noexcept{
-            return vk_swapchain_images_[available_swapchain_image_];
+        [[nodiscard]] const auto& vk_swap_chain_image() const noexcept{
+            return vk_swap_chain_images_[available_sc_image_];
         }
         [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{
             return *vk_texture_samplers_[type];
@@ -90,6 +103,10 @@ namespace nasral::gfx
             const char* layer_prefix,
             const char* msg,
             void* user_data);
+
+        static vk::ImageAspectFlags frame_attachment_aspect(
+            const FrameAttachmentType& type,
+            const vk::Format& format);
 
     protected:
         void init_vk_instance();
@@ -122,15 +139,15 @@ namespace nasral::gfx
         vk::UniqueSwapchainKHR vk_swap_chain_;
 
         // Кадровые изображения (для показа и рендеринга)
-        std::array<vk::ImageView, kMaxSwapchainImages> vk_swapchain_images_;
+        std::array<vk::utils::Image::Ptr, kMaxSwapChainImages> vk_swap_chain_images_;
         EnumArray<FrameAttachmentType, std::array<vk::utils::Image::Ptr, kMaxFramesInFlight>> vk_offscreen_images_;
 
         // Макеты uniform-буферов для каждого типа шейдерного пайплайна
         EnumArray<ShaderProgramType, vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
 
         // Дескрипторные наборы для рендеринга и экранного прохода (камера, трансформации, материалы, текстуры объектов)
-        EnumArray<UniformDescriptorSetType, vk::UniqueDescriptorSet> vk_rendering_d_sets_;
-        EnumArray<UniformDescriptorSetType, vk::UniqueDescriptorSet> vk_screen_d_sets_;
+        EnumArray<UniformRasterDSetType, vk::UniqueDescriptorSet> vk_rendering_d_sets_;
+        EnumArray<UniformScreenDSetType, vk::UniqueDescriptorSet> vk_screen_d_sets_;
 
         // Дескрипторные наборы пост-процессинга на кадр (текстуры кадровых буферов)
         std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_screen_d_sets_per_frame_;
@@ -143,7 +160,7 @@ namespace nasral::gfx
         // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
         size_t frame_count_;
         size_t frame_index_;
-        uint32_t available_swapchain_image_;
+        uint32_t available_sc_image_;
         std::vector<vk::UniqueCommandBuffer> vk_command_buffers_;
         std::vector<vk::UniqueSemaphore> vk_render_available_semaphore_;
         std::vector<vk::UniqueSemaphore> vk_render_finished_semaphore_;

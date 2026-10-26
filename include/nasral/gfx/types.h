@@ -19,7 +19,7 @@ namespace nasral::gfx
     constexpr uint32_t kMaxMeshMaterials = 5;
     constexpr uint32_t kMaxLights = 64;
     constexpr uint32_t kMaxFramesInFlight = 5;
-    constexpr uint32_t kMaxSwapchainImages = 5;
+    constexpr uint32_t kMaxSwapChainImages = 5;
 
     struct Vertex
     {
@@ -34,14 +34,21 @@ namespace nasral::gfx
         std::vector<uint32_t>
     > GeometryData;
 
-    enum class UniformDescriptorSetType : uint32_t
+    enum class UniformRasterDSetType : uint32_t
     {
         eViewUBO = 0,
         eObjectUBOs,
         eMaterialUBOs,
-        eScreenPassUBOs,
         eMaterialTextures,
         eLightUBOs,
+        TOTAL
+    };
+
+    enum class UniformScreenDSetType : uint32_t
+    {
+        eFrameTextures = 0,
+        eViewUBO,
+        eScreenPassUBOs,
         TOTAL
     };
 
@@ -50,8 +57,10 @@ namespace nasral::gfx
         eView = 0,
         eObjects,
         eMaterials,
+        eScreenPasses,
         eLightSources,
         eLightSourcesActive,
+        TOTAL
     };
 
     enum class TextureSamplerType : uint32_t
@@ -96,8 +105,7 @@ namespace nasral::gfx
     enum class ShaderProgramType : uint32_t
     {
         eRasterization = 0,
-        eScreenSpace,
-        eScreenOutput,
+        eScreenPass,
         eRaytracing,
         eCompute,
         TOTAL

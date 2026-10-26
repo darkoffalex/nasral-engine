@@ -125,7 +125,7 @@ namespace nasral
     }
 
     /**
-     * @brief Инвертированый обход (std::apply) по типам std::tuple (реализация)
+     * @brief Инвертированный обход (std::apply) по типам std::tuple (реализация)
      * @tparam Func Тип функции обратного вызова
      * @tparam Tuple Тип кортежа
      * @tparam Is Индексы
@@ -151,6 +151,37 @@ namespace nasral
     decltype(auto) apply_reverse(Func&& f, Tuple&& t) {
         constexpr auto Size = std::tuple_size_v<std::decay_t<Tuple>>;
         return apply_reverse_impl(std::forward<Func>(f), std::forward<Tuple>(t), std::make_index_sequence<Size>{});
+    }
+
+    /**
+     * @brief Вспомогательная структура для поиска максимального sizeof среди типов пакета
+     */
+    template <typename... Ts>
+    constexpr std::size_t max_sizeof_pack() noexcept {
+        std::size_t max_sz = 0;
+        // Fold expression (свёртка через запятую в C++17)
+        ((max_sz = (sizeof(Ts) > max_sz ? sizeof(Ts) : max_sz)), ...);
+        return max_sz;
+    }
+
+    /**
+     * @brief Метафункция вычисления максимального размера альтернативы std::variant
+     */
+    template <typename T>
+    struct max_variant_size;
+
+    template <typename... Ts>
+    struct max_variant_size<std::variant<Ts...>> {
+        static constexpr std::size_t value = max_sizeof_pack<Ts...>();
+    };
+
+    /**
+     * @brief Получение размера наибольшего типа через передачу типа в шаблон:
+     * size_of<std::variant<A, B, C>>()
+     */
+    template <typename Variant>
+    constexpr std::size_t max_sizeof() noexcept {
+        return max_variant_size<Variant>::value;
     }
 }
 

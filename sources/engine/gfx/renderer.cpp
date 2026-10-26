@@ -26,7 +26,7 @@ namespace nasral::gfx
         , is_surface_dirty_(false)
         , frame_count_(0)
         , frame_index_(0)
-        , available_swapchain_image_(0)
+        , available_sc_image_(0)
         , vk_last_rasterization_pipeline_(VK_NULL_HANDLE)
     {
 
@@ -34,5 +34,27 @@ namespace nasral::gfx
 
     Renderer::~Renderer()
     {
+    }
+
+    vk::ImageAspectFlags Renderer::frame_attachment_aspect(
+        const FrameAttachmentType &type,
+        const vk::Format &format)
+    {
+        // Если это не глубина, то используется как цветовое вложение
+        if (type != FrameAttachmentType::eDepth) {
+            return vk::ImageAspectFlagBits::eColor;
+        }
+
+        // В остальных случаях используется как глубина
+        auto aspect = vk::ImageAspectFlags(vk::ImageAspectFlagBits::eDepth);
+
+        // Если формат содержит S8Uint, то используется как глубина и stencil
+        if (format == vk::Format::eD16UnormS8Uint
+            || format == vk::Format::eD24UnormS8Uint
+            || format == vk::Format::eD32SfloatS8Uint)
+        {
+            aspect |= vk::ImageAspectFlagBits::eStencil;
+        }
+        return aspect;
     }
 }

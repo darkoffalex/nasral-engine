@@ -53,8 +53,7 @@ namespace nasral::res
             switch (program_type())
             {
             case gfx::ShaderProgramType::eRasterization:
-            case gfx::ShaderProgramType::eScreenSpace:
-            case gfx::ShaderProgramType::eScreenOutput:
+            case gfx::ShaderProgramType::eScreenPass:
                 init_rasterization_pipeline(vk_shader_module.get(), data.value().entry_points);
                 break;
             case gfx::ShaderProgramType::eRaytracing:
@@ -82,8 +81,7 @@ namespace nasral::res
     {
         // Данный метод может только инициализировать конвейер растеризации и пост-обработки
         assert(program_type() == gfx::ShaderProgramType::eRasterization
-            || program_type() == gfx::ShaderProgramType::eScreenSpace
-            || program_type() == gfx::ShaderProgramType::eScreenOutput && "Invalid shader program type");
+            || program_type() == gfx::ShaderProgramType::eScreenPass && "Invalid shader program type");
 
         // Получить рендерер
         const auto* renderer = subsystem()->engine()->gfx()->renderer();
@@ -318,7 +316,7 @@ namespace nasral::res
                 .setPMultisampleState(&multisampling_state)
                 .setPColorBlendState(&color_blending_state)
                 .setPDynamicState(&dynamic_states_info)
-                .setLayout(renderer->find_corresponding_pipeline_layout(program_type()))
+                .setLayout(renderer->vk_uniform_layout(program_type()).vk_pipeline_layout())
                 .setRenderPass(VK_NULL_HANDLE)
                 .setSubpass(0);
 
@@ -372,18 +370,11 @@ namespace nasral::res
                 formats.depth_format = engine()->gfx()->config().offscreen_depth_format;
                 break;
             }
-            case gfx::ShaderProgramType::eScreenSpace:
+            case gfx::ShaderProgramType::eScreenPass:
             {
                 // 1 цветовое вложение (внутренний цветовой формат)
                 formats.color_formats = {
                     engine()->gfx()->config().offscreen_color_format
-                };
-                break;
-            }
-            case gfx::ShaderProgramType::eScreenOutput: {
-                // 1 цветовое вложение (цветовой формат поверхности показа)
-                formats.color_formats = {
-                    engine()->gfx()->config().present_color_format
                 };
                 break;
             }
