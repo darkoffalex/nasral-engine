@@ -33,6 +33,10 @@ namespace nasral::gfx
         return aligned_sbo<T>(device) * index;
     }
 
+    inline vk::ClearColorValue as_vk_clear_color(const glm::vec4& color) {
+        return {color.r, color.g, color.b, color.a};
+    }
+
     vk::Format get_image_vk_format(uint32_t channel_count, uint32_t channel_depth, bool srgb);
 
     GeometryData gen_quad_geometry(float size = 1.0f);

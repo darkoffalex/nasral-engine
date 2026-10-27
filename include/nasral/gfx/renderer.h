@@ -9,18 +9,6 @@
 #include <vulkan/utils/uniform_layout.hpp>
 #include <vulkan/utils/buffer.hpp>
 
-#ifndef FOREACH_FRAME
-#define FOREACH_FRAME for (size_t FRAME = 0; FRAME < config().max_frames_in_flight; ++FRAME) {
-#endif
-
-#ifndef FOREACH_IMAGE
-#define FOREACH_IMAGE for (size_t IMAGE = 0; IMAGE < config().swap_chain_images; ++IMAGE) {
-#endif
-
-#ifndef END_FOREACH
-#define END_FOREACH }
-#endif
-
 namespace nasral::gfx
 {
     class Manager;
@@ -46,7 +34,7 @@ namespace nasral::gfx
         void cmd_end_frame();
         void cmd_begin_rasterization_pass();
         void cmd_end_rasterization_pass();
-        void cmd_begin_screen_pass(EnumMask<FrameAttachmentType> input, EnumMask<FrameAttachmentType> output = {});
+        void cmd_begin_screen_pass(EnumMask<FrameAttachmentType> input, EnumMask<FrameAttachmentType> output);
         void cmd_end_screen_pass();
         void cmd_bind_shader_program(const handles::ShaderProgram& handles);
         void cmd_bind_mesh_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
@@ -54,14 +42,20 @@ namespace nasral::gfx
         void cmd_draw_screen_quad(uint32_t pass_uniform_idx);
         void cmd_gen_frame_mipmaps(const FrameAttachmentType& type) const;
         void cmd_wait_for_all() const;
+        void mark_surface_dirty();
 
         [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
         [[nodiscard]] const vk::Extent2D& output_resolution() const noexcept;
-        [[nodiscard]] float rendering_aspect() const noexcept;
-        [[nodiscard]] bool ready_for_commands() const noexcept;
+        [[nodiscard]] float aspect_ratio() const noexcept;
 
         [[nodiscard]] auto is_active() const{
             return is_active_;
+        }
+        [[nodiscard]] auto is_frame_started() const{
+            return is_frame_started_;
+        }
+        [[nodiscard]] auto is_pass_started() const{
+            return is_pass_started_;
         }
         [[nodiscard]] auto frame_count() const{
             return frame_count_;
@@ -128,6 +122,7 @@ namespace nasral::gfx
         // Состояние
         bool is_active_;
         bool is_frame_started_;
+        bool is_pass_started_;
         std::atomic<bool> is_surface_dirty_;
 
         // Основные сущности Vulkan (включая кастомные RAII обертки)
@@ -168,6 +163,10 @@ namespace nasral::gfx
 
         // Последний использованный конвейер
         vk::Pipeline vk_last_rasterization_pipeline_;
+
+        // Выходные вложения последнего экранного прохода
+        EnumMask<FrameAttachmentType> last_screen_pass_output_attachments_;
+
     };
 }
 

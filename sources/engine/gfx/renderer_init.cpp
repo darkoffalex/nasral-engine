@@ -1,5 +1,6 @@
 #include "pch.h"
 #include <nasral/gfx/renderer.h>
+#include <nasral/gfx/renderer_defs.h>
 #include <nasral/engine.h>
 #include <nasral/log/loggable.h>
 #include <nasral/gfx/utils.h>
@@ -919,11 +920,243 @@ namespace nasral::gfx
             // Выделить uniform буфер для настроек экранных эффектов
             vk_uniform_buffers_[UniformBufferType::eScreenPasses] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
-                size_align(max_sizeof<uniforms::ScreenPass>(), ubo_alignment),
+                size_align(max_sizeof<uniforms::ScreenPass>(), ubo_alignment) * kMaxScreenPasses,
                 vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
 
-        // TODO: Завершить инициализацию uniform буферов
+        // Связать дескрипторы и буферы
+        std::vector<vk::WriteDescriptorSet> writes;
+        std::vector<vk::DescriptorBufferInfo> buffer_infos;
+
+        // Зарезервировать память контейнеров перед использованием (важно из-за особенностей API!)
+        buffer_infos.reserve(10);
+        writes.reserve(10);
+
+        // Камера (set = UniformRasterDSetType::eViewUBO|UniformScreenDSetType::eViewUBO, binding = 0)
+        {
+            buffer_infos.emplace_back(vk::DescriptorBufferInfo()
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eView]->vk_buffer())
+                .setOffset(0)
+                .setRange(sizeof(uniforms::Camera)));
+
+            writes.emplace_back(vk::WriteDescriptorSet()
+                .setDstSet(vk_rendering_d_sets_[UniformRasterDSetType::eViewUBO].get())
+                .setDstBinding(0)
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorCount(1)
+                .setPBufferInfo(&buffer_infos.back()));
+
+            writes.emplace_back(vk::WriteDescriptorSet()
+                .setDstSet(vk_screen_d_sets_[UniformScreenDSetType::eViewUBO].get())
+                .setDstBinding(0)
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setDescriptorCount(1)
+                .setPBufferInfo(&buffer_infos.back()));
+        }
+
+        // Трансформации объектов (set = UniformRasterDSetType::eObjectUBOs, binding = 0)
+        {
+            buffer_infos.emplace_back(vk::DescriptorBufferInfo()
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eObjects]->vk_buffer())
+                .setOffset(0)
+                .setRange(sizeof(uniforms::Object) * kMaxObjects));
+
+            writes.emplace_back(vk::WriteDescriptorSet()
+                .setDstSet(vk_rendering_d_sets_[UniformRasterDSetType::eObjectUBOs].get())
+                .setDstBinding(0)
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setPBufferInfo(&buffer_infos.back()));
+        }
+
+        // Параметры материалов (set = UniformRasterDSetType::eMaterialUBOs, binding = 0)
+        {
+            buffer_infos.emplace_back(vk::DescriptorBufferInfo()
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eMaterials]->vk_buffer())
+                .setOffset(0)
+                .setRange(max_sizeof<uniforms::Material>() * kMaxMaterials));
+
+            writes.emplace_back(vk::WriteDescriptorSet()
+                .setDstSet(vk_rendering_d_sets_[UniformRasterDSetType::eMaterialUBOs].get())
+                .setDstBinding(0)
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setPBufferInfo(&buffer_infos.back()));
+        }
+
+        // Параметры экранных проходов (set = UniformScreenDSetType::eScreenPassUBOs, binding = 0)
+        {
+            buffer_infos.emplace_back(vk::DescriptorBufferInfo()
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eScreenPasses]->vk_buffer())
+                .setOffset(0)
+                .setRange(max_sizeof<uniforms::ScreenPass>() * kMaxScreenPasses));
+
+            writes.emplace_back(vk::WriteDescriptorSet()
+                .setDstSet(vk_screen_d_sets_[UniformScreenDSetType::eScreenPassUBOs].get())
+                .setDstBinding(0)
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setPBufferInfo(&buffer_infos.back()));
+        }
+
+        // Источники света (set = UniformRasterDSetType::eLightUBOs, binding = 0)
+        {
+            buffer_infos.emplace_back(vk::DescriptorBufferInfo()
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eLightSources]->vk_buffer())
+                .setOffset(0)
+                .setRange(sizeof(uniforms::LightSettings) * kMaxLights));
+
+            writes.emplace_back(vk::WriteDescriptorSet()
+                .setDstSet(vk_rendering_d_sets_[UniformRasterDSetType::eLightUBOs].get())
+                .setDstBinding(0)
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setPBufferInfo(&buffer_infos.back()));
+        }
+
+        // Индексы активных источников света (set = UniformRasterDSetType::eLightUBOs, binding = 1)
+        {
+            buffer_infos.emplace_back(vk::DescriptorBufferInfo()
+                .setBuffer(vk_uniform_buffers_[UniformBufferType::eLightSourcesActive]->vk_buffer())
+                .setOffset(0)
+                .setRange(sizeof(uniforms::LightIndices)));
+
+            writes.emplace_back(vk::WriteDescriptorSet()
+                .setDstSet(vk_rendering_d_sets_[UniformRasterDSetType::eLightUBOs].get())
+                .setDstBinding(1)
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setDescriptorCount(1)
+                .setPBufferInfo(&buffer_infos.back()));
+        }
+
+        // Связать дескрипторы с буферами
+        vk_device_->logical_device().updateDescriptorSets(writes, {});
+
+        // Подготовить uniform буферы к записи (разметка памяти)
+        vk_uniform_buffers_[UniformBufferType::eView]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eObjects]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eMaterials]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eScreenPasses]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eLightSources]->map_unsafe();
+        vk_uniform_buffers_[UniformBufferType::eLightSourcesActive]->map_unsafe();
+    }
+
+    /**
+     * @brief Инициализирует командные буферы рендеринга.
+     * @details Выделяет столько первичных командных буферов, сколько допустимо активных кадров
+     * (config_.max_frames_in_flight). Это позволяет каждому кадру иметь свой буфер команд и
+     * рендериться независимо от других, не блокируя выполнение при ожидании синхронизации
+     * предыдущих кадров. Буферы выделяются из командного пула графической группы
+     * (eGraphicsAndPresent).
+     */
+    void Renderer::init_vk_command_buffers()
+    {
+        assert(vk_instance_ && "Vulkan instance is not initialized");
+        assert(vk_device_ && "Vulkan device is not initialized");
+
+        // Получить нужный командный пул у устройства
+        constexpr auto g_idx = static_cast<size_t>(CmdGroupType::eGraphicsAndPresent);
+        const auto& pool = vk_device_->queue_group(g_idx).command_pools.front();
+
+        // Выделяем столько командных буферов, сколько предполагается активных кадров
+        vk_command_buffers_ = vk_device_->logical_device().allocateCommandBuffersUnique(
+            vk::CommandBufferAllocateInfo()
+            .setCommandPool(pool.get())
+            .setLevel(vk::CommandBufferLevel::ePrimary)
+            .setCommandBufferCount(config().max_frames_in_flight));
+    }
+
+    /**
+     * @brief Инициализирует примитивы синхронизации рендеринга.
+     * @details Создаёт наборы семафоров и заборов (fence) для каждого активного (in‑flight) кадра —
+     * ровно config_.max_frames_in_flight штук. Это позволяет кадрам выполняться независимо: пока GPU
+     * обрабатывает один кадр, CPU может записывать команды для следующего, не блокируясь на ожиданиях.
+     */
+    void Renderer::init_vk_synchronization()
+    {
+        assert(vk_instance_ && "Vulkan instance is not initialized");
+        assert(vk_device_ && "Vulkan device is not initialized");
+
+        const auto& ld = vk_device_->logical_device();
+
+        // Резервируем место под максимальное количество кадров в полете
+        const auto max_frames = static_cast<size_t>(config().max_frames_in_flight);
+        vk_render_available_semaphore_.reserve(max_frames);
+        vk_render_finished_semaphore_.reserve(max_frames);
+        vk_frame_fence_.reserve(max_frames);
+
+        for (size_t i = 0; i < max_frames; ++i)
+        {
+            // Семафор: "Картинка получена из SwapChain и готова к рендерингу"
+            vk_render_available_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
+            // Семафор: "Рендеринг в командном буфере завершен, можно передавать на экран"
+            vk_render_finished_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
+            // Фенс: "GPU полностью закончил выполнять этот кадр, CPU может собирать ресурсы"
+            // Важно: создаем изначально в сигнальном состоянии, чтобы waitForFences не завис на самом первом кадре.
+            vk_frame_fence_.emplace_back(ld.createFenceUnique(vk::FenceCreateInfo{vk::FenceCreateFlagBits::eSignaled}));
+        }
+    }
+
+    /**
+     * @brief Обновляет (пересоздаёт) объекты, зависящие от поверхности.
+     * @details Вызывается при изменении размеров/параметров поверхности (resize, смена DPI, alt‑tab и т.п.).
+     * Выполняет полную реконфигурацию: ждём завершения GPU (waitIdle), временно отключаем рендеринг и сбрасываем
+     * индекс кадра; очищаем командные буферы и уничтожаем кадровые буферы; пересоздаём swap‑chain (с учётом oldSwapchain),
+     * затем создаём новые framebuffer’ы под его изображения и заново выделяем командные буферы для актуальных кадровых
+     * буферов. Командные буферы выделяются заново, так как старые могли содержать команды, ссылающиеся на объекты
+     * старого swap‑chain (изображения, размеры, макеты), что недопустимо. В конце рендеринг снова включается.
+     */
+    void Renderer::refresh_vk_surface()
+    {
+        assert(vk_instance_ && "Vulkan instance is not initialized");
+        assert(vk_surface_ && "Vulkan surface is not initialized");
+        assert(vk_device_ && "Vulkan device is not initialized");
+
+        // Ожидать завершения всех команд
+        cmd_wait_for_all();
+
+        // Отключить рендеринг и сбросить кадр
+        is_active_ = false;
+        frame_count_ = 0;
+        frame_index_ = 0;
+
+        // Очистить командные буферы
+        vk_command_buffers_.clear();
+        log_info("Vulkan: command buffers cleared.");
+
+        // Уничтожить кадровые буферы
+        vk_swap_chain_images_ = {};
+        vk_offscreen_images_ = {};
+        log_info("Vulkan: Framebuffers cleared.");
+
+        // Пере-создать swap-chain (старый будет задействован при создании нового, затем удален)
+        init_vk_swap_chain();
+        log_info("Vulkan: swap-chain recreated.");
+
+        // Создать новые кадровые буферы
+        init_vk_framebuffers();
+        const auto extent_render = rendering_resolution();
+        const auto extent_swap_chain = output_resolution();
+        const std::string extent_render_str = std::to_string(extent_render.width) + "x" + std::to_string(extent_render.height);
+        const std::string extent_swap_chain_str = std::to_string(extent_swap_chain.width) + "x" + std::to_string(extent_swap_chain.height);
+        log_info("Vulkan: Framebuffers initialized (" + extent_render_str + " -> " + extent_swap_chain_str + ").");
+
+        // Создать новые командные буферы
+        init_vk_command_buffers();
+        log_info("Vulkan: command buffers recreated.");
+
+        // Связать кадровые (offscreen) буферами с дескрипторами пост-процессинга
+        init_vk_framebuffer_bindings();
+
+        // Включить рендеринг
+        is_active_ = true;
     }
 }

@@ -97,6 +97,7 @@ namespace nasral::gfx
         eShadows,
         eAO,
         eReflections,
+        eCompositing,
         eTemp1,
         eTemp2,
         TOTAL

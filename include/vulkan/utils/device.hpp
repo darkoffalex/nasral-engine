@@ -481,14 +481,16 @@ namespace vk::utils
 
                 // Проверка расширенных фич
                 auto vulkan13_features = vk::PhysicalDeviceVulkan13Features().setPNext(nullptr);
-                auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT().setPNext(&vulkan13_features);
+                auto synchronization2_features = vk::PhysicalDeviceSynchronization2Features().setPNext(&vulkan13_features);
+                auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT().setPNext(&synchronization2_features);
                 auto features2 = vk::PhysicalDeviceFeatures2().setPNext(&indexing_features);
                 device.getFeatures2(&features2);
                 if (!indexing_features.descriptorBindingPartiallyBound
                     || !indexing_features.descriptorBindingVariableDescriptorCount
                     || !indexing_features.runtimeDescriptorArray
                     || !indexing_features.descriptorBindingSampledImageUpdateAfterBind
-                    || !vulkan13_features.dynamicRendering){
+                    || !vulkan13_features.dynamicRendering
+                    || !synchronization2_features.synchronization2){
                     continue;
                 }
 
@@ -564,9 +566,14 @@ namespace vk::utils
                 .setPNext(nullptr)
                 .setDynamicRendering(true);
 
+            // Включить поддержку синхронизации 2.0
+            auto synchronization2_features = vk::PhysicalDeviceSynchronization2Features()
+                .setPNext(&vulkan13_features)
+                .setSynchronization2(true);
+
             // Включить поддержку bindless дескрипторов
             auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT()
-                .setPNext(&vulkan13_features)
+                .setPNext(&synchronization2_features)
                 .setDescriptorBindingPartiallyBound(true)
                 .setDescriptorBindingVariableDescriptorCount(true)
                 .setRuntimeDescriptorArray(true)
