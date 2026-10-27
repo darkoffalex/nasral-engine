@@ -2,20 +2,18 @@
 #include <nasral/res/manager.h>
 #include <nasral/res/objects/file.h>
 #include <nasral/res/objects/project.h>
-#include <nasral/res/objects/sahder.h>
 #include <nasral/res/objects/texture.h>
+#include <nasral/res/objects/shader_program.h>>
 #include <nasral/log/loggable.h>
 #include <nasral/evt/utils.h>
 #include <nasral/engine.h>
 
 #include "res/loaders/project/json.hpp"
 #include "res/loaders/project/builtin.hpp"
-#include "res/loaders/shader/spv.hpp"
 #include "res/loaders/texture/stb.hpp"
 #include "res/loaders/texture/builtin.hpp"
 #include "res/loaders/mesh/assimp.hpp"
 #include "res/loaders/mesh/builtin.hpp"
-#include "res/loaders/material/json.hpp"
 #include "res/loaders/scene/json.hpp"
 #include "res/loaders/scene/builtin.hpp"
 #include "res/loaders/shader_program/spv.hpp"
@@ -390,10 +388,6 @@ namespace nasral::res
                 ? Ret{std::make_unique<TextureBuiltinLoader>(manager)}
                 : Ret{std::make_unique<TextureStbLoader>(manager, slot.loading.params)};
         }
-        else if constexpr (std::is_same_v<T, Shader>){
-            assert(slot.info.type == Type::eShader);
-            return Ret{std::make_unique<ShaderSpvLoader>(manager)};
-        }
         else if constexpr (std::is_same_v<T, ShaderProgram>){
             assert(slot.info.type == Type::eShaderProgram);
             return Ret{std::make_unique<ShaderProgramSpvLoader>(manager, slot.loading.params)};
@@ -403,10 +397,6 @@ namespace nasral::res
             return slot.info.path.is_builtin()
                 ? Ret{std::make_unique<MeshBuiltinLoader>(manager)}
                 : Ret{std::make_unique<MeshAssimpLoader>(manager, slot.loading.params)};
-        }
-        else if constexpr (std::is_same_v<T, Material>){
-            assert(slot.info.type == Type::eMaterial);
-            return Ret{std::make_unique<MaterialJsonLoader>(manager)};
         }
         else if constexpr (std::is_same_v<T, Scene>){
             assert(slot.info.type == Type::eScene);
@@ -453,13 +443,6 @@ namespace nasral::res
                     res = std::make_unique<Texture>(this, id.value(), make_res_loader<Texture>(slot, this));
                     break;
                 }
-            case Type::eShader:
-                {
-                    auto id = find(slot.info.path.view());
-                    assert(id.has_value() && "Resource not found");
-                    res = std::make_unique<Shader>(this, id.value(), make_res_loader<Shader>(slot, this));
-                    break;
-                }
             case Type::eShaderProgram:
                 {
                     auto id = find(slot.info.path.view());
@@ -472,13 +455,6 @@ namespace nasral::res
                     auto id = find(slot.info.path.view());
                     assert(id.has_value() && "Resource not found");
                     res = std::make_unique<Mesh>(this, id.value(), make_res_loader<Mesh>(slot, this));
-                    break;
-                }
-            case Type::eMaterial:
-                {
-                    auto id = find(slot.info.path.view());
-                    assert(id.has_value() && "Resource not found");
-                    res = std::make_unique<Material>(this, id.value(), make_res_loader<Material>(slot, this));
                     break;
                 }
             case Type::eScene:

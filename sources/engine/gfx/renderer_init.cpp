@@ -219,7 +219,7 @@ namespace nasral::gfx
             .setImageColorSpace(surface_format.colorSpace)
             .setImageExtent(vk_device_->clamp_swapchain_extent(config().surface_provider->framebuffer_extent(), *vk_surface_))
             .setImageArrayLayers(1)
-            .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
+            .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst)
             .setImageSharingMode(same_family ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent)
             .setPreTransform(surface_capabilities.currentTransform)
             .setCompositeAlpha(config().composite_alpha)
@@ -279,6 +279,7 @@ namespace nasral::gfx
 
         // Убеждаемся, что разрешение рендеринга не равно нулю
         const auto rendering_extent = rendering_resolution();
+        const auto present_extent = output_resolution();
         if (rendering_extent.width == 0 || rendering_extent.height == 0)
         {
             throw std::runtime_error("Rendering and output resolution must be non-zero");
@@ -339,6 +340,7 @@ namespace nasral::gfx
                 vk_device_.get(),
                 vk::utils::Image::Type::e2D,
                 image,
+                vk::Extent3D{present_extent.width, present_extent.height, 1u},
                 config().present_color_format,
                 vk::ImageAspectFlagBits::eColor,
                 1u);
@@ -731,42 +733,42 @@ namespace nasral::gfx
         pp_image_infos.push_back(
             vk::DescriptorImageInfo()
                 .setSampler(vk_texture_samplers_[TextureSamplerType::eNearestClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eColor][FRAME]->image_view())
+                .setImageView(vk_offscreen_images_[FrameAttachmentType::eColor][FRAME]->sampling_view())
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
         // Глубина (1)
         pp_image_infos.push_back(
             vk::DescriptorImageInfo()
                 .setSampler(vk_texture_samplers_[TextureSamplerType::eNearestClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eDepth][FRAME]->image_view())
+                .setImageView(vk_offscreen_images_[FrameAttachmentType::eDepth][FRAME]->sampling_view())
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
         // Нормали (2)
         pp_image_infos.push_back(
             vk::DescriptorImageInfo()
                 .setSampler(vk_texture_samplers_[TextureSamplerType::eNearestClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eNormal][FRAME]->image_view())
+                .setImageView(vk_offscreen_images_[FrameAttachmentType::eNormal][FRAME]->sampling_view())
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
         // Яркие области (3)
         pp_image_infos.push_back(
             vk::DescriptorImageInfo()
                 .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eEmission][FRAME]->image_view())
+                .setImageView(vk_offscreen_images_[FrameAttachmentType::eEmission][FRAME]->sampling_view())
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
         // Промежуточный буфер: результат 0 (4 / ping)
         pp_image_infos.push_back(
             vk::DescriptorImageInfo()
                 .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eTemp1][FRAME]->image_view())
+                .setImageView(vk_offscreen_images_[FrameAttachmentType::eTemp1][FRAME]->sampling_view())
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
         // Промежуточный буфер: результат 1 (5 / pong)
         pp_image_infos.push_back(
             vk::DescriptorImageInfo()
                 .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eTemp2][FRAME]->image_view())
+                .setImageView(vk_offscreen_images_[FrameAttachmentType::eTemp2][FRAME]->sampling_view())
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
         // Связать с дескрипторами набора
@@ -1143,8 +1145,8 @@ namespace nasral::gfx
 
         // Создать новые кадровые буферы
         init_vk_framebuffers();
-        const auto extent_render = rendering_resolution();
-        const auto extent_swap_chain = output_resolution();
+        const auto extent_render = vk_offscreen_images_[FrameAttachmentType::eCompositing].front()->extent();
+        const auto extent_swap_chain = vk_swap_chain_images_.front()->extent();
         const std::string extent_render_str = std::to_string(extent_render.width) + "x" + std::to_string(extent_render.height);
         const std::string extent_swap_chain_str = std::to_string(extent_swap_chain.width) + "x" + std::to_string(extent_swap_chain.height);
         log_info("Vulkan: Framebuffers initialized (" + extent_render_str + " -> " + extent_swap_chain_str + ").");

@@ -46,9 +46,7 @@ namespace nasral::res
         eFile,
         eTexture,
         eMesh,
-        eShader,
         eShaderProgram,
-        eMaterial,
         eProjectFile,
         eScene,
         TOTAL

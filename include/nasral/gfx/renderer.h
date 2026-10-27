@@ -37,10 +37,11 @@ namespace nasral::gfx
         void cmd_begin_screen_pass(EnumMask<FrameAttachmentType> input, EnumMask<FrameAttachmentType> output);
         void cmd_end_screen_pass();
         void cmd_bind_shader_program(const handles::ShaderProgram& handles);
-        void cmd_bind_mesh_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
-        void cmd_draw_bound_geometry(uint32_t index_offset, uint32_t index_count, uint32_t mat_uniform_idx);
+        void cmd_bind_mesh_geometry(const handles::Mesh& handles) const;
+        void cmd_draw_bound_geometry(uint32_t index_offset, uint32_t index_count, uint32_t obj_uniform_idx, uint32_t mat_uniform_idx);
         void cmd_draw_screen_quad(uint32_t pass_uniform_idx);
         void cmd_gen_frame_mipmaps(const FrameAttachmentType& type) const;
+        void cmd_blit_to_screen(const FrameAttachmentType& type) const;
         void cmd_wait_for_all() const;
         void mark_surface_dirty();
 
@@ -72,11 +73,11 @@ namespace nasral::gfx
         [[nodiscard]] const auto& vk_surface() const noexcept{
             return *vk_surface_;
         }
-        [[nodiscard]] const auto* vk_offscreen_image(const FrameAttachmentType& frame_type) const noexcept{
-            return vk_offscreen_images_[frame_type][frame_index()].get();
+        [[nodiscard]] const auto& vk_offscreen_image(const FrameAttachmentType& frame_type) const noexcept{
+            return *vk_offscreen_images_[frame_type][frame_index()];
         }
         [[nodiscard]] const auto& vk_swap_chain_image() const noexcept{
-            return vk_swap_chain_images_[available_sc_image_];
+            return *vk_swap_chain_images_[available_sc_image_];
         }
         [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{
             return *vk_texture_samplers_[type];
@@ -86,6 +87,9 @@ namespace nasral::gfx
         }
         [[nodiscard]] auto& vk_uniform_buffer(const UniformBufferType& type) const noexcept{
             return *vk_uniform_buffers_[type];
+        }
+        [[nodiscard]] auto& vk_command_buffer() const noexcept{
+            return *vk_command_buffers_[frame_index()];
         }
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(

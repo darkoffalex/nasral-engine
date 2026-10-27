@@ -16,7 +16,7 @@ namespace nasral::res
         {
             std::vector<ResourceDesc> resources = {};
             std::vector<gfx::MaterialDesc> materials = {};
-            std::vector<gfx::ScreenFxDesc> screen_effects = {};
+            std::vector<gfx::ScreenPassDesc> screen_passes = {};
             std::string initial_scene = {};
             std::vector<inp::ActionDesc> action_bindings = {};
             float mouse_sensitivity = 0.0f;
@@ -30,7 +30,7 @@ namespace nasral::res
 
         [[nodiscard]] const auto& resources() const noexcept { return data_.resources; }
         [[nodiscard]] const auto& materials() const noexcept { return data_.materials; }
-        [[nodiscard]] const auto& screen_effects() const noexcept { return data_.screen_effects; }
+        [[nodiscard]] const auto& screen_passes() const noexcept { return data_.screen_passes; }
         [[nodiscard]] const auto& initial_scene() const noexcept { return data_.initial_scene; }
         [[nodiscard]] const auto& action_bindings() const noexcept { return data_.action_bindings; }
         [[nodiscard]] const auto& mouse_sensitivity() const noexcept { return data_.mouse_sensitivity; }
