@@ -326,6 +326,8 @@ namespace nasral::gfx
         UniqueId unique_id = {};
         std::string name = {};
         ScreenPassType type = ScreenPassType::eCompositing;
+        std::vector<FrameAttachmentType> input_attachments = {};
+        std::vector<FrameAttachmentType> output_attachments = {};
         std::optional<UniqueId> previous = {};
         std::optional<UniqueId> next = {};
         std::string shader_program_path = {};

@@ -6,8 +6,20 @@
 
 #define END_FOREACH }
 
-#define ENSURE_COMMANDS if(!is_active() || !is_frame_started()) return;
+#define ENSURE_COMMANDS \
+if(!is_active() || !is_frame_started()){ \
+    log_error("Renderer is not active or frame is not started"); \
+    return; \
+}
 
-#define ENSURE_PASS if(!is_active() || !is_pass_started()) return;
+#define ENSURE_PASS \
+if(!is_pass_started()){ \
+    log_error("Pass is not started"); \
+    return; \
+}
 
-#define ENSURE_NO_PASS if(!is_active() || is_pass_started()) return;
+#define ENSURE_NO_PASS \
+if(is_pass_started()){ \
+    log_error("Pass is already started"); \
+    return; \
+}

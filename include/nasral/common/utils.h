@@ -165,24 +165,41 @@ namespace nasral
     }
 
     /**
-     * @brief Метафункция вычисления максимального размера альтернативы std::variant
+     * @brief Вспомогательная структура для поиска типа с максимальным размером в пакете
      */
+    template <typename T, typename... Ts>
+    struct biggest_type {
+    private:
+        using rest_type = typename biggest_type<Ts...>::type;
+    public:
+        using type = std::conditional_t<(sizeof(T) >= sizeof(rest_type)), T, rest_type>;
+    };
+
     template <typename T>
-    struct max_variant_size;
+    struct biggest_type<T> {
+        using type = T;
+    };
 
     template <typename... Ts>
-    struct max_variant_size<std::variant<Ts...>> {
-        static constexpr std::size_t value = max_sizeof_pack<Ts...>();
+    using biggest_type_t = typename biggest_type<Ts...>::type;
+
+    /**
+     * @brief Метафункция получения типа с максимальным размером из std::variant
+     */
+    template <typename Variant>
+    struct biggest_of;
+
+    template <typename... Ts>
+    struct biggest_of<std::variant<Ts...>> {
+        using type = biggest_type_t<Ts...>;
     };
 
     /**
-     * @brief Получение размера наибольшего типа через передачу типа в шаблон:
-     * size_of<std::variant<A, B, C>>()
+     * @brief Получение наибольшего типа std::variant:
+     * using T = biggest_of_t<std::variant<A, B, C>>;
      */
     template <typename Variant>
-    constexpr std::size_t max_sizeof() noexcept {
-        return max_variant_size<Variant>::value;
-    }
+    using biggest_of_t = typename biggest_of<Variant>::type;
 }
 
 #define DECLARE_DETECTOR(method) \

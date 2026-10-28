@@ -29,20 +29,18 @@ add_library(Engine OBJECT
         res/objects/resource.cpp
         res/objects/file.cpp
         res/objects/project.cpp
-        res/objects/shader.cpp
         res/objects/shader_program.cpp
         res/objects/texture.cpp
         res/objects/mesh.cpp
-        res/objects/material.cpp
         res/objects/project.cpp
         res/objects/scene.cpp
 
         # Рендеринг
-#        gfx/manager.cpp
+        gfx/manager.cpp
         gfx/renderer.cpp
         gfx/renderer_init.cpp
         gfx/entities/material.cpp
-#        gfx/system.cpp
+        gfx/system.cpp
         gfx/utils.cpp
 
         # Сцена

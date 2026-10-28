@@ -79,6 +79,26 @@ namespace nasral::gfx
         return ecs->as_view<MaterialView>(id).value();
     }
 
+    const UniqueId & MaterialView::uid() {
+        return get<ecs::UidComponent>().id;
+    }
+
+    const std::string & MaterialView::name() {
+        return get<ecs::NameComponent>().name;
+    }
+
+    const MaterialType& MaterialView::type() {
+        return get<MaterialComponent>().type;
+    }
+
+    const uint32_t & MaterialView::uniform_index() const {
+        return get<UniformIndexComponent>().index;
+    }
+
+    const handles::ShaderProgram& MaterialView::shader_program() const {
+        return get<ShaderHandlesComponent>().shader_program;
+    }
+
     void MaterialView::set_name(const std::string &name) {
         get<ecs::NameComponent>().name = name;
     }

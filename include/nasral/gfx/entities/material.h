@@ -52,6 +52,12 @@ namespace nasral::gfx
             , const ecs::EntityId& id
             , const MaterialDesc& desc);
 
+        [[nodiscard]] const UniqueId& uid();
+        [[nodiscard]] const std::string& name();
+        [[nodiscard]] const MaterialType& type();
+        [[nodiscard]] const uint32_t& uniform_index() const;
+        [[nodiscard]] const handles::ShaderProgram& shader_program() const;
+
         void set_name(const std::string& name);
         void set_uniforms(const uniforms::Material& uniforms);
         void set_texture_sampler(TextureType type, TextureSamplerType sampler_type);

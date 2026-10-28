@@ -901,7 +901,7 @@ namespace nasral::gfx
             // Выделить uniform буфер для параметров материала (Blin-Phong)
             vk_uniform_buffers_[UniformBufferType::eMaterials] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
-                size_align(max_sizeof<uniforms::Material>(), sbo_alignment) * kMaxMaterials,
+                size_align(sizeof(biggest_of_t<uniforms::Material>), sbo_alignment) * kMaxMaterials,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
@@ -922,7 +922,7 @@ namespace nasral::gfx
             // Выделить uniform буфер для настроек экранных эффектов
             vk_uniform_buffers_[UniformBufferType::eScreenPasses] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
-                size_align(max_sizeof<uniforms::ScreenPass>(), ubo_alignment) * kMaxScreenPasses,
+                size_align(sizeof(biggest_of_t<uniforms::ScreenPass>), sbo_alignment) * kMaxScreenPasses,
                 vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
@@ -980,7 +980,7 @@ namespace nasral::gfx
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
                 .setBuffer(vk_uniform_buffers_[UniformBufferType::eMaterials]->vk_buffer())
                 .setOffset(0)
-                .setRange(max_sizeof<uniforms::Material>() * kMaxMaterials));
+                .setRange(sizeof(biggest_of_t<uniforms::Material>) * kMaxMaterials));
 
             writes.emplace_back(vk::WriteDescriptorSet()
                 .setDstSet(vk_rendering_d_sets_[UniformRasterDSetType::eMaterialUBOs].get())
@@ -996,7 +996,7 @@ namespace nasral::gfx
             buffer_infos.emplace_back(vk::DescriptorBufferInfo()
                 .setBuffer(vk_uniform_buffers_[UniformBufferType::eScreenPasses]->vk_buffer())
                 .setOffset(0)
-                .setRange(max_sizeof<uniforms::ScreenPass>() * kMaxScreenPasses));
+                .setRange(sizeof(biggest_of_t<uniforms::ScreenPass>) * kMaxScreenPasses));
 
             writes.emplace_back(vk::WriteDescriptorSet()
                 .setDstSet(vk_screen_d_sets_[UniformScreenDSetType::eScreenPassUBOs].get())

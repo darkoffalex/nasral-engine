@@ -91,6 +91,12 @@ namespace nasral::gfx
         [[nodiscard]] auto& vk_command_buffer() const noexcept{
             return *vk_command_buffers_[frame_index()];
         }
+        [[nodiscard]] auto& vk_rasterization_d_set(const UniformRasterDSetType& type) const noexcept{
+            return *vk_rendering_d_sets_[type];
+        }
+        [[nodiscard]] auto& vk_screen_d_set(const UniformScreenDSetType& type) const noexcept{
+            return *vk_screen_d_sets_[type];
+        }
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
             vk::Flags<vk::DebugReportFlagBitsEXT> flags,
