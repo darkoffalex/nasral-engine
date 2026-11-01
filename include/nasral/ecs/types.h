@@ -52,7 +52,6 @@ namespace nasral::ecs
         scn::ViewComponent,
         scn::MeshComponent,
         scn::LightComponent,
-        scn::ScreenFxComponent,
         scn::DirtyStateComponent
     >;
 

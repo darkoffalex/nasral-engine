@@ -3,7 +3,7 @@
 #include <nasral/res/objects/file.h>
 #include <nasral/res/objects/project.h>
 #include <nasral/res/objects/texture.h>
-#include <nasral/res/objects/shader_program.h>>
+#include <nasral/res/objects/shader_program.h>
 #include <nasral/log/loggable.h>
 #include <nasral/evt/utils.h>
 #include <nasral/engine.h>

@@ -35,6 +35,8 @@ namespace nasral::res
         [[nodiscard]] const auto& vk_pipeline() const noexcept { return *vk_pipeline_; }
         [[nodiscard]] const auto& program_type() const noexcept { return program_type_; }
 
+        [[nodiscard]] gfx::handles::ShaderProgram render_handles() const;
+
     private:
         struct RenderingAttachmentFormatInfo
         {

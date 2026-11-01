@@ -6,7 +6,6 @@
 #include <nasral/log/loggable.h>
 #include <nasral/scn/types.h>
 #include <nasral/evt/objects/listener.h>
-#include <nasral/scn/objects/screen_fx_state.h>
 
 namespace nasral::scn
 {
@@ -47,8 +46,6 @@ namespace nasral::scn
         evt::Listener::Ptr evl_sfc_chg_;
         // ECS-система
         System::Ptr ecs_system_;
-        // Активная пост-обработка сцены
-        ScreenFxState::Ptr screen_fx_state_;
     };
 }
 

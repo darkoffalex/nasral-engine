@@ -45,7 +45,9 @@ namespace nasral::gfx
 
     void Manager::on_update(const float delta) const
     {
-        if (engine()->run()->state().has_no(run::StateFlags::eRunning)) return;
+        if (engine()->run()->state().has_no(run::StateFlags::eRunning))
+            return;
+
         ecs_system_->update(delta);
     }
 
@@ -63,8 +65,22 @@ namespace nasral::gfx
         log_info("Manager finalized");
     }
 
-    void Manager::on_render() const {
-        // TODO: Implement
+    void Manager::on_render() const
+    {
+        if (!renderer()->is_active())
+            return;
+
+        if (engine()->run()->state().has_no(run::StateFlags::eRunning))
+            return;
+
+        // Начало кадра
+        renderer()->cmd_begin_frame();
+
+        // ECS-система рисует сцену
+        ecs_system_->render();
+
+        // Завершение кадра, показ результата
+        renderer()->cmd_end_frame();
     }
 
     void Manager::update_cam_uniforms(const uniforms::Camera &uniforms, const uint32_t index) const {

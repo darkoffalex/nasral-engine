@@ -37,7 +37,6 @@ namespace nasral::res
                 constexpr EnumArray<ShaderLoadParams::Type, gfx::ShaderProgramType> type_map{
                     gfx::ShaderProgramType::eRasterization,
                     gfx::ShaderProgramType::eScreenPass,
-                    gfx::ShaderProgramType::eScreenOutput,
                     gfx::ShaderProgramType::eRaytracing,
                     gfx::ShaderProgramType::eCompute,
                 };

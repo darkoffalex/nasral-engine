@@ -142,7 +142,6 @@ namespace nasral::res
             // Генерация мип-уровней
             if (generate_mips){
                 image_->generate_mipmaps(cmd_group
-                    , vk::Extent3D{data->width, data->height, 1}
                     , vk::ImageAspectFlagBits::eColor
                     , 1);
             }

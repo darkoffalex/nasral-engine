@@ -96,14 +96,14 @@
     {
       "uid" : [0,1],
       "name": "Colored",
-      "base_material_path" : "materials/colored/material.json",
-      "base_material_type" : "eColored"
+      "shader_program_path" : "shaders/rasterization/colored.slang.spv",
+      "type" : "eColored"
     },
     {
       "uid" : [0,2],
-      "name": "Textured",
-      "base_material_path" : "materials/textured/material.json",
-      "base_material_type" : "eTextured",
+      "name": "TilesUnlit",
+      "shader_program_path" : "shaders/rasterization/unlit.slang.spv",
+      "type" : "eUnlit",
       "textures": [{
         "type" : "eAlbedoColor",
         "path" : "textures/tiles_01/tiles_diff.png",
@@ -113,8 +113,8 @@
     {
       "uid" : [0,3],
       "name": "TilesPhong",
-      "base_material_path" : "materials/phong/material.json",
-      "base_material_type" : "ePhong",
+      "shader_program_path" : "shaders/rasterization/phong.slang.spv",
+      "type" : "ePhong",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "ambient": [0.0, 0.0, 0.0, 1.0],
@@ -137,9 +137,9 @@
     },
     {
       "uid" : [0,4],
-      "name": "TilesPbr",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "name": "TilesPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 0.35,
@@ -164,8 +164,8 @@
     {
       "uid" : [0,5],
       "name": "ChairUnlit",
-      "base_material_path" : "materials/textured/material.json",
-      "base_material_type" : "eTextured",
+      "shader_program_path" : "shaders/rasterization/unlit.slang.spv",
+      "type" : "eUnlit",
       "textures": [{
         "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v0",
@@ -175,8 +175,8 @@
     {
       "uid" : [0,6],
       "name": "ChairPhong",
-      "base_material_path" : "materials/phong/material.json",
-      "base_material_type" : "ePhong",
+      "shader_program_path" : "shaders/rasterization/phong.slang.spv",
+      "type" : "ePhong",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "ambient": [0.0, 0.0, 0.0, 1.0],
@@ -200,8 +200,8 @@
     {
       "uid" : [0,7],
       "name": "ChairPBR",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
@@ -226,8 +226,8 @@
     {
       "uid" : [0,8],
       "name": "HallwayFloor",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
@@ -256,8 +256,8 @@
     {
       "uid" : [0,9],
       "name": "HallwayRoom01",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
@@ -286,8 +286,8 @@
     {
       "uid" : [0,10],
       "name": "HallwayRoom02",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
@@ -310,24 +310,6 @@
       },{
         "type" : "eRoughOrSpec",
         "path" : "textures/hallway/room-02_roughness.png",
-        "filter" : "eLinear"
-      }]
-    },
-    {
-      "uid" : [0,11],
-      "name": "EmissivePBR",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
-      "settings": {
-        "color": [1.0, 1.0, 1.0, 1.0],
-        "roughness": 1.0,
-        "metallic": 0.0,
-        "ao": 0.0,
-        "emission": 1.0
-      },
-      "textures": [{
-        "type" : "eNormal",
-        "path" : "builtin:tex/normal-pixel",
         "filter" : "eLinear"
       }]
     }

@@ -75,6 +75,12 @@ namespace nasral::res
         }
     }
 
+    gfx::handles::ShaderProgram ShaderProgram::render_handles() const {
+        gfx::handles::ShaderProgram handles{};
+        handles.pipeline = vk_pipeline();
+        return handles;
+    }
+
     void ShaderProgram::init_rasterization_pipeline(
         const vk::ShaderModule& module,
         const std::vector<Data::EntryPointInfo>& entry_points)

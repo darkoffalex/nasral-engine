@@ -131,7 +131,10 @@ namespace nasral::res
     };
 
     using ResourceId = uint32_t;
-    using ResourceDesc = std::tuple<Type, std::string, std::optional<LoadParams>>;
+    using ResourceDesc = std::tuple<
+        Type,
+        std::string,
+        std::optional<LoadParams>>;
 
     struct Config
     {

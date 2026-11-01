@@ -13,7 +13,6 @@ namespace nasral::res
         struct Data
         {
             std::vector<scn::NodeDesc> nodes = {};
-            scn::ScreenFxStateDesc screen_fx = {};
         };
 
         Scene(Manager* manager, const ResourceId& id, Loader<Data>::Ptr loader);
@@ -23,7 +22,6 @@ namespace nasral::res
         Scene& operator=(const Scene&) = delete;
 
         [[nodiscard]] const auto& nodes() const noexcept { return data_.nodes; }
-        [[nodiscard]] const auto& screen_fx() const noexcept { return data_.screen_fx; }
 
         void load() noexcept override;
     private:

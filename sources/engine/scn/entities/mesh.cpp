@@ -25,8 +25,8 @@ namespace nasral::scn
         // Подготовка материалов
         MeshComponent mesh_c = {};
         for (const auto& m_uid : desc.mesh.materials) {
-            if (const auto* mat = gfx->find_material(m_uid)) {
-                mesh_c.materials.push_back(mat->entity());
+            if (auto mat_e = gfx->find_material(m_uid); mat_e != ecs::EntityId::invalid()) {
+                mesh_c.materials.push_back(mat_e);
             }
         }
 

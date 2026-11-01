@@ -57,6 +57,7 @@ namespace nasral::gfx
         [[nodiscard]] const MaterialType& type();
         [[nodiscard]] const uint32_t& uniform_index() const;
         [[nodiscard]] const handles::ShaderProgram& shader_program() const;
+        [[nodiscard]] bool is_ready() const;
 
         void set_name(const std::string& name);
         void set_uniforms(const uniforms::Material& uniforms);

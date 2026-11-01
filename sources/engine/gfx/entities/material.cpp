@@ -99,6 +99,15 @@ namespace nasral::gfx
         return get<ShaderHandlesComponent>().shader_program;
     }
 
+    bool MaterialView::is_ready() const {
+        const auto e_id = id();
+        const auto* ecs = engine()->ecs();
+
+        return ecs->is_valid(e_id)
+            && ecs->has<ShaderHandlesComponent, TextureHandlesComponent, res::LoadedComponent>(e_id)
+            && !ecs->has<DirtyHandlesComponent>(e_id);
+    }
+
     void MaterialView::set_name(const std::string &name) {
         get<ecs::NameComponent>().name = name;
     }

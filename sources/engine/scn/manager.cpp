@@ -219,9 +219,6 @@ namespace nasral::scn
                 }
             }
 
-            // Настройки экранного эффекта (пост-обработка)
-            screen_fx_state_ = std::unique_ptr<ScreenFxState>(new ScreenFxState(this, scene->screen_fx()));
-
             // Ресурс сцены более не нужен в RAM
             engine()->res()->release(res->id());
         });

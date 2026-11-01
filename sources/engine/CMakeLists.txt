@@ -45,13 +45,11 @@ add_library(Engine OBJECT
 
         # Сцена
         scn/manager.cpp
-
         scn/entities/node.cpp
         scn/entities/spatial.cpp
         scn/entities/mesh.cpp
         scn/entities/camera.cpp
         scn/entities/light.cpp
-        scn/objects/screen_fx_state.cpp
         scn/system.cpp
 )
 add_default_configurations(Engine demo_app)
