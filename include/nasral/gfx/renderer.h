@@ -45,8 +45,8 @@ namespace nasral::gfx
         void cmd_wait_for_all() const;
         void mark_surface_dirty();
 
-        [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
-        [[nodiscard]] const vk::Extent2D& output_resolution() const noexcept;
+        [[nodiscard]] vk::Extent2D rendering_resolution() const noexcept;
+        [[nodiscard]] vk::Extent2D output_resolution() const noexcept;
         [[nodiscard]] float aspect_ratio() const noexcept;
 
         [[nodiscard]] auto is_active() const{

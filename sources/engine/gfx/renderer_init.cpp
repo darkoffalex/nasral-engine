@@ -482,7 +482,7 @@ namespace nasral::gfx
                 // Индекс объекта и индекс используемого материала
                 vk::PushConstantRange()
                     .setStageFlags(vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment)
-                    .setSize(sizeof(uint32_t) * 2)
+                    .setSize(sizeof(uint32_t) * 3)
                     .setOffset(0)
             };
 
@@ -923,7 +923,7 @@ namespace nasral::gfx
             vk_uniform_buffers_[UniformBufferType::eScreenPasses] = std::make_unique<vk::utils::Buffer>(
                 vk_device_.get(),
                 size_align(sizeof(biggest_of_t<uniforms::ScreenPass>), sbo_alignment) * kMaxScreenPasses,
-                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
 

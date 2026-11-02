@@ -59,6 +59,7 @@ struct PushConstants
 {
     uint mat_index;
     uint obj_index;
+    uint mat_stride;
 };
 [[vk::push_constant]] PushConstants pc_push;
 
@@ -81,8 +82,8 @@ struct ObjectTransforms
 };
 [[vk::binding(0, 1)]] StructuredBuffer<ObjectTransforms> s_objects;
 
-// PBR параметры материала (set = 2, binding = 1)
-struct MaterialSettings
+// PBR параметры материала (set = 2, binding = 0)
+struct MaterialSettingsPBR
 {
     float4 color;
     float  roughness;
@@ -90,7 +91,8 @@ struct MaterialSettings
     float  ao;
     float  emission;
 };
-[[vk::binding(1, 2)]] StructuredBuffer<MaterialSettings> s_materials;
+//[[vk::binding(0, 2)]] StructuredBuffer<MaterialSettings> s_materials;
+[[vk::binding(0, 2)]] ByteAddressBuffer s_materials;
 
 // Параметры источника света (set = 4, binding = 0)
 struct LightSource
@@ -111,7 +113,7 @@ struct LightIndices
     uint count;
     uint active_indices[MAX_LIGHTS];
 };
-[[vk::binding(1, 4)]] ConstantBuffer<LightIndices> s_light_indices;
+[[vk::binding(1, 4)]] StructuredBuffer<LightIndices> s_light_indices;
 
 // Текстуры PBR материала (set = 3)
 [[vk::binding(0, 3)]] Sampler2D t_albedo[MAX_MATERIALS];
@@ -188,7 +190,7 @@ void geometryMain(
         output.uv = input[i].uv;
         output.tangent = T;
         output.bitangent = B;
-        output.TBN = float3x3(T, B, N);
+        output.TBN = transpose(float3x3(T, B, N));
         output.clipPosition = input[i].clipPosition;
 
         outStream.Append(output);
@@ -227,6 +229,16 @@ float3 F_Schlick(float VoH, float3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - VoH, 5.0);
 }
 
+// Функция ACES Tone Mapping
+float3 tone_map_aces(float3 x) {
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
 // ============================================================================
 // ФРАГМЕНТНЫЙ ШЕЙДЕР
 // ============================================================================
@@ -243,7 +255,8 @@ FragmentOutput fragmentMain(GeometryOutput input)
     float  tex_ao        = t_ao[pc_push.mat_index].Sample(input.uv).r;
 
     // Параметры материала
-    MaterialSettings material = s_materials[pc_push.mat_index];
+    MaterialSettingsPBR material = s_materials.Load<MaterialSettingsPBR>(pc_push.mat_index * pc_push.mat_stride);
+
     float  alpha     = material.color.a * tex_albedo.a;
     float3 albedo    = material.color.rgb * tex_albedo.rgb;
     float  roughness = clamp(material.roughness * tex_roughness, 0.0, 1.0);
@@ -258,9 +271,9 @@ FragmentOutput fragmentMain(GeometryOutput input)
     float3 Lo = float3(0.0);
 
     // Цикл по активным источникам света
-    for (uint i = 0; i < s_light_indices.count; ++i)
+    for (uint i = 0; i < s_light_indices[0].count; ++i)
     {
-        uint idx = s_light_indices.active_indices[i];
+        uint idx = s_light_indices[0].active_indices[i];
         if (idx >= MAX_LIGHTS) continue;
 
         LightSource light = s_lights[idx];
@@ -300,8 +313,13 @@ FragmentOutput fragmentMain(GeometryOutput input)
     // Буфер свечения (яркость выше порога)
     float3 bright_pbr = max(Lo - float3(BRIGHT_THRESHOLD), float3(0.0));
 
+    // Выполняем Tone Mapping (сжатие HDR -> SDR)
+    float3 sdr_color = tone_map_aces(Lo);
+    // Гамма коррекция
+    float3 final_color = pow(sdr_color, float3(1.0 / 2.2));
+
     // Вывод во вложения GBuffer
-    output.color    = float4(Lo, alpha);
+    output.color    = float4(final_color, alpha);
     output.normal   = float4(normal * 0.5 + 0.5, 1.0);
     output.emissive = float4(emission + bright_pbr, 1.0);
 

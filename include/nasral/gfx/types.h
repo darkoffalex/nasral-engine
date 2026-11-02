@@ -18,8 +18,8 @@ namespace nasral::gfx
     constexpr uint32_t kMaxScreenPasses = 5;
     constexpr uint32_t kMaxMeshMaterials = 5;
     constexpr uint32_t kMaxLights = 64;
-    constexpr uint32_t kMaxFramesInFlight = 5;
-    constexpr uint32_t kMaxSwapChainImages = 5;
+    constexpr uint32_t kMaxFramesInFlight = 6;
+    constexpr uint32_t kMaxSwapChainImages = 6;
 
     struct Vertex
     {

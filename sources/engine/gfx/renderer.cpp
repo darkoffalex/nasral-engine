@@ -272,7 +272,7 @@ namespace nasral::gfx
             .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
             .setImage(depth_image->image())
             .setSubresourceRange(vk::ImageSubresourceRange()
-                .setAspectMask(vk::ImageAspectFlagBits::eDepth)
+                .setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
                 .setBaseMipLevel(0)
                 .setLevelCount(1)
                 .setBaseArrayLayer(0)
@@ -282,7 +282,7 @@ namespace nasral::gfx
         vk_command_buffer().pipelineBarrier2(
             vk::DependencyInfo()
                 .setPImageMemoryBarriers(image_barriers.data())
-                .setImageMemoryBarrierCount(barrier_count),
+                .setImageMemoryBarrierCount(static_cast<uint32_t>(barrier_count)),
             vk_loader_
         );
 
@@ -365,7 +365,7 @@ namespace nasral::gfx
             .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
             .setImage(depth_image->image())
             .setSubresourceRange(vk::ImageSubresourceRange()
-                .setAspectMask(vk::ImageAspectFlagBits::eDepth)
+                .setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
                 .setBaseMipLevel(0)
                 .setLevelCount(1)
                 .setBaseArrayLayer(0)
@@ -375,7 +375,7 @@ namespace nasral::gfx
         vk_command_buffer().pipelineBarrier2(
             vk::DependencyInfo()
                 .setPImageMemoryBarriers(image_barriers.data())
-                .setImageMemoryBarrierCount(barrier_count),
+                .setImageMemoryBarrierCount(static_cast<uint32_t>(barrier_count)),
             vk_loader_
         );
 
@@ -472,7 +472,7 @@ namespace nasral::gfx
         vk_command_buffer().pipelineBarrier2(
             vk::DependencyInfo()
                 .setPImageMemoryBarriers(image_barriers.data())
-                .setImageMemoryBarrierCount(attachment_count),
+                .setImageMemoryBarrierCount(static_cast<uint32_t>(attachment_count)),
             vk_loader_
         );
 
@@ -539,7 +539,7 @@ namespace nasral::gfx
             vk_command_buffer().pipelineBarrier2(
                 vk::DependencyInfo()
                     .setPImageMemoryBarriers(image_barriers.data())
-                    .setImageMemoryBarrierCount(barrier_count),
+                    .setImageMemoryBarrierCount(static_cast<uint32_t>(barrier_count)),
                 vk_loader_
             );
         }
@@ -613,10 +613,14 @@ namespace nasral::gfx
         // Командный буфер кадра и макет конвейера
         auto& pipeline_layout = vk_uniform_layouts_[ShaderProgramType::eRasterization]->vk_pipeline_layout();
 
+        // Шаг (с выравниванием) для буфера материалов в шейдерах
+        const auto mat_stride = aligned_sbo<biggest_of_t<uniforms::Material>>(vk_device().physical_device());
+
         // Push-константы - uniform индекс материала и объекта (порядок важен!)
-        const std::array<uint32_t, 2> push_constants{
+        const std::array<uint32_t, 3> push_constants{
             mat_uniform_idx,
             obj_uniform_idx,
+            static_cast<uint32_t>(mat_stride)
         };
 
         // Передать push-константы
@@ -624,7 +628,7 @@ namespace nasral::gfx
             pipeline_layout,
             vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
             0,
-            sizeof(uint32_t) * 2,
+            sizeof(push_constants),
             push_constants.data());
 
         // Рисование геометрии
@@ -808,12 +812,12 @@ namespace nasral::gfx
         is_surface_dirty_.store(true, std::memory_order_release);
     }
 
-    const vk::Extent2D & Renderer::rendering_resolution() const noexcept
+    vk::Extent2D Renderer::rendering_resolution() const noexcept
     {
         return config().rendering_resolution;
     }
 
-    const vk::Extent2D & Renderer::output_resolution() const noexcept
+    vk::Extent2D Renderer::output_resolution() const noexcept
     {
         return vk_device_->clamp_swapchain_extent(
             config().surface_provider->framebuffer_extent(),
@@ -836,15 +840,6 @@ namespace nasral::gfx
         }
 
         // В остальных случаях используется как глубина
-        auto aspect = vk::ImageAspectFlags(vk::ImageAspectFlagBits::eDepth);
-
-        // Если формат содержит S8Uint, то используется как глубина и stencil
-        if (format == vk::Format::eD16UnormS8Uint
-            || format == vk::Format::eD24UnormS8Uint
-            || format == vk::Format::eD32SfloatS8Uint)
-        {
-            aspect |= vk::ImageAspectFlagBits::eStencil;
-        }
-        return aspect;
+        return vk::ImageAspectFlagBits::eDepth;
     }
 }

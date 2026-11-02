@@ -73,6 +73,10 @@ namespace nasral::res
             set_error(error() == Error::eNone ? loader_->error() : error());
             RES_LOG_ERROR(error(), e.what());
         }
+
+        set_status(Status::eLoaded);
+        set_error(Error::eNone);
+        RES_LOG_LOADED();
     }
 
     gfx::handles::ShaderProgram ShaderProgram::render_handles() const {
