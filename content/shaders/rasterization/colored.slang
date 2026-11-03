@@ -40,6 +40,7 @@ struct PushConstants
 {
     uint mat_index;
     uint obj_index;
+    uint mat_stride;
 };
 [[vk::push_constant]] PushConstants pc_push;
 

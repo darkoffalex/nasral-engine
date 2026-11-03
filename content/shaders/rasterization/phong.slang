@@ -57,6 +57,7 @@ struct PushConstants
 {
     uint mat_index;
     uint obj_index;
+    uint mat_stride;
 };
 [[vk::push_constant]] PushConstants pc_push;
 
@@ -86,8 +87,9 @@ struct MaterialSettings
     float4 ambient;
     float  shininess;
     float  specular;
+    float  normal_nul;
 };
-[[vk::binding(0, 2)]] StructuredBuffer<MaterialSettings> s_materials;
+[[vk::binding(0, 2)]] ByteAddressBuffer s_materials;
 
 // Параметры источника света (set = 4, binding = 0)
 struct LightSource
@@ -108,7 +110,7 @@ struct LightIndices
     uint count;
     uint active_indices[MAX_LIGHTS];
 };
-[[vk::binding(1, 4)]] ConstantBuffer<LightIndices> s_light_indices;
+[[vk::binding(1, 4)]] StructuredBuffer<LightIndices> s_light_indices;
 
 // Массивы текстур с комбинированными сэмплерами (set = 3)
 [[vk::binding(0, 3)]] Sampler2D t_color[MAX_MATERIALS];
@@ -184,10 +186,8 @@ void geometryMain(
         output.uv = input[i].uv;
         output.tangent = T;
         output.bitangent = B;
-
-        // В Slang конструктор float3x3 принимает строки или столбцы;
-        // В GLSL было mat3(T, B, N) со столбцами T, B, N:
-        output.TBN = float3x3(T, B, N);
+        output.TBN = transpose(float3x3(T, B, N));
+        output.clipPosition = input[i].clipPosition;
 
         output.clipPosition = input[i].clipPosition;
 
@@ -214,7 +214,7 @@ FragmentOutput fragmentMain(GeometryOutput input)
     float tex_specular = t_spec[pc_push.mat_index].Sample(input.uv).r;
 
     // Получаем параметры материала
-    MaterialSettings material = s_materials[pc_push.mat_index];
+    MaterialSettings material = s_materials.Load<MaterialSettings>(pc_push.mat_index * pc_push.mat_stride);
 
     // Нормаль из tangent space в world space
     float3 normal = normalize(tex_normal * 2.0 - 1.0);
@@ -224,9 +224,9 @@ FragmentOutput fragmentMain(GeometryOutput input)
     float3 ambient = material.ambient.rgb;
 
     // Цикл по активным источникам света
-    for (uint i = 0; i < s_light_indices.count; ++i)
+    for (uint i = 0; i < s_light_indices[0].count; ++i)
     {
-        uint idx = s_light_indices.active_indices[i];
+        uint idx = s_light_indices[0].active_indices[i];
         if (idx >= MAX_LIGHTS) continue;
 
         LightSource light = s_lights[idx];

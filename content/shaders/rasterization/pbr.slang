@@ -83,15 +83,15 @@ struct ObjectTransforms
 [[vk::binding(0, 1)]] StructuredBuffer<ObjectTransforms> s_objects;
 
 // PBR параметры материала (set = 2, binding = 0)
-struct MaterialSettingsPBR
+struct MaterialSettings
 {
     float4 color;
     float  roughness;
     float  metallic;
     float  ao;
     float  emission;
+    float  normal_mul;
 };
-//[[vk::binding(0, 2)]] StructuredBuffer<MaterialSettings> s_materials;
 [[vk::binding(0, 2)]] ByteAddressBuffer s_materials;
 
 // Параметры источника света (set = 4, binding = 0)
@@ -255,16 +255,19 @@ FragmentOutput fragmentMain(GeometryOutput input)
     float  tex_ao        = t_ao[pc_push.mat_index].Sample(input.uv).r;
 
     // Параметры материала
-    MaterialSettingsPBR material = s_materials.Load<MaterialSettingsPBR>(pc_push.mat_index * pc_push.mat_stride);
+    MaterialSettings material = s_materials.Load<MaterialSettings>(pc_push.mat_index * pc_push.mat_stride);
 
     float  alpha     = material.color.a * tex_albedo.a;
     float3 albedo    = material.color.rgb * tex_albedo.rgb;
     float  roughness = clamp(material.roughness * tex_roughness, 0.0, 1.0);
     float  metallic  = clamp(material.metallic * tex_metallic, 0.0, 1.0);
     float3 emission  = material.emission * albedo;
+    float normal_mul = material.normal_mul;
 
     // Преобразование нормали из Tangent Space в World Space
     float3 normal = normalize(tex_normal * 2.0 - 1.0);
+    normal.xy *= normal_mul;
+    normal = normalize(normal);
     normal = normalize(mul(input.TBN, normal));
 
     // Суммарная освещенность точки

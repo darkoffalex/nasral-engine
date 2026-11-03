@@ -29,6 +29,7 @@ namespace nasral::gfx
                 desc.phong_settings.ambient = s.value("ambient", desc.phong_settings.ambient);
                 desc.phong_settings.shininess = s.value("shininess", desc.phong_settings.shininess);
                 desc.phong_settings.specular = s.value("specular", desc.phong_settings.specular);
+                desc.pbr_settings.normal_mul = s.value("normal_mul", desc.pbr_settings.normal_mul);
             }
             else if (desc.type == MaterialType::ePBR)
             {
@@ -37,6 +38,7 @@ namespace nasral::gfx
                 desc.pbr_settings.metallic = s.value("metallic", desc.pbr_settings.metallic);
                 desc.pbr_settings.ao = s.value("ao", desc.pbr_settings.ao);
                 desc.pbr_settings.emission = s.value("emission", desc.pbr_settings.emission);
+                desc.pbr_settings.normal_mul = s.value("normal_mul", desc.pbr_settings.normal_mul);
             }
         }
 
@@ -69,7 +71,8 @@ namespace nasral::gfx
                 {"color", desc.phong_settings.color},
                 {"ambient", desc.phong_settings.ambient},
                 {"shininess", desc.phong_settings.shininess},
-                {"specular", desc.phong_settings.specular}
+                {"specular", desc.phong_settings.specular},
+                {"normal_mul", desc.phong_settings.normal_mul}
             };
         }
         else if (desc.type == MaterialType::ePBR)
@@ -79,7 +82,8 @@ namespace nasral::gfx
                 {"roughness", desc.pbr_settings.roughness},
                 {"metallic", desc.pbr_settings.metallic},
                 {"ao", desc.pbr_settings.ao},
-                {"emission", desc.pbr_settings.emission}
+                {"emission", desc.pbr_settings.emission},
+                {"normal_mul", desc.pbr_settings.normal_mul}
             };
         }
 

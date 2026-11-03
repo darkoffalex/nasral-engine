@@ -227,6 +227,7 @@ namespace nasral::gfx
             glm::vec4 ambient = glm::vec4(0.05f);
             glm::float32 shininess = 32.0f;
             glm::float32 specular = 1.0f;
+            glm::float32 normal_mul = 1.0f;
         };
 
         struct MaterialPbr
@@ -236,6 +237,7 @@ namespace nasral::gfx
             glm::float32 metallic = 0.0f;
             glm::float32 ao = 1.0f;
             glm::float32 emission = 0.0f;
+            glm::float32 normal_mul = 1.0f;
         };
 
         using Material = std::variant<MaterialPhong, MaterialPbr>;
@@ -309,6 +311,7 @@ namespace nasral::gfx
             glm::vec4 ambient = glm::vec4(0.05f);
             glm::float32 shininess = 32.0f;
             glm::float32 specular = 1.0f;
+            glm::float32 normal_mul = 1.0f;
         } phong_settings = {};
 
         struct
@@ -318,6 +321,7 @@ namespace nasral::gfx
             glm::float32 metallic = 0.0f;
             glm::float32 ao = 1.0f;
             glm::float32 emission = 0.0f;
+            glm::float32 normal_mul = 1.0f;
         } pbr_settings = {};
     };
 

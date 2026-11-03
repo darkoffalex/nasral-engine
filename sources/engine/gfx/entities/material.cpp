@@ -50,7 +50,8 @@ namespace nasral::gfx
                 desc.phong_settings.color,
                 desc.phong_settings.ambient,
                 desc.phong_settings.shininess,
-                desc.phong_settings.specular
+                desc.phong_settings.specular,
+                desc.phong_settings.normal_mul
             };
         }else if (desc.type == MaterialType::ePBR){
             settings = uniforms::MaterialPbr{
@@ -58,7 +59,8 @@ namespace nasral::gfx
                 desc.pbr_settings.roughness,
                 desc.pbr_settings.metallic,
                 desc.pbr_settings.ao,
-                desc.pbr_settings.emission
+                desc.pbr_settings.emission,
+                desc.pbr_settings.normal_mul
             };
         }
 
