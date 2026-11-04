@@ -13,9 +13,23 @@ namespace nasral::ecs
 
     struct RefsChangedComponent {};
 
+    struct DirtyStateComponent{};
+
     struct UidComponent
     {
         UniqueId id = {};
+    };
+
+    struct NextComponent
+    {
+        UniqueId uid = {};
+        EntityId entity = EntityId::invalid();
+    };
+
+    struct PrevComponent
+    {
+        UniqueId uid = {};
+        EntityId entity = EntityId::invalid();
     };
 
     struct NameComponent

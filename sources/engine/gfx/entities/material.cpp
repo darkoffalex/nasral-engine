@@ -101,6 +101,10 @@ namespace nasral::gfx
         return get<ShaderHandlesComponent>().shader_program;
     }
 
+    const uniforms::Material & MaterialView::uniforms() const {
+        return get<MaterialComponent>().uniforms;
+    }
+
     bool MaterialView::is_ready() const {
         const auto e_id = id();
         const auto* ecs = engine()->ecs();

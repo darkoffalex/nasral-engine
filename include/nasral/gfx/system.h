@@ -28,6 +28,12 @@ namespace nasral::gfx
         void update_mtl_textures() const;
         void update_mtl_destroy() const;
 
+        // Экранные проходы
+        void update_sp_ubo() const;
+        void update_sp_handles() const;
+        void update_sp_destroy() const;
+        void update_sp_states() const;
+
         // Объекты (UBO)
         void update_obj_static_ubo() const;
         void update_obj_dynamic_ubo() const;

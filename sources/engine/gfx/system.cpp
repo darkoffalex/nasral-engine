@@ -2,6 +2,7 @@
 #include <nasral/gfx/system.h>
 #include <nasral/gfx/manager.h>
 #include <nasral/gfx/entities/material.h>
+#include <nasral/gfx/entities/screen_pass.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/ecs/view.h>
 #include <nasral/ecs/utils.h>
@@ -24,11 +25,17 @@ namespace nasral::gfx
 
     void System::on_update([[maybe_unused]] const float delta) const
     {
-        // Материалы (основные)
+        // Материалы
         update_mtl_ubo();
         update_mtl_handles();
         update_mtl_textures();
         update_mtl_destroy();
+
+        // Экранные проходы
+        update_sp_ubo();
+        update_sp_handles();
+        update_sp_destroy();
+        update_sp_states();
 
         // Объекты
         update_obj_static_ubo();
@@ -45,6 +52,7 @@ namespace nasral::gfx
 
     void System::on_finalize() const {
         update_mtl_destroy();
+        update_sp_destroy();
         log_info("ECS-system finalized");
     }
 
@@ -55,7 +63,21 @@ namespace nasral::gfx
         render_meshes();
         engine()->gfx()->renderer()->cmd_end_rasterization_pass();
 
-        // TODO: Проходы пост-обработки
+        // Цепочка экранных проходов (пост-обработка)
+        auto pass_e = engine()->gfx()->find_first_screen_pass();
+        while (pass_e != ecs::EntityId::invalid()) {
+            const auto pass_view = engine()->ecs()->as_view<ScreenPassView>(pass_e);
+
+            if (!pass_view->is_ready()) {
+                if (!pass_view->is_resources_requested()) pass_view->request_resources();
+                break;
+            }
+
+            pass_e = pass_view->next_pass();
+            engine()->gfx()->renderer()->cmd_begin_screen_pass(pass_view->input_attachments(), pass_view->output_attachments());
+            engine()->gfx()->renderer()->cmd_draw_screen_quad(pass_view->uniform_index());
+            engine()->gfx()->renderer()->cmd_end_screen_pass();
+        }
 
         // Отправка вложения на показ
         engine()->gfx()->renderer()->cmd_blit_to_screen(FrameAttachmentType::eColor);
@@ -100,12 +122,14 @@ namespace nasral::gfx
         // - Список ресурсов
         // - Грязные (не обновленные) handles
         // - Ресурсы загружены
+        // Где нет компонентов:
+        // - Экранный проход
         for (auto&& [e, sh, th, rsc, d_tag, l_tag] : engine()->ecs()->view<
             ShaderHandles,
             TextureHandles,
             Resources,
             Dirty,
-            Loaded>())
+            Loaded>(ecs::kMaskOf<ScreenPassComponent>))
         {
             // Шейдер растеризации должен быть загружен
             if (kDebugBuild){
@@ -210,6 +234,120 @@ namespace nasral::gfx
         for (const auto& [e, ms, ui, d_tag] : engine()->ecs()->view<Material, UniformId, Destroy>())
         {
             engine()->gfx()->material_ubo_ids().release(ui.index);
+        }
+    }
+
+    void System::update_sp_ubo() const {
+        // Алиасы компонентов
+        using Settings  = ScreenPassComponent;
+        using UniformId = UniformIndexComponent;
+        using Dirty     = DirtyUnformComponent;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Настройки материала
+        // - Uniform index
+        // - Грязный (не обновленный) uniform
+        for (auto [e, sps, ui, du_tag] : engine()->ecs()->view<Settings, UniformId, Dirty>())
+        {
+            // Для всех вариаций настроек материала
+            std::visit([&, index = ui.index](auto&& uniforms){
+                engine()->gfx()->update_screen_pass_uniforms(uniforms, index);
+            }, sps.uniforms);
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
+        }
+    }
+
+    void System::update_sp_handles() const {
+        // Алиасы компонентов
+        using ShaderHandles  = ShaderHandlesComponent;
+        using Resources      = res::ResourcesComponent;
+        using Dirty          = DirtyHandlesComponent;
+        using Loaded         = res::LoadedComponent;
+
+        // Алиасы для индексов ресурсов
+        using ResIndices = ScreenPassView::ResIndices;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Handles шейдерной программы
+        // - Handles текстур
+        // - Список ресурсов
+        // - Грязные (не обновленные) handles
+        // - Ресурсы загружены
+        // Где нет компонентов:
+        // - Материал
+        for (auto&& [e, sh, rsc, d_tag, l_tag] : engine()->ecs()->view<
+            ShaderHandles,
+            Resources,
+            Dirty,
+            Loaded>(ecs::kMaskOf<MaterialComponent>))
+        {
+            // Шейдер растеризации должен быть загружен
+            if (kDebugBuild){
+                assert(rsc.active[ResIndices::eScreenPassShader]);
+                assert(rsc.ids[ResIndices::eScreenPassShader] != res::kInvalidResourceId);
+            }
+
+            // Ресурс шейдера должен существовать
+            const auto* shader_res = engine()->res()->get<res::ShaderProgram>(rsc.ids[ResIndices::eScreenPassShader]);
+            assert(shader_res != nullptr && "Bad shader");
+
+            // Если загружен - обновить handles, если нет - fallback
+            if (shader_res->status() == res::Status::eLoaded){
+                sh.shader_program = shader_res->render_handles();
+            }else{
+                // TODO: Fallback
+            }
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
+        }
+    }
+
+    void System::update_sp_destroy() const {
+        // Алиасы компонентов
+        using ScreenPass = ScreenPassComponent;
+        using UniformId  = UniformIndexComponent;
+        using Destroy    = ecs::DestroyComponent;
+
+        // Пройти по всем сущностям с компонентами
+        // - Параметры экранного прохода
+        // - Uniform index
+        // - Уничтожение
+        // Внимание: ожидается, что в конце полной итерации update сущность удаляется (что предотвратит повторную обработку)
+        for (const auto& [e, ms, ui, d_tag] : engine()->ecs()->view<ScreenPass, UniformId, Destroy>())
+        {
+            // Освободить uniform buffer object
+            engine()->gfx()->screen_pass_ubo_ids().release(ui.index);
+
+            // Пометить entity для освобождения ресурсов
+            engine()->ecs()->add_components<res::ReleaseComponent>(e, {});
+        }
+    }
+
+    void System::update_sp_states() const {
+        // Алиасы компонентов
+        using ScreenPass = ScreenPassComponent;
+        using DirtyTag   = ecs::DirtyStateComponent;
+
+        // Пройти по всем сущностям с компонентами
+        // - Параметры экранного прохода
+        // - Грязная entity (требует обновления состояния)
+        for (const auto& [e, ms, d_tag] : engine()->ecs()->view<ScreenPass, DirtyTag>()) {
+            // Получить соответствующий entity ID для предыдущего экранного прохода
+            if (engine()->ecs()->has<ecs::PrevComponent>(e)) {
+                auto&[uid, entity] = engine()->ecs()->get_component<ecs::PrevComponent>(e);
+                entity = engine()->gfx()->find_screen_pass(uid);
+            }
+            // Получить соответствующий entity ID для следующего экранного прохода
+            if (engine()->ecs()->has<ecs::NextComponent>(e)) {
+                auto&[uid, entity] = engine()->ecs()->get_component<ecs::NextComponent>(e);
+                entity = engine()->gfx()->find_screen_pass(uid);
+            }
+
+            // Обновлено
+            engine()->ecs()->remove_components<DirtyTag>(e);
         }
     }
 

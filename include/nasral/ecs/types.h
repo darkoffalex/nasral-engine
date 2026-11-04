@@ -24,6 +24,9 @@ namespace nasral::ecs
         EntityListComponent,
         RefsCountComponent,
         RefsChangedComponent,
+        NextComponent,
+        PrevComponent,
+        DirtyStateComponent,
 
         // Ресурсы
         res::ResourcesComponent,
@@ -51,8 +54,7 @@ namespace nasral::ecs
         scn::SpatialComponent,
         scn::ViewComponent,
         scn::MeshComponent,
-        scn::LightComponent,
-        scn::DirtyStateComponent
+        scn::LightComponent
     >;
 
     // Проверка типов компонентов на соответствие требования (на этапе компиляции)

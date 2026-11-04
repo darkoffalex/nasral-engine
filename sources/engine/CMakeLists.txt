@@ -40,6 +40,7 @@ add_library(Engine OBJECT
         gfx/renderer.cpp
         gfx/renderer_init.cpp
         gfx/entities/material.cpp
+        gfx/entities/screen_pass.cpp
         gfx/system.cpp
         gfx/utils.cpp
 

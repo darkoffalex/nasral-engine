@@ -32,6 +32,8 @@ namespace nasral::gfx
     {
         ScreenPassType type = ScreenPassType::eCompositing;
         uniforms::ScreenPass uniforms = {};
+        EnumMask<FrameAttachmentType> input_attachments = {};
+        EnumMask<FrameAttachmentType> output_attachments = {};
     };
 
     struct UniformIndexComponent

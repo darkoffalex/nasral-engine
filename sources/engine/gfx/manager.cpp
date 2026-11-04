@@ -1,9 +1,12 @@
 #include "pch.h"
 #include <nasral/gfx/manager.h>
 #include <nasral/gfx/utils.h>
+#include <nasral/gfx/entities/material.h>
+#include <nasral/gfx/entities/screen_pass.h>
 #include <nasral/evt/utils.h>
 #include <nasral/res/objects/project.h>
 #include <nasral/inp/provider.h>
+#include <nasral/ecs/view.h>
 #include <nasral/engine.h>
 
 namespace nasral::gfx
@@ -58,7 +61,7 @@ namespace nasral::gfx
 
         // Очистка материалов и экранных проходов
         clear_materials();
-        //clear_screen_passes();
+        clear_screen_passes();
 
         // Финализация ECS
         ecs_system_->finalize();
@@ -239,6 +242,81 @@ namespace nasral::gfx
         materials_.clear();
     }
 
+    ecs::EntityId Manager::add_screen_pass(const ScreenPassDesc &desc) {
+        auto* ecs = engine()->ecs();
+        const auto entity = ecs->spawn();
+        ScreenPassView::setup(ecs, entity, desc);
+        screen_passes_.emplace_back(entity);
+        return entity;
+    }
+
+    ecs::EntityId Manager::find_screen_pass(const UniqueId &id) const {
+        for (auto e : screen_passes_) {
+            if (auto node = engine()->ecs()->as_view<ScreenPassView>(e); node.has_value()) {
+                if (node->uid() == id) {
+                    return node->id();
+                }
+            }
+        }
+        return ecs::EntityId::invalid();
+    }
+
+    ecs::EntityId Manager::find_first_screen_pass() const
+    {
+        // Алиасы компонентов
+        using ScreenPass  = ScreenPassComponent;
+        using Next        = ecs::NextComponent;
+        using Prev        = ecs::PrevComponent;
+        using Dirty       = ecs::DirtyStateComponent;
+
+        // Для ситуации кода походов больше одного - первый тот, у которого есть следующий но нет предыдущего
+        {
+            const auto screen_pass = engine()->ecs()->view<
+                ScreenPass,
+                Next>(ecs::kMaskOf<Prev, Dirty>).begin();
+
+            if (screen_pass) {
+                auto&& [e, sp, next] = *screen_pass;
+                return e;
+            }
+        }
+
+
+        // Если проход один - у него нет ни предыдущего ни следующего
+        const auto screen_pass = engine()->ecs()->view<
+            ScreenPass>(ecs::kMaskOf<Next, Prev, Dirty>).begin();
+
+        if (!screen_pass) return ecs::EntityId::invalid();
+        auto&& [e, sp] = *screen_pass;
+        return e;
+    }
+
+    void Manager::remove_screen_pass(const ecs::EntityId &id) {
+        screen_passes_.erase(std::remove_if(screen_passes_.begin(), screen_passes_.end(), [&](const auto& n){
+            return n == id;
+        }), screen_passes_.end());
+
+        engine()->ecs()->add_components<ecs::DestroyComponent>(id, {});
+    }
+
+    void Manager::remove_screen_pass(const UniqueId &id) {
+        const auto to_erase = std::remove_if(screen_passes_.begin(), screen_passes_.end(), [&](const auto& n){
+            auto node = engine()->ecs()->as_view<ScreenPassView>(n);
+            return node.has_value() && node->uid() == id;
+        });
+        screen_passes_.erase(to_erase, screen_passes_.end());
+        engine()->ecs()->add_components<ecs::DestroyComponent>(*to_erase, {});
+    }
+
+    void Manager::clear_screen_passes() {
+        for (auto e : screen_passes_) {
+            if (auto node = engine()->ecs()->as_view<ScreenPassView>(e); node.has_value()) {
+                node->destroy();
+            }
+        }
+        screen_passes_.clear();
+    }
+
     void Manager::on_res_registry_changed(const evt::Arg &arg)
     {
         const auto reason = evt::from_arg<evt::ChangeReason>(arg);
@@ -260,7 +338,7 @@ namespace nasral::gfx
 
             // Сформировать список эффектов экрана
             for (const auto& sp_desc : proj->screen_passes()){
-                // TODO: Добавить экранный прохож
+                add_screen_pass(sp_desc);
             }
 
             // Список материалов готов

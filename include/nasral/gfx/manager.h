@@ -6,8 +6,8 @@
 #include <nasral/gfx/types.h>
 #include <nasral/gfx/renderer.h>
 #include <nasral/gfx/system.h>
-#include <nasral/gfx/entities/material.h>
 #include <nasral/evt/objects/listener.h>
+#include <nasral/ecs/entity.h>
 
 namespace nasral::gfx
 {
@@ -41,19 +41,19 @@ namespace nasral::gfx
         void remove_material(const UniqueId& id);
         void clear_materials();
 
-        /*
         ecs::EntityId add_screen_pass(const ScreenPassDesc& desc);
         [[nodiscard]] ecs::EntityId find_screen_pass(const UniqueId& id) const;
+        [[nodiscard]] ecs::EntityId find_first_screen_pass() const;
         void remove_screen_pass(const ecs::EntityId& id);
         void remove_screen_pass(const UniqueId& id);
         void clear_screen_passes();
-        */
 
         [[nodiscard]] Renderer* renderer() const noexcept{ return renderer_.get(); }
         [[nodiscard]] System* ecs_system() const noexcept{ return ecs_system_.get(); }
 
         [[nodiscard]] auto& object_ubo_ids(){ return object_ubo_ids_; }
         [[nodiscard]] auto& material_ubo_ids(){ return material_ubo_ids_; }
+        [[nodiscard]] auto& screen_pass_ubo_ids(){ return screen_pass_ubo_ids_; }
         [[nodiscard]] auto& light_ubo_ids(){ return light_ubo_ids_; }
 
     protected:
