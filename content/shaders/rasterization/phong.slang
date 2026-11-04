@@ -1,7 +1,7 @@
 // Константы
-static const uint MAX_OBJECTS = 1000;
-static const uint MAX_MATERIALS = 100;
-static const uint MAX_LIGHTS = 100;
+static const uint MAX_OBJECTS = 1024;
+static const uint MAX_MATERIALS = 128;
+static const uint MAX_LIGHTS = 64;
 
 // ============================================================================
 // Входные и промежуточные структуры данных

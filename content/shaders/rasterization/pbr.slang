@@ -1,7 +1,8 @@
 // Константы
 static const float PI = 3.14159265359;
-static const uint MAX_MATERIALS = 100;
-static const uint MAX_LIGHTS = 100;
+static const uint MAX_OBJECTS = 1024;
+static const uint MAX_MATERIALS = 128;
+static const uint MAX_LIGHTS = 64;
 static const float3 LUMINANCE_VECTOR = float3(0.2126, 0.7152, 0.0722);
 static const float BRIGHT_THRESHOLD = 0.5;
 

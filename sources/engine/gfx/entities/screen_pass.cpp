@@ -149,7 +149,7 @@ namespace nasral::gfx
 
         return ecs->is_valid(e_id)
             && ecs->has<ShaderHandlesComponent, res::LoadedComponent>(e_id)
-            && !ecs->has<DirtyHandlesComponent, ecs::DirtyStateComponent>(e_id);
+            && !ecs->has_any<DirtyHandlesComponent, ecs::DirtyStateComponent>(e_id);
     }
 
     bool ScreenPassView::is_resources_requested() const {

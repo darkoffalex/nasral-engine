@@ -41,6 +41,11 @@ namespace nasral::res
                     data.materials = json.at("materials").get<std::vector<gfx::MaterialDesc>>();
                 }
 
+                // Регистр экранных проходов
+                if (json.contains("screen_passes")){
+                    data.screen_passes = json.at("screen_passes").get<std::vector<gfx::ScreenPassDesc>>();
+                }
+
                 // Настройки ввода
                 if (json.contains("input"))
                 {

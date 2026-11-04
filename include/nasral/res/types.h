@@ -80,8 +80,7 @@ namespace nasral::res
         enum Type : uint32_t
         {
             eRasterization = 0,
-            eScreenSpace,
-            eScreenOutput,
+            eScreenPass,
             eRaytracing,
             eCompute,
         };

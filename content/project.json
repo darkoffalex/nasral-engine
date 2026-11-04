@@ -5,6 +5,7 @@
     {"type" : "eShaderProgram", "path" : "shaders/rasterization/unlit.slang.spv", "load_params": {"type": "eRasterization"}},
     {"type" : "eShaderProgram", "path" : "shaders/rasterization/phong.slang.spv", "load_params": {"type": "eRasterization"}},
     {"type" : "eShaderProgram", "path" : "shaders/rasterization/pbr.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/screen/final.slang.spv", "load_params": {"type": "eScreenPass"}},
 
     {"type": "eTexture", "path": "textures/floor/floor_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
     {"type": "eTexture", "path": "textures/floor/floor_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
@@ -56,20 +57,20 @@
     {"type": "eScene", "path": "scenes/barrels.json", "load_params": {}}
   ],
 
-  "screen_effects" : [
+  "screen_passes": [
     {
-      "uid" : [2,0],
-      "name" : "Basic",
-      "materials" : [{
-        "type" : "eFinal",
-        "path" : "materials/post/final.json"
-      },{
-        "type" : "eAO",
-        "path" : "materials/post/ao.json"
-      },{
-        "type" : "eBlur",
-        "path" : "materials/post/blur.json"
-      }]
+      "uid" : [2, 1],
+      "name" : "Final",
+      "type" : "eCompositing",
+      "input_attachments" : ["eColor", "eDepth", "eNormal", "eEmission"],
+      "output_attachments" : ["eCompositing"],
+      "shader_program_path" : "shaders/screen/final.slang.spv",
+      "settings": {
+        "bloom_blur_lod" : 2.5,
+        "bloom_intensity" : 1.0,
+        "gamma": 2.2,
+        "exposure": 1.0
+      }
     }
   ],
 

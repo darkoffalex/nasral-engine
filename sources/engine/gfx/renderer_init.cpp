@@ -495,63 +495,29 @@ namespace nasral::gfx
 
         // eScreenSpace
         {
-            std::vector<vk::utils::UniformLayout::SetLayoutInfo> set_layouts =
+            // Описать макет набора uniform-ов для offscreen-текстур
+            vk::utils::UniformLayout::SetLayoutInfo offscreen_tex_set = {};
+            offscreen_tex_set.max_sets = config().max_frames_in_flight;
+
+            // Для каждого типа экранной текстуры по дескриптору eCombinedImageSample
+            for (const auto type : magic_enum::enum_values<FrameAttachmentType>()) {
+                if (type == FrameAttachmentType::TOTAL) {
+                    continue;
+                }
+
+                offscreen_tex_set.bindings.push_back({
+                    static_cast<uint32_t>(type),
+                    1,
+                    vk::DescriptorType::eCombinedImageSampler,
+                    vk::ShaderStageFlagBits::eFragment,
+                    vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
+                });
+            }
+
+            std::vector set_layouts =
             {
                 // set = 0: Текстуры кадровых буферов (eFrameTextures)
-                {
-                    {
-                        // Цвет (итоговый результат рендеринга первого прохода)
-                        {
-                            static_cast<uint32_t>(FrameAttachmentType::eColor),
-                            1,
-                            vk::DescriptorType::eCombinedImageSampler,
-                            vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
-                        },
-                        // Глубина кадра
-                        {
-                            static_cast<uint32_t>(FrameAttachmentType::eDepth),
-                            1,
-                            vk::DescriptorType::eCombinedImageSampler,
-                            vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
-                        },
-                        // Нормали кадра
-                        {
-                            static_cast<uint32_t>(FrameAttachmentType::eNormal),
-                            1,
-                            vk::DescriptorType::eCombinedImageSampler,
-                            vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
-                        },
-                        // Яркие области кадра (сияния)
-                        {
-                            static_cast<uint32_t>(FrameAttachmentType::eEmission),
-                            1,
-                            vk::DescriptorType::eCombinedImageSampler,
-                            vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
-                        },
-                        // Промежуточный результат ping-pong прохода (ping)
-                        {
-                            static_cast<uint32_t>(FrameAttachmentType::eTemp1),
-                            1,
-                            vk::DescriptorType::eCombinedImageSampler,
-                            vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
-                        },
-                        // Промежуточный результат ping-pong прохода (pong)
-                        {
-                            static_cast<uint32_t>(FrameAttachmentType::eTemp2),
-                            1,
-                            vk::DescriptorType::eCombinedImageSampler,
-                            vk::ShaderStageFlagBits::eFragment,
-                            vk::DescriptorBindingFlagBitsEXT::ePartiallyBound
-                        }
-                    },
-                    // Наборов столько, сколько может быть "кадров на лету".
-                    config().max_frames_in_flight
-                },
+                offscreen_tex_set,
                 // set = 1: eViewUBO (для трансформаций в пространство вида)
                 {
                     {
@@ -580,10 +546,10 @@ namespace nasral::gfx
 
             // Push-константы layout-а пост-обработки
             std::vector push_constants{
-                // Номер прохода (например, для bilateral blur)
+                // Индекс прохода и шаг буфера настроек
                 vk::PushConstantRange()
                     .setStageFlags(vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment)
-                    .setSize(sizeof(uint32_t))
+                    .setSize(sizeof(uint32_t) * 2)
                     .setOffset(0)
             };
 
@@ -726,8 +692,8 @@ namespace nasral::gfx
         auto& set = vk_screen_d_sets_per_frame_[FRAME];
         std::vector<vk::DescriptorImageInfo> pp_image_infos{};
         std::vector<vk::WriteDescriptorSet> pp_writes{};
-        pp_image_infos.reserve(6);
-        pp_writes.reserve(6);
+        pp_image_infos.reserve(10);
+        pp_writes.reserve(10);
 
         // Цвет (0)
         pp_image_infos.push_back(
@@ -750,21 +716,42 @@ namespace nasral::gfx
                 .setImageView(vk_offscreen_images_[FrameAttachmentType::eNormal][FRAME]->sampling_view())
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
-        // Яркие области (3)
+        // Геометрия (3)
+        pp_image_infos.push_back(
+            vk::DescriptorImageInfo()
+                .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
+                .setImageView(vk_offscreen_images_[FrameAttachmentType::eGeometry][FRAME]->sampling_view())
+                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        // AO (4)
+        pp_image_infos.push_back(
+            vk::DescriptorImageInfo()
+                .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
+                .setImageView(vk_offscreen_images_[FrameAttachmentType::eAO][FRAME]->sampling_view())
+                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        // Тени (5)
+        pp_image_infos.push_back(
+            vk::DescriptorImageInfo()
+                .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
+                .setImageView(vk_offscreen_images_[FrameAttachmentType::eShadows][FRAME]->sampling_view())
+                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        // Яркие области (6)
         pp_image_infos.push_back(
             vk::DescriptorImageInfo()
                 .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
                 .setImageView(vk_offscreen_images_[FrameAttachmentType::eEmission][FRAME]->sampling_view())
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
-        // Промежуточный буфер: результат 0 (4 / ping)
+        // Промежуточный буфер: результат 0 (7 / ping)
         pp_image_infos.push_back(
             vk::DescriptorImageInfo()
                 .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
                 .setImageView(vk_offscreen_images_[FrameAttachmentType::eTemp1][FRAME]->sampling_view())
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
 
-        // Промежуточный буфер: результат 1 (5 / pong)
+        // Промежуточный буфер: результат 1 (8 / pong)
         pp_image_infos.push_back(
             vk::DescriptorImageInfo()
                 .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
@@ -802,7 +789,7 @@ namespace nasral::gfx
         pp_writes.push_back(
             vk::WriteDescriptorSet()
                 .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eEmission))
+                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eGeometry))
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
                 .setDescriptorCount(1)
@@ -811,7 +798,7 @@ namespace nasral::gfx
         pp_writes.push_back(
             vk::WriteDescriptorSet()
                 .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eTemp1))
+                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eAO))
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
                 .setDescriptorCount(1)
@@ -820,11 +807,38 @@ namespace nasral::gfx
         pp_writes.push_back(
             vk::WriteDescriptorSet()
                 .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eTemp2))
+                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eShadows))
                 .setDstArrayElement(0)
                 .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
                 .setDescriptorCount(1)
                 .setImageInfo(pp_image_infos[5]));
+
+        pp_writes.push_back(
+            vk::WriteDescriptorSet()
+                .setDstSet(set.get())
+                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eEmission))
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                .setDescriptorCount(1)
+                .setImageInfo(pp_image_infos[6]));
+
+        pp_writes.push_back(
+            vk::WriteDescriptorSet()
+                .setDstSet(set.get())
+                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eTemp1))
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                .setDescriptorCount(1)
+                .setImageInfo(pp_image_infos[7]));
+
+        pp_writes.push_back(
+            vk::WriteDescriptorSet()
+                .setDstSet(set.get())
+                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eTemp2))
+                .setDstArrayElement(0)
+                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                .setDescriptorCount(1)
+                .setImageInfo(pp_image_infos[8]));
 
         // Обновить набор
         vk_device_->logical_device().updateDescriptorSets(pp_writes, {});

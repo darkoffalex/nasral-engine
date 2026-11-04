@@ -64,23 +64,28 @@ namespace nasral::gfx
         engine()->gfx()->renderer()->cmd_end_rasterization_pass();
 
         // Цепочка экранных проходов (пост-обработка)
+        bool post_processed = false;
         auto pass_e = engine()->gfx()->find_first_screen_pass();
         while (pass_e != ecs::EntityId::invalid()) {
             const auto pass_view = engine()->ecs()->as_view<ScreenPassView>(pass_e);
 
             if (!pass_view->is_ready()) {
                 if (!pass_view->is_resources_requested()) pass_view->request_resources();
+                post_processed = false;
                 break;
             }
 
             pass_e = pass_view->next_pass();
             engine()->gfx()->renderer()->cmd_begin_screen_pass(pass_view->input_attachments(), pass_view->output_attachments());
+            engine()->gfx()->renderer()->cmd_bind_shader_program(pass_view->shader_program());
             engine()->gfx()->renderer()->cmd_draw_screen_quad(pass_view->uniform_index());
             engine()->gfx()->renderer()->cmd_end_screen_pass();
+
+            post_processed = true;
         }
 
         // Отправка вложения на показ
-        engine()->gfx()->renderer()->cmd_blit_to_screen(FrameAttachmentType::eColor);
+        engine()->gfx()->renderer()->cmd_blit_to_screen(post_processed ? FrameAttachmentType::eCompositing : FrameAttachmentType::eColor);
     }
 
     void System::update_mtl_ubo() const {

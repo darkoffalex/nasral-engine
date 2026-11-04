@@ -643,13 +643,22 @@ namespace nasral::gfx
         // Макет конвейера
         auto& pipeline_layout = vk_uniform_layouts_[ShaderProgramType::eScreenPass]->vk_pipeline_layout();
 
+        // Шаг (с выравниванием) для буфера настроек экранных проходов
+        const auto pass_stride = aligned_sbo<biggest_of_t<uniforms::ScreenPass>>(vk_device().physical_device());
+
+        // Push-константы - индекс прохода и шаг буфера (порядок важен!)
+        const std::array<uint32_t, 2> push_constants{
+            pass_uniform_idx,
+            static_cast<uint32_t>(pass_stride)
+        };
+
         // Передать push-константы
         vk_command_buffer().pushConstants(
             pipeline_layout,
             vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
             0,
-            sizeof(uint32_t),
-            &pass_uniform_idx);
+            sizeof(push_constants),
+            push_constants.data());
 
         // Нарисовать 2 треугольника
         vk_command_buffer().draw(6, 1, 0, 0);
