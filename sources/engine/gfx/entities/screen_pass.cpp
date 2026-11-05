@@ -157,7 +157,7 @@ namespace nasral::gfx
     bool ScreenPassView::is_resources_requested() const {
         const auto e_id = id();
         const auto* ecs = engine()->ecs();
-        return ecs->has<res::RequestComponent>(e_id);
+        return ecs->has_any<res::RequestComponent, res::LoadingComponent>(e_id);
     }
 
     void ScreenPassView::set_name(const std::string &name) {

@@ -110,6 +110,7 @@ namespace nasral::res
             set_status(Status::eError);
             set_error(error() == Error::eNone ? loader_->error() : error());
             RES_LOG_ERROR(error(), e.what());
+            return;
         }
 
         set_status(Status::eLoaded);

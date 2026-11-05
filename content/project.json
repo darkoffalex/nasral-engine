@@ -80,6 +80,7 @@
       "input_attachments" : ["eTemp1"],
       "output_attachments" : ["eTemp2"],
       "shader_program_path" : "shaders/screen/bloom_blur.slang.spv",
+      "previous" : [2, 1],
       "next" : [2, 3],
       "settings": {
         "pass_index" : 1,
@@ -94,6 +95,7 @@
       "input_attachments" : ["eColor", "eDepth", "eNormal", "eEmission", "eTemp1"],
       "output_attachments" : ["eCompositing"],
       "shader_program_path" : "shaders/screen/final.slang.spv",
+      "previous" : [2, 2],
       "settings": {
         "bloom_blur_lod" : 2.5,
         "bloom_intensity" : 1.0,

@@ -72,6 +72,7 @@ namespace nasral::res
             set_status(Status::eError);
             set_error(error() == Error::eNone ? loader_->error() : error());
             RES_LOG_ERROR(error(), e.what());
+            return;
         }
 
         set_status(Status::eLoaded);
@@ -237,10 +238,13 @@ namespace nasral::res
 
         // Параметры смешивания для цветовых вложений
 
-        // Пост-обработка (рисуем цвет на квадрате, смешивать не нужно)
+        // Объявляем хранилище в области видимости функции, чтобы указатель оставался валидным
+        std::vector<vk::PipelineColorBlendAttachmentState> attachments_blend;
+
+        // Параметры смешивания для цветовых вложений
         if (program_type() != gfx::ShaderProgramType::eRasterization)
         {
-            std::array<vk::PipelineColorBlendAttachmentState, 1> attachments_blend{};
+            attachments_blend.resize(1);
             attachments_blend[0] = vk::PipelineColorBlendAttachmentState()
                 .setBlendEnable(false)
                 .setColorWriteMask(
@@ -248,30 +252,27 @@ namespace nasral::res
                     vk::ColorComponentFlagBits::eG |
                     vk::ColorComponentFlagBits::eB |
                     vk::ColorComponentFlagBits::eA);
-
-            color_blending_state.setAttachments(attachments_blend);
         }
-        // Обычная растеризация (смешиваем только первое вложение)
         else
         {
-            std::array<vk::PipelineColorBlendAttachmentState, 3> attachments_blend{};
+            attachments_blend.resize(3);
 
-            // Цвет смешивается через альфа-канал
+            // Вложение цвета (смешивается через альфа-канал)
             attachments_blend[0] = vk::PipelineColorBlendAttachmentState()
-                    .setBlendEnable(true)                                                // Включить смешивание
+                    .setBlendEnable(true)
                     .setColorWriteMask(
                         vk::ColorComponentFlagBits::eR |
                         vk::ColorComponentFlagBits::eG |
                         vk::ColorComponentFlagBits::eB |
-                        vk::ColorComponentFlagBits::eA)                                  // Запись в 4 канала
-                    .setColorBlendOp(vk::BlendOp::eAdd)                                  // Аддитивное смешивание (цвет)
-                    .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)                  // Исходный цвет - альфа текущего цвета
-                    .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)          // Итоговый цвет - 1 - альфа исходного
-                    .setAlphaBlendOp(vk::BlendOp::eAdd)                                  // Аддитивное смешивание (альфа)
-                    .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)                       // Исходная альфа - множитель 1
-                    .setDstAlphaBlendFactor(vk::BlendFactor::eZero);                     // Итоговая альфа - множитель 0
+                        vk::ColorComponentFlagBits::eA)
+                    .setColorBlendOp(vk::BlendOp::eAdd)
+                    .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
+                    .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
+                    .setAlphaBlendOp(vk::BlendOp::eAdd)
+                    .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
+                    .setDstAlphaBlendFactor(vk::BlendFactor::eZero);
 
-            // Нормали и яркие области не смешиваются
+            // Вложение нормалей (не смешивается)
             attachments_blend[1] = vk::PipelineColorBlendAttachmentState()
                 .setBlendEnable(false)
                 .setColorWriteMask(
@@ -280,6 +281,7 @@ namespace nasral::res
                     vk::ColorComponentFlagBits::eB |
                     vk::ColorComponentFlagBits::eA);
 
+            // Вложение ярких областей (не смешивается)
             attachments_blend[2] = vk::PipelineColorBlendAttachmentState()
                 .setBlendEnable(false)
                 .setColorWriteMask(
@@ -287,9 +289,9 @@ namespace nasral::res
                     vk::ColorComponentFlagBits::eG |
                     vk::ColorComponentFlagBits::eB |
                     vk::ColorComponentFlagBits::eA);
-
-            color_blending_state.setAttachments(attachments_blend);
         }
+
+        color_blending_state.setAttachments(attachments_blend);
 
         /** 7. Динамические состояния  **/
 

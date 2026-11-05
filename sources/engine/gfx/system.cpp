@@ -70,16 +70,21 @@ namespace nasral::gfx
             const auto pass_view = engine()->ecs()->as_view<ScreenPassView>(pass_e);
 
             if (!pass_view->is_ready()) {
-                if (!pass_view->is_resources_requested()) pass_view->request_resources();
+                if (!pass_view->is_resources_requested()) {
+                    pass_view->request_resources();
+                }
                 post_processed = false;
                 break;
             }
 
-            pass_e = pass_view->next_pass();
-            engine()->gfx()->renderer()->cmd_begin_screen_pass(pass_view->input_attachments(), pass_view->output_attachments());
+            const auto input = pass_view->input_attachments();
+            const auto output = pass_view->output_attachments();
+
+            engine()->gfx()->renderer()->cmd_begin_screen_pass(input, output);
             engine()->gfx()->renderer()->cmd_bind_shader_program(pass_view->shader_program());
             engine()->gfx()->renderer()->cmd_draw_screen_quad(pass_view->uniform_index());
             engine()->gfx()->renderer()->cmd_end_screen_pass();
+            pass_e = pass_view->next_pass();
 
             post_processed = true;
         }

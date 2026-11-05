@@ -100,6 +100,7 @@ VertexOutput vertexMain(uint vertex_index : SV_VertexID)
 // ФРАГМЕНТНЫЙ ШЕЙДЕР
 // ============================================================================
 
+[ForceInline]
 float3 linear_blur(Sampler2D tex, float2 uv, float2 dir, float2 texel_size, uint samples)
 {
     // 1. Рассчитываем кол-во выборок с двух сторон от центра (радиус выборки)
@@ -133,9 +134,23 @@ FragmentOutput fragmentMain(VertexOutput input)
     t.GetDimensions(width, height);
     float2 texel_size = 1.0 / float2(width, height);
 
+    // Размытие
+    float3 blurred;
+    if (settings.pass_index == 0)
+    {
+        t_emission.GetDimensions(width, height);
+        float2 texel_size = 1.0 / float2(width, height);
+        blurred = linear_blur(t_emission, input.uv, settings.direction, texel_size, settings.samples);
+    }
+    else
+    {
+        t_temp1.GetDimensions(width, height);
+        float2 texel_size = 1.0 / float2(width, height);
+        blurred = linear_blur(t_temp1, input.uv, settings.direction, texel_size, settings.samples);
+    }
+
     // Вывод во вложение
     FragmentOutput output;
-    float3 blurred = linear_blur(t, input.uv,settings.direction,texel_size, settings.samples);
     output.color = float4(blurred, 1.0);
     return output;
 }
