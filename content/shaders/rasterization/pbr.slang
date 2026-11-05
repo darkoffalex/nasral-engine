@@ -314,8 +314,12 @@ FragmentOutput fragmentMain(GeometryOutput input)
         Lo += (diffuse + specular) * NoL * radiance * tex_ao;
     }
 
+    // Применить emissive (светящиеся поверхности)
+    // Если свечение ярче освещенности - мы увидим свечение, в противном случае - освещенность
+    Lo = max(Lo, float3(emission));
+
     // Буфер свечения (яркость выше порога)
-    float3 bright_pbr = max(Lo - float3(BRIGHT_THRESHOLD), float3(0.0));
+    float3 bright_pbr = max( Lo - float3(BRIGHT_THRESHOLD), float3(0.0));
 
     // Выполняем Tone Mapping (сжатие HDR -> SDR)
     float3 sdr_color = tone_map_aces(Lo);
@@ -325,7 +329,7 @@ FragmentOutput fragmentMain(GeometryOutput input)
     // Вывод во вложения GBuffer
     output.color    = float4(final_color, alpha);
     output.normal   = float4(normal * 0.5 + 0.5, 1.0);
-    output.emissive = float4(emission + bright_pbr, 1.0);
+    output.emissive = float4(bright_pbr, 1.0);
 
     return output;
 }

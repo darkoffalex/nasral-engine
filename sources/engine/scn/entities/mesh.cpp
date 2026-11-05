@@ -42,7 +42,7 @@ namespace nasral::scn
                 ubo_c,
                 gfx::DirtyHandlesComponent{},
                 gfx::RenderComponent{},
-                gfx::UniformStateComponent{} // Динамический тег
+                gfx::UniformStateComponent{true} // Динамический тег
             );
         } else {
             ecs->add_components_immediate(id,

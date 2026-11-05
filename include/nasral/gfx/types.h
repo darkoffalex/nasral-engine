@@ -271,9 +271,11 @@ namespace nasral::gfx
 
         struct ScreenPassBlur
         {
+            glm::uint32 pass_index = 0;
             glm::uint32 samples = 16;
             glm::float32 base_tex_radius = 2.0f;
             glm::float32 base_kernel_radius = 6.0f;
+            glm::vec2 direction = {0.0f, 1.0f};
         };
 
         struct ScreenPassCompositing
@@ -347,9 +349,11 @@ namespace nasral::gfx
 
         struct
         {
+            glm::uint32 pass_index = 0;
             glm::uint32 samples = 16;
             glm::float32 base_tex_radius = 2.0f;
             glm::float32 base_kernel_radius = 6.0f;
+            glm::vec2 direction = {0.0f, 1.0f};
         } blur_settings;
 
         struct

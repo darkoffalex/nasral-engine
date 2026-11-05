@@ -134,22 +134,51 @@ namespace nasral::scn
     {
         // Алиасы компонентов
         using Node       = NodeComponent;
-        using Light      = LightComponent;
+        //using Light      = LightComponent;
         using Spatial    = SpatialComponent;
         using Uniform    = gfx::UniformStateComponent;
 
+        for (auto&& [e, n, spatial, uniform] : engine()->ecs()->view<Node, Spatial, Uniform>(ecs::kMaskOf<ViewComponent>)) {
+            constexpr float move_speed = 2.5f;
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eUp))
+            {
+                spatial.position.y += move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eDown))
+            {
+                spatial.position.y -= move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eLeft))
+            {
+                spatial.position.x -= move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eRight))
+            {
+                spatial.position.x += move_speed * delta;
+                uniform.is_dirty = true;
+            }
+        }
+
+        /*
         // Найти первый источник
         const auto first_light = engine()->ecs()->view<
             Node,
             Spatial,
-            Light,
-            Uniform>().begin();
+            // Light,
+            Uniform>(ecs::kMaskOf<ViewComponent>).begin();
 
         // Если нет - выход
         if (!first_light) return;
 
         // Внести изменения (если еще не внесены)
-        if (auto&& [e, n, spatial, light, uniform] = *first_light; !uniform.is_dirty)
+        if (auto&& [e, n, spatial, uniform] = *first_light; !uniform.is_dirty)
         {
             constexpr float move_speed = 2.5f;
 
@@ -177,6 +206,7 @@ namespace nasral::scn
                 uniform.is_dirty = true;
             }
         }
+        */
     }
 
     void System::update_mesh_destroy() const

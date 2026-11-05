@@ -236,7 +236,7 @@ namespace nasral::gfx
     void Manager::clear_materials() {
         for (auto e : materials_) {
             if (auto node = engine()->ecs()->as_view<MaterialView>(e); node.has_value()) {
-                node->destroy();
+                node->destroy(true);
             }
         }
         materials_.clear();
@@ -311,7 +311,7 @@ namespace nasral::gfx
     void Manager::clear_screen_passes() {
         for (auto e : screen_passes_) {
             if (auto node = engine()->ecs()->as_view<ScreenPassView>(e); node.has_value()) {
-                node->destroy();
+                node->destroy(true);
             }
         }
         screen_passes_.clear();

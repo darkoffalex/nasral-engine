@@ -60,16 +60,19 @@ namespace nasral
         else if (j.is_string())
         {
             const auto s = j.get<std::string>();
-            const auto sep = s.find_first_of("_. ");
-            if (sep != std::string::npos)
-            {
-                const auto a = std::stoull(s.substr(0, sep));
-                const auto b = std::stoull(s.substr(sep + 1));
-                id.set(a, b);
-            }
-            else if (!s.empty())
-            {
-                id.set(std::stoull(s), 0);
+            if (s == "auto" || s == "AUTO" || s.empty()) {
+                id.regenerate();
+            }else {
+                if (const auto sep = s.find_first_of("_. "); sep != std::string::npos)
+                {
+                    const auto a = std::stoull(s.substr(0, sep));
+                    const auto b = std::stoull(s.substr(sep + 1));
+                    id.set(a, b);
+                }
+                else if (!s.empty())
+                {
+                    id.set(std::stoull(s), 0);
+                }
             }
         }
     }

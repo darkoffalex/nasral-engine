@@ -38,9 +38,11 @@ namespace nasral::gfx
             };
         }else if (desc.type == ScreenPassType::eBlur){
             settings = uniforms::ScreenPassBlur{
+                desc.blur_settings.pass_index,
                 desc.blur_settings.samples,
                 desc.blur_settings.base_tex_radius,
-                desc.blur_settings.base_kernel_radius
+                desc.blur_settings.base_kernel_radius,
+                desc.blur_settings.direction
             };
         }else if (desc.type == ScreenPassType::eCompositing){
             settings = uniforms::ScreenPassCompositing{

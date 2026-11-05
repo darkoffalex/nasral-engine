@@ -6,6 +6,7 @@
     {"type" : "eShaderProgram", "path" : "shaders/rasterization/phong.slang.spv", "load_params": {"type": "eRasterization"}},
     {"type" : "eShaderProgram", "path" : "shaders/rasterization/pbr.slang.spv", "load_params": {"type": "eRasterization"}},
     {"type" : "eShaderProgram", "path" : "shaders/screen/final.slang.spv", "load_params": {"type": "eScreenPass"}},
+    {"type" : "eShaderProgram", "path" : "shaders/screen/bloom_blur.slang.spv", "load_params": {"type": "eScreenPass"}},
 
     {"type": "eTexture", "path": "textures/floor/floor_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
     {"type": "eTexture", "path": "textures/floor/floor_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
@@ -60,9 +61,37 @@
   "screen_passes": [
     {
       "uid" : [2, 1],
+      "name" : "BloomBlurH",
+      "type" : "eBlur",
+      "input_attachments" : ["eEmission"],
+      "output_attachments" : ["eTemp1"],
+      "shader_program_path" : "shaders/screen/bloom_blur.slang.spv",
+      "next" : [2, 2],
+      "settings": {
+        "pass_index" : 0,
+        "samples" : 16,
+        "direction" : [1.0, 0.0]
+      }
+    },
+    {
+      "uid" : [2, 2],
+      "name" : "BloomBlurV",
+      "type" : "eBlur",
+      "input_attachments" : ["eTemp1"],
+      "output_attachments" : ["eTemp2"],
+      "shader_program_path" : "shaders/screen/bloom_blur.slang.spv",
+      "next" : [2, 3],
+      "settings": {
+        "pass_index" : 1,
+        "samples" : 16,
+        "direction" : [0.0, 1.0]
+      }
+    },
+    {
+      "uid" : [2, 3],
       "name" : "Final",
       "type" : "eCompositing",
-      "input_attachments" : ["eColor", "eDepth", "eNormal", "eEmission"],
+      "input_attachments" : ["eColor", "eDepth", "eNormal", "eEmission", "eTemp1"],
       "output_attachments" : ["eCompositing"],
       "shader_program_path" : "shaders/screen/final.slang.spv",
       "settings": {
@@ -321,6 +350,19 @@
         "path" : "textures/hallway/room-02_roughness.png",
         "filter" : "eLinear"
       }]
+    },
+    {
+      "uid" : [0,11],
+      "name": "Emission",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 1.5
+      }
     }
   ],
 

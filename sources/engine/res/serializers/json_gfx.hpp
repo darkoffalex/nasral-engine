@@ -150,9 +150,11 @@ namespace nasral::gfx
             }
             else if (desc.type == ScreenPassType::eBlur)
             {
+                desc.blur_settings.pass_index = s.value("pass_index", desc.blur_settings.pass_index);
                 desc.blur_settings.samples = s.value("samples", desc.blur_settings.samples);
                 desc.blur_settings.base_tex_radius = s.value("base_tex_radius", desc.blur_settings.base_tex_radius);
                 desc.blur_settings.base_kernel_radius = s.value("base_kernel_radius", desc.blur_settings.base_kernel_radius);
+                desc.blur_settings.direction = s.value("direction", desc.blur_settings.direction);
             }
             else if (desc.type == ScreenPassType::eCompositing)
             {
@@ -198,9 +200,11 @@ namespace nasral::gfx
         else if (desc.type == ScreenPassType::eBlur)
         {
             j["settings"] = {
+                {"pass_index", desc.blur_settings.pass_index},
                 {"samples", desc.blur_settings.samples},
                 {"base_tex_radius", desc.blur_settings.base_tex_radius},
-                {"base_kernel_radius", desc.blur_settings.base_kernel_radius}
+                {"base_kernel_radius", desc.blur_settings.base_kernel_radius},
+                {"direction", desc.blur_settings.direction}
             };
         }
         else if (desc.type == ScreenPassType::eCompositing)
