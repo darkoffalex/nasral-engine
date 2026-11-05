@@ -77,10 +77,7 @@ namespace nasral::gfx
                 break;
             }
 
-            const auto input = pass_view->input_attachments();
-            const auto output = pass_view->output_attachments();
-
-            engine()->gfx()->renderer()->cmd_begin_screen_pass(input, output);
+            engine()->gfx()->renderer()->cmd_begin_screen_pass(pass_view->input_attachments(), pass_view->output_attachments());
             engine()->gfx()->renderer()->cmd_bind_shader_program(pass_view->shader_program());
             engine()->gfx()->renderer()->cmd_draw_screen_quad(pass_view->uniform_index());
             engine()->gfx()->renderer()->cmd_end_screen_pass();

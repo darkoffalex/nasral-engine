@@ -161,6 +161,7 @@ namespace nasral::res
 
         /** 3. программируемые стадии (shaders) **/
         std::vector<vk::PipelineShaderStageCreateInfo> shader_stages;
+        shader_stages.reserve(entry_points.size());
         for (const auto& [stage, name] : entry_points)
         {
             shader_stages.emplace_back(
@@ -240,24 +241,30 @@ namespace nasral::res
 
         // Объявляем хранилище в области видимости функции, чтобы указатель оставался валидным
         std::vector<vk::PipelineColorBlendAttachmentState> attachments_blend;
+        static_assert(gfx::kMaxScreenAttachments > 0, "Raster attachment count should be greater than zero");
+        static_assert(gfx::kMaxRasterAttachments > 0, "Screen attachment count should be greater than zero");
 
-        // Параметры смешивания для цветовых вложений
-        if (program_type() != gfx::ShaderProgramType::eRasterization)
+        // Вложение по умолчанию (без смешивания)
+        constexpr auto default_attachment = vk::PipelineColorBlendAttachmentState()
+            .setBlendEnable(false)
+            .setColorWriteMask(
+                vk::ColorComponentFlagBits::eR |
+                vk::ColorComponentFlagBits::eG |
+                vk::ColorComponentFlagBits::eB |
+                vk::ColorComponentFlagBits::eA);
+
+        // Вложения экранных проходов (максимум 2, без смешивания)
+        if (program_type() == gfx::ShaderProgramType::eScreenPass)
         {
-            attachments_blend.resize(1);
-            attachments_blend[0] = vk::PipelineColorBlendAttachmentState()
-                .setBlendEnable(false)
-                .setColorWriteMask(
-                    vk::ColorComponentFlagBits::eR |
-                    vk::ColorComponentFlagBits::eG |
-                    vk::ColorComponentFlagBits::eB |
-                    vk::ColorComponentFlagBits::eA);
+            attachments_blend.resize(gfx::kMaxScreenAttachments);
+            std::fill(std::begin(attachments_blend), std::end(attachments_blend), default_attachment);
         }
+        // Вложения прохода растеризации (максимум 5, смешивается только первый)
         else
         {
-            attachments_blend.resize(3);
+            attachments_blend.resize(gfx::kMaxRasterAttachments);
 
-            // Вложение цвета (смешивается через альфа-канал)
+            // Основное вложение цвета (смешивается через альфа-канал)
             attachments_blend[0] = vk::PipelineColorBlendAttachmentState()
                     .setBlendEnable(true)
                     .setColorWriteMask(
@@ -272,23 +279,10 @@ namespace nasral::res
                     .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
                     .setDstAlphaBlendFactor(vk::BlendFactor::eZero);
 
-            // Вложение нормалей (не смешивается)
-            attachments_blend[1] = vk::PipelineColorBlendAttachmentState()
-                .setBlendEnable(false)
-                .setColorWriteMask(
-                    vk::ColorComponentFlagBits::eR |
-                    vk::ColorComponentFlagBits::eG |
-                    vk::ColorComponentFlagBits::eB |
-                    vk::ColorComponentFlagBits::eA);
-
-            // Вложение ярких областей (не смешивается)
-            attachments_blend[2] = vk::PipelineColorBlendAttachmentState()
-                .setBlendEnable(false)
-                .setColorWriteMask(
-                    vk::ColorComponentFlagBits::eR |
-                    vk::ColorComponentFlagBits::eG |
-                    vk::ColorComponentFlagBits::eB |
-                    vk::ColorComponentFlagBits::eA);
+            // Дополнительные вложения цвета (не смешиваются)
+            if constexpr (gfx::kMaxRasterAttachments > 1) {
+                std::fill(std::begin(attachments_blend) + 1, std::end(attachments_blend), default_attachment);
+            }
         }
 
         color_blending_state.setAttachments(attachments_blend);
@@ -371,23 +365,19 @@ namespace nasral::res
         {
             case gfx::ShaderProgramType::eRasterization:
             {
-                // 3 цветовые вложения
-                formats.color_formats = {
-                    engine()->gfx()->config().offscreen_color_format, // location = 0: Color
-                    engine()->gfx()->config().offscreen_color_format, // location = 1: Normal
-                    engine()->gfx()->config().offscreen_color_format, // location = 2: Emissive
-                };
+                // Цветовые вложения
+                formats.color_formats.resize(gfx::kMaxRasterAttachments);
+                std::fill(formats.color_formats.begin(), formats.color_formats.end(), engine()->gfx()->config().offscreen_color_format);
 
-                // 1 вложение глубины
+                // Одно вложение глубины
                 formats.depth_format = engine()->gfx()->config().offscreen_depth_format;
                 break;
             }
             case gfx::ShaderProgramType::eScreenPass:
             {
                 // 1 цветовое вложение (внутренний цветовой формат)
-                formats.color_formats = {
-                    engine()->gfx()->config().offscreen_color_format
-                };
+                formats.color_formats.resize(gfx::kMaxScreenAttachments);
+                std::fill(formats.color_formats.begin(), formats.color_formats.end(), engine()->gfx()->config().offscreen_color_format);
                 break;
             }
             default: {
