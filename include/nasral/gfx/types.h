@@ -92,11 +92,11 @@ namespace nasral::gfx
     {
         eColor = 0,
         eGeometry,
-        eAlbedo,
+        eMaterial,
         eNormal,
         eDepth,
         eEmission,
-        eShadows,
+        eAttenuation,
         eAO,
         eReflections,
         eCompositing,

@@ -37,14 +37,19 @@ for /d %%D in ("%SCRIPT_DIR%\*") do (
 
     :: Проходим по всем файлам в текущей папке
     for %%F in ("%%D\*.slang") do (
-        :: Формируем путь для входного файла и выходного файла
-        set INPUT_FILE=%%F
-        set OUTPUT_FILE=%%F.spv
+        set FILE_NAME=%%~nxF
 
-        echo - Compiling %%~nxF -^> %%~nxF.spv...
+        :: Пропускаем файлы, начинающиеся с символа '_'
+        if not "!FILE_NAME:~0,1!"=="_" (
+            :: Формируем путь для входного файла и выходного файла
+            set INPUT_FILE=%%F
+            set OUTPUT_FILE=%%F.spv
 
-        :: Выполняем компиляцию
-        "%SLANGC%" "!INPUT_FILE!" -target spirv -fvk-use-entrypoint-name -o "!OUTPUT_FILE!"
+            echo - Compiling %%~nxF -^> %%~nxF.spv...
+
+            :: Выполняем компиляцию
+            "%SLANGC%" "!INPUT_FILE!" -target spirv -fvk-use-entrypoint-name -o "!OUTPUT_FILE!"
+        )
     )
 )
 

@@ -691,155 +691,33 @@ namespace nasral::gfx
 
         FOREACH_FRAME
         auto& set = vk_screen_d_sets_per_frame_[FRAME];
-        std::vector<vk::DescriptorImageInfo> pp_image_infos{};
-        std::vector<vk::WriteDescriptorSet> pp_writes{};
-        pp_image_infos.reserve(10);
-        pp_writes.reserve(10);
+        std::array<vk::DescriptorImageInfo, static_cast<size_t>(FrameAttachmentType::TOTAL)> pp_image_infos{};
+        std::array<vk::WriteDescriptorSet, static_cast<size_t>(FrameAttachmentType::TOTAL)> pp_writes{};
 
-        // Цвет (0)
-        pp_image_infos.push_back(
-            vk::DescriptorImageInfo()
-                .setSampler(vk_texture_samplers_[TextureSamplerType::eNearestClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eColor][FRAME]->sampling_view())
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+        for (auto type : magic_enum::enum_values<FrameAttachmentType>())
+        {
+            if (type == FrameAttachmentType::TOTAL)
+                continue;
 
-        // Глубина (1)
-        pp_image_infos.push_back(
-            vk::DescriptorImageInfo()
-                .setSampler(vk_texture_samplers_[TextureSamplerType::eNearestClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eDepth][FRAME]->sampling_view())
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+            auto& info = pp_image_infos[static_cast<uint32_t>(type)];
+            auto& write = pp_writes[static_cast<uint32_t>(type)];
 
-        // Нормали (2)
-        pp_image_infos.push_back(
-            vk::DescriptorImageInfo()
-                .setSampler(vk_texture_samplers_[TextureSamplerType::eNearestClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eNormal][FRAME]->sampling_view())
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+            const auto sampler_type =
+                type == FrameAttachmentType::eDepth ? TextureSamplerType::eNearestClamp : TextureSamplerType::eLinearClamp;
 
-        // Геометрия (3)
-        pp_image_infos.push_back(
-            vk::DescriptorImageInfo()
-                .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eGeometry][FRAME]->sampling_view())
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+            info = vk::DescriptorImageInfo()
+                    .setSampler(vk_texture_samplers_[sampler_type].get())
+                    .setImageView(vk_offscreen_images_[type][FRAME]->sampling_view())
+                    .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 
-        // AO (4)
-        pp_image_infos.push_back(
-            vk::DescriptorImageInfo()
-                .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eAO][FRAME]->sampling_view())
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
-
-        // Тени (5)
-        pp_image_infos.push_back(
-            vk::DescriptorImageInfo()
-                .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eShadows][FRAME]->sampling_view())
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
-
-        // Яркие области (6)
-        pp_image_infos.push_back(
-            vk::DescriptorImageInfo()
-                .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eEmission][FRAME]->sampling_view())
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
-
-        // Промежуточный буфер: результат 0 (7 / ping)
-        pp_image_infos.push_back(
-            vk::DescriptorImageInfo()
-                .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eTemp1][FRAME]->sampling_view())
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
-
-        // Промежуточный буфер: результат 1 (8 / pong)
-        pp_image_infos.push_back(
-            vk::DescriptorImageInfo()
-                .setSampler(vk_texture_samplers_[TextureSamplerType::eLinearClamp].get())
-                .setImageView(vk_offscreen_images_[FrameAttachmentType::eTemp2][FRAME]->sampling_view())
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
-
-        // Связать с дескрипторами набора
-        pp_writes.push_back(
-            vk::WriteDescriptorSet()
-                .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eColor))
-                .setDstArrayElement(0)
-                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                .setDescriptorCount(1)
-                .setImageInfo(pp_image_infos[0]));
-
-        pp_writes.push_back(
-            vk::WriteDescriptorSet()
-                .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eDepth))
-                .setDstArrayElement(0)
-                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                .setDescriptorCount(1)
-                .setImageInfo(pp_image_infos[1]));
-
-        pp_writes.push_back(
-            vk::WriteDescriptorSet()
-                .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eNormal))
-                .setDstArrayElement(0)
-                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                .setDescriptorCount(1)
-                .setImageInfo(pp_image_infos[2]));
-
-        pp_writes.push_back(
-            vk::WriteDescriptorSet()
-                .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eGeometry))
-                .setDstArrayElement(0)
-                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                .setDescriptorCount(1)
-                .setImageInfo(pp_image_infos[3]));
-
-        pp_writes.push_back(
-            vk::WriteDescriptorSet()
-                .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eAO))
-                .setDstArrayElement(0)
-                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                .setDescriptorCount(1)
-                .setImageInfo(pp_image_infos[4]));
-
-        pp_writes.push_back(
-            vk::WriteDescriptorSet()
-                .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eShadows))
-                .setDstArrayElement(0)
-                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                .setDescriptorCount(1)
-                .setImageInfo(pp_image_infos[5]));
-
-        pp_writes.push_back(
-            vk::WriteDescriptorSet()
-                .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eEmission))
-                .setDstArrayElement(0)
-                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                .setDescriptorCount(1)
-                .setImageInfo(pp_image_infos[6]));
-
-        pp_writes.push_back(
-            vk::WriteDescriptorSet()
-                .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eTemp1))
-                .setDstArrayElement(0)
-                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                .setDescriptorCount(1)
-                .setImageInfo(pp_image_infos[7]));
-
-        pp_writes.push_back(
-            vk::WriteDescriptorSet()
-                .setDstSet(set.get())
-                .setDstBinding(static_cast<uint32_t>(FrameAttachmentType::eTemp2))
-                .setDstArrayElement(0)
-                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                .setDescriptorCount(1)
-                .setImageInfo(pp_image_infos[8]));
+            write = vk::WriteDescriptorSet()
+                    .setDstSet(set.get())
+                    .setDstBinding(static_cast<uint32_t>(type))
+                    .setDstArrayElement(0)
+                    .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                    .setDescriptorCount(1)
+                    .setImageInfo(pp_image_infos[static_cast<uint32_t>(type)]);
+        }
 
         // Обновить набор
         vk_device_->logical_device().updateDescriptorSets(pp_writes, {});
