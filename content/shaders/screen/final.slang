@@ -24,7 +24,6 @@ FragmentOutput fragmentMain(VertexOutput input)
 
     // Вывод во вложение
     FragmentOutput output;
-    //output.color = float4(col.rgb + bloom, col.a);
-    output.color = float4(bloom, 1.0);
+    output.color = float4(col.rgb + bloom, col.a);
     return output;
 }

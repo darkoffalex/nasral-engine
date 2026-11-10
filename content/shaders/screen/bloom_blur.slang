@@ -32,12 +32,12 @@ FragmentOutput fragmentMain(VertexOutput input)
         t_emission.GetDimensions(width, height);
         float2 texel_size = 1.0 / float2(width, height);
 
-        //blurred = linear_blur(
-        //        t_emission,
-        //        input.uv,
-        //        settings.direction,
-        //        texel_size,
-        //        settings.samples);
+        blurred = linear_blur(
+                t_emission,
+                input.uv,
+                settings.direction,
+                texel_size,
+                settings.samples);
 
         //blurred = linear_depth_aware_blur(
         //        t_emission,
@@ -49,31 +49,31 @@ FragmentOutput fragmentMain(VertexOutput input)
         //        settings.samples,
         //        settings.base_tex_radius);
 
-        blurred = linear_bilateral_blur(
-                t_emission,
-                t_depth,
-                t_normal,
-                u_camera.proj,
-                input.uv,
-                settings.direction,
-                texel_size,
-                settings.samples,
-                settings.base_kernel_radius,
-                settings.base_tex_radius,
-                0.5,
-                true);
+        //blurred = linear_bilateral_blur(
+        //        t_emission,
+        //        t_depth,
+        //        t_normal,
+        //        u_camera.proj,
+        //        input.uv,
+        //        settings.direction,
+        //        texel_size,
+        //        settings.samples,
+        //        settings.base_kernel_radius,
+        //        settings.base_tex_radius,
+        //        0.5,
+        //        true);
     }
     else
     {
         t_temp1.GetDimensions(width, height);
         float2 texel_size = 1.0 / float2(width, height);
 
-        //blurred = linear_blur(
-        //        t_temp1,
-        //        input.uv,
-        //        settings.direction,
-        //        texel_size,
-        //        settings.samples);
+        blurred = linear_blur(
+                t_temp1,
+                input.uv,
+                settings.direction,
+                texel_size,
+                settings.samples);
 
         //blurred = linear_depth_aware_blur(
         //        t_temp1,
@@ -85,19 +85,19 @@ FragmentOutput fragmentMain(VertexOutput input)
         //        settings.samples,
         //        settings.base_tex_radius);
 
-        blurred = linear_bilateral_blur(
-                t_temp1,
-                t_depth,
-                t_normal,
-                u_camera.proj,
-                input.uv,
-                settings.direction,
-                texel_size,
-                settings.samples,
-                settings.base_kernel_radius,
-                settings.base_tex_radius,
-                0.5,
-                true);
+        //blurred = linear_bilateral_blur(
+        //        t_temp1,
+        //        t_depth,
+        //        t_normal,
+        //        u_camera.proj,
+        //        input.uv,
+        //        settings.direction,
+        //        texel_size,
+        //        settings.samples,
+        //        settings.base_kernel_radius,
+        //        settings.base_tex_radius,
+        //        0.5,
+        //        true);
     }
 
     // Вывод во вложение

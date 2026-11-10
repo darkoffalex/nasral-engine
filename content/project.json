@@ -401,5 +401,5 @@
     ]
   },
 
-  "initial_scene": "scenes/checkers.json"
+  "initial_scene": "scenes/barrels.json"
 }
