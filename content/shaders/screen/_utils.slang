@@ -93,3 +93,62 @@ float3 fetch_world_pos(Sampler2D depth_tex, float2 uv, float4x4 proj_inverse_mat
     float3 view_pos = fetch_view_pos(depth_tex, uv, proj_inverse_matrix);
     return mul(view_inverse_matrix, float4(view_pos, 1.0)).xyz;
 }
+
+// ============================================================================
+// УТИЛИТЫ ГЕНЕРАЦИИ ШУМА И СЛУЧАЙНЫХ ВЕЛИЧИН
+// ============================================================================
+
+// Классический тригонометрический шум на основе синуса [0..1]
+[ForceInline]
+float noise(float2 pixel_coord, float div = 1.0)
+{
+    float2 cell = floor(pixel_coord / max(div, 0.0001));
+    return frac(sin(dot(cell, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+// Шум на основе золотого сечения (Gold Noise) [0..1]
+[ForceInline]
+float gold_noise(float2 pixel_coord, float div = 1.0, float seed = 1.0)
+{
+    const float PHI = 1.61803398874989484820459;
+    float2 cell = floor(pixel_coord / max(div, 0.0001)) + 1.0;
+    return frac(tan(distance(cell * PHI, cell) * seed) * cell.x);
+}
+
+// Interleaved Gradient Noise (Хорхе Хименес, Call of Duty) [0..1]
+[ForceInline]
+float ign_noise(float2 pixel_coord, float div = 1.0)
+{
+    float2 cell = floor(pixel_coord / max(div, 0.0001));
+    float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
+    return frac(magic.z * frac(dot(cell, magic.xy)));
+}
+
+// Быстрый хэш-шум без тригонометрии (Dave Hoskins, Hash without Sine) [0..1]
+[ForceInline]
+float hash12(float2 pixel_coord, float div = 1.0)
+{
+    float2 cell = floor(pixel_coord / max(div, 0.0001));
+    float3 p3 = frac(float3(cell.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return frac((p3.x + p3.y) * p3.z);
+}
+
+// Двумерный хэш-шум без тригонометрии (возвращает пару случайных чисел в [0..1])
+[ForceInline]
+float2 hash22(float2 pixel_coord, float div = 1.0)
+{
+    float2 cell = floor(pixel_coord / max(div, 0.0001));
+    float3 p3 = frac(float3(cell.xyx) * float3(0.1031, 0.1030, 0.0973));
+    p3 += dot(p3, p3.yzx + 33.33);
+    return frac((p3.xx + p3.yz) * p3.zy);
+}
+
+// Получить дискретный случайный угол в радианах [0..2*PI) на основе IGN-шума
+[ForceInline]
+float random_angle(float2 pixel_coord, float div = 2.0, float directions = 16.0)
+{
+    float random_value = ign_noise(pixel_coord, div);
+    float angle_index = floor(random_value * directions);
+    return angle_index * (6.28318530718 / directions);
+}

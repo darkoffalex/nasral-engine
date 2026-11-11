@@ -265,6 +265,7 @@ namespace nasral::gfx
         struct ScreenPassAo
         {
             glm::uint32 type = 0;
+            glm::uint32 samples = 16;
             glm::float32 radius = 0.3f;
             glm::float32 bias = 0.02f;
             glm::float32 multiplier = 1.0f;
@@ -343,6 +344,7 @@ namespace nasral::gfx
         struct
         {
             glm::uint32 type = 0;
+            glm::uint32 samples = 16;
             glm::float32 radius = 0.3f;
             glm::float32 bias = 0.02f;
             glm::float32 multiplier = 1.0f;

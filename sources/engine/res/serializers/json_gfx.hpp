@@ -143,6 +143,7 @@ namespace nasral::gfx
             if (desc.type == ScreenPassType::eAO)
             {
                 desc.ao_settings.type = s.value("type", desc.ao_settings.type);
+                desc.ao_settings.samples = s.value("samples", desc.ao_settings.samples);
                 desc.ao_settings.radius = s.value("radius", desc.ao_settings.radius);
                 desc.ao_settings.bias = s.value("bias", desc.ao_settings.bias);
                 desc.ao_settings.multiplier = s.value("multiplier", desc.ao_settings.multiplier);
@@ -191,6 +192,7 @@ namespace nasral::gfx
         {
             j["settings"] = {
                 {"type", desc.ao_settings.type},
+                {"samples", desc.ao_settings.samples},
                 {"radius", desc.ao_settings.radius},
                 {"bias", desc.ao_settings.bias},
                 {"multiplier", desc.ao_settings.multiplier},

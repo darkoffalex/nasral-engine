@@ -31,6 +31,7 @@ namespace nasral::gfx
         if (desc.type == ScreenPassType::eAO){
             settings = uniforms::ScreenPassAo{
                 desc.ao_settings.type,
+                desc.ao_settings.samples,
                 desc.ao_settings.radius,
                 desc.ao_settings.bias,
                 desc.ao_settings.multiplier,

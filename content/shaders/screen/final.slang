@@ -20,10 +20,12 @@ FragmentOutput fragmentMain(VertexOutput input)
 
     // Получить цвет и bloom
     float4 col = t_color.Sample(input.uv);
-    float3 bloom = t_temp2.Sample(input.uv).rgb;
+    float3 bloom = t_emission.Sample(input.uv).rgb;
+    float3 ao = t_ao.Sample(input.uv).rgb;
 
     // Вывод во вложение
     FragmentOutput output;
-    output.color = float4(col.rgb + bloom, col.a);
+    output.color = float4(ao.rgb, 1.0);
+    //output.color = float4(col.rgb + bloom, col.a);
     return output;
 }
