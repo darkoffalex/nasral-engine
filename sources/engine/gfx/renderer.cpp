@@ -636,7 +636,7 @@ namespace nasral::gfx
         vk_command_buffer().drawIndexed(index_count, 1, index_offset, 0, 0);
     }
 
-    void Renderer::cmd_draw_screen_quad(const uint32_t pass_uniform_idx)
+    void Renderer::cmd_draw_screen_quad(const uint32_t pass_uniform_idx, const uint32_t active_stage_flags)
     {
         ENSURE_COMMANDS
         ENSURE_PASS
@@ -647,10 +647,11 @@ namespace nasral::gfx
         // Шаг (с выравниванием) для буфера настроек экранных проходов
         const auto pass_stride = aligned_sbo<biggest_of_t<uniforms::ScreenPass>>(vk_device().physical_device());
 
-        // Push-константы - индекс прохода и шаг буфера (порядок важен!)
-        const std::array<uint32_t, 2> push_constants{
+        // Push-константы - индекс прохода, шаг буфера и флаги активных стадий (порядок важен!)
+        const std::array<uint32_t, 3> push_constants{
             pass_uniform_idx,
-            static_cast<uint32_t>(pass_stride)
+            static_cast<uint32_t>(pass_stride),
+            active_stage_flags
         };
 
         // Передать push-константы

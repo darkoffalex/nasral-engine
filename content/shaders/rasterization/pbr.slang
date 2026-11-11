@@ -54,16 +54,6 @@ float3 F_Schlick(float VoH, float3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - VoH, 5.0);
 }
 
-// Функция ACES Tone Mapping
-float3 tone_map_aces(float3 x) {
-    float a = 2.51;
-    float b = 0.03;
-    float c = 2.43;
-    float d = 0.59;
-    float e = 0.14;
-    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-}
-
 // ============================================================================
 // ФРАГМЕНТНЫЙ ШЕЙДЕР
 // ============================================================================
@@ -145,13 +135,8 @@ FragmentOutput fragmentMain(GeometryOutput input)
     // Буфер свечения (яркость выше порога)
     float3 bright_pbr = max( Lo - float3(BRIGHT_THRESHOLD), float3(0.0));
 
-    // Выполняем Tone Mapping (сжатие HDR -> SDR)
-    float3 sdr_color = tone_map_aces(Lo);
-    // Гамма коррекция
-    float3 final_color = pow(sdr_color, float3(1.0 / 2.2));
-
     // Вывод во вложения GBuffer
-    output.color    = float4(final_color, alpha);
+    output.color    = float4(Lo, alpha);
     output.normal   = float4(normal * 0.5 + 0.5, 1.0);
     output.emissive = float4(bright_pbr, 1.0);
 

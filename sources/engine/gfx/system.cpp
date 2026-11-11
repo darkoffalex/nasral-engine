@@ -48,6 +48,9 @@ namespace nasral::gfx
 
         // Камеры
         update_cam_ubo();
+
+        // Переключение настроек проходов (отладка)
+        update_sp_debug_settings();
     }
 
     void System::on_finalize() const {
@@ -65,24 +68,40 @@ namespace nasral::gfx
 
         // Цепочка экранных проходов (пост-обработка)
         bool post_processed = false;
+        size_t pass_idx = 0;
+        std::bitset<sizeof(uint32_t) * 8> active_stage_flags = {};
+
+        // Начать с первого прохода
         auto pass_e = engine()->gfx()->find_first_screen_pass();
         while (pass_e != ecs::EntityId::invalid()) {
             const auto pass_view = engine()->ecs()->as_view<ScreenPassView>(pass_e);
 
+            // Если какой-то их проходов не готов (ресурсы не загружены)
             if (!pass_view->is_ready()) {
+                // Запрос ресурсов (в случае необходимости)
                 if (!pass_view->is_resources_requested()) {
                     pass_view->request_resources();
                 }
+                // Пост обработка отменена
                 post_processed = false;
                 break;
             }
 
-            engine()->gfx()->renderer()->cmd_begin_screen_pass(pass_view->input_attachments(), pass_view->output_attachments());
-            engine()->gfx()->renderer()->cmd_bind_shader_program(pass_view->shader_program());
-            engine()->gfx()->renderer()->cmd_draw_screen_quad(pass_view->uniform_index());
-            engine()->gfx()->renderer()->cmd_end_screen_pass();
-            pass_e = pass_view->next_pass();
+            // Если проход активен
+            if (pass_view->is_active()) {
+                active_stage_flags.set(pass_idx);
 
+                engine()->gfx()->renderer()->cmd_begin_screen_pass(pass_view->input_attachments(), pass_view->output_attachments());
+                engine()->gfx()->renderer()->cmd_bind_shader_program(pass_view->shader_program());
+                engine()->gfx()->renderer()->cmd_draw_screen_quad(pass_view->uniform_index(), static_cast<uint32_t>(active_stage_flags.to_ulong()));
+                engine()->gfx()->renderer()->cmd_end_screen_pass();
+            }
+
+            // Получить следующий проход
+            pass_e = pass_view->next_pass();
+            ++pass_idx;
+
+            // Пост обработка задействована
             post_processed = true;
         }
 
@@ -576,6 +595,40 @@ namespace nasral::gfx
             // Обновить
             engine()->gfx()->update_cam_uniforms(uniforms, ui.index);
             state.is_dirty = false;
+        }
+    }
+
+    void System::update_sp_debug_settings() const
+    {
+        // Переключение AO прохода (AO + размытия)
+        if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e1)) {
+            const std::array<ecs::EntityId, 3> ao_passes_e = {
+                engine()->gfx()->find_screen_pass({2,1}),
+                engine()->gfx()->find_screen_pass({2,2}),
+                engine()->gfx()->find_screen_pass({2,3})
+            };
+
+            for (const auto& ao_pass_e : ao_passes_e) {
+                if (ao_pass_e != ecs::EntityId::invalid()) {
+                    const auto ao_blur_pass = engine()->ecs()->as_view<ScreenPassView>(ao_pass_e);
+                    ao_blur_pass->switch_activity();
+                }
+            }
+        }
+
+        // Переключение размытия Bloom
+        if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e2)) {
+            const std::array<ecs::EntityId, 2> bloom_blur_passes_e = {
+                engine()->gfx()->find_screen_pass({2,4}),
+                engine()->gfx()->find_screen_pass({2,5})
+            };
+
+            for (const auto& bloom_blur_pass_e :  bloom_blur_passes_e) {
+                if (bloom_blur_pass_e != ecs::EntityId::invalid()) {
+                    const auto bloom_blur_pass = engine()->ecs()->as_view<ScreenPassView>(bloom_blur_pass_e);
+                    bloom_blur_pass->switch_activity();
+                }
+            }
         }
     }
 

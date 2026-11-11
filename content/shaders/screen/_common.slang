@@ -12,6 +12,16 @@
 #define ATTACHMENT_TEMP1     10
 #define ATTACHMENT_TEMP2     11
 
+// Битовые маски стадий пост-обработки (должны совпадать с порядком проходов в project.json)
+#define STAGE_AO            (1u << 0)
+#define STAGE_AO_BLUR_H     (1u << 1)
+#define STAGE_AO_BLUR_V     (1u << 2)
+#define STAGE_AO_BLUR       (STAGE_AO_BLUR_H | STAGE_AO_BLUR_V)
+#define STAGE_BLOOM_BLUR_H  (1u << 3)
+#define STAGE_BLOOM_BLUR_V  (1u << 4)
+#define STAGE_BLOOM_BLUR    (STAGE_BLOOM_BLUR_H | STAGE_BLOOM_BLUR_V)
+#define STAGE_COMPOSITING   (1u << 5)
+
 // Выход вершинного шейдера -> Вход фрагментного шейдера
 struct VertexOutput
 {
@@ -34,6 +44,7 @@ struct PushConstants
 {
     uint pass_index;
     uint pass_stride;
+    uint active_stage_flags;
 };
 [[vk::push_constant]] PushConstants pc_push;
 
@@ -86,8 +97,20 @@ static const float2 uvs[6] =
 };
 
 // ============================================================================
-// ОБЩИЙ ВЕРШИННЫЙ ШЕЙДЕР
+// ОБЩИЕ УТИЛИТЫ И ВЕРШИННЫЙ ШЕЙДЕР
 // ============================================================================
+
+/**
+ * @brief Проверяет активность стадий пост-обработки по переданной битовой маске.
+ * @param[in] stage_mask Битовая маска проверяемых стадий (STAGE_*).
+ * @return true, если все стадии из маски активны, иначе false.
+ */
+[ForceInline]
+bool is_stages_active(uint stage_mask)
+{
+    return (pc_push.active_stage_flags & stage_mask) == stage_mask;
+}
+
 [shader("vertex")]
 VertexOutput vertexMain(uint vertex_index : SV_VertexID)
 {

@@ -49,6 +49,7 @@ namespace nasral::gfx
         [[nodiscard]] ecs::EntityId next_pass() const;
         [[nodiscard]] ecs::EntityId prev_pass() const;
         [[nodiscard]] bool is_ready() const;
+        [[nodiscard]] bool is_active() const;
         [[nodiscard]] bool is_resources_requested() const;
 
         void set_name(const std::string& name);
@@ -56,6 +57,9 @@ namespace nasral::gfx
         void set_screen_shader_resource(const res::ResourceId& resource_id) const;
         void destroy(bool immediate = false) const;
         void request_resources(bool immediate = false) const;
+        void activate(bool immediate = false) const;
+        void deactivate(bool immediate = false) const;
+        void switch_activity(bool immediate = false) const;
 
     private:
         void invalidate_ubo() const;

@@ -547,10 +547,10 @@ namespace nasral::gfx
 
             // Push-константы layout-а пост-обработки
             std::vector push_constants{
-                // Индекс прохода и шаг буфера настроек
+                // Индекс прохода, шаг буфера настроек и флаги активных стадий
                 vk::PushConstantRange()
                     .setStageFlags(vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment)
-                    .setSize(sizeof(uint32_t) * 2)
+                    .setSize(sizeof(uint32_t) * 3)
                     .setOffset(0)
             };
 

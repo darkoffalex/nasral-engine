@@ -39,7 +39,7 @@ namespace nasral::gfx
         void cmd_bind_shader_program(const handles::ShaderProgram& handles);
         void cmd_bind_mesh_geometry(const handles::Mesh& handles) const;
         void cmd_draw_bound_geometry(uint32_t index_offset, uint32_t index_count, uint32_t obj_uniform_idx, uint32_t mat_uniform_idx);
-        void cmd_draw_screen_quad(uint32_t pass_uniform_idx);
+        void cmd_draw_screen_quad(uint32_t pass_uniform_idx, uint32_t active_stage_flags);
         void cmd_gen_frame_mipmaps(const FrameAttachmentType& type) const;
         void cmd_blit_to_screen(const FrameAttachmentType& type) const;
         void cmd_wait_for_all() const;

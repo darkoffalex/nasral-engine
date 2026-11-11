@@ -46,6 +46,9 @@ namespace nasral::gfx
         // Камеры (UBO)
         void update_cam_ubo() const;
 
+        // Состояния проходов (для отладки)
+        void update_sp_debug_settings() const;
+
         // Рендеринг
         void render_meshes() const;
     };

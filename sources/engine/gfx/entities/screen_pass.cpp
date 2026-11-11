@@ -69,14 +69,15 @@ namespace nasral::gfx
             throw std::runtime_error("Screen pass must have at least one input or one output attachment");
         }
 
-        // Добавить основные компоненты
-        ecs->add_components_immediate<GFX_SCREEN_PASS_COMPONENTS, GFX_SCREEN_PASS_DIRTY_TAGS>(id,
+        // Добавить основные компоненты (RenderComponent - активны по умолчанию)
+        ecs->add_components_immediate<GFX_SCREEN_PASS_COMPONENTS, GFX_SCREEN_PASS_DIRTY_TAGS, RenderComponent>(id,
             {desc.unique_id},
             {desc.name},
             {desc.type, settings, input_attachments, output_attachments},
             {},
             {gfx->screen_pass_ubo_ids().acquire()},
             {resources_ids, resources_active, {res::Status::eUnloaded}},
+            {},
             {},
             {},
             {});
@@ -155,6 +156,10 @@ namespace nasral::gfx
             && !ecs->has_any<DirtyHandlesComponent, ecs::DirtyStateComponent>(e_id);
     }
 
+    bool ScreenPassView::is_active() const {
+        return engine()->ecs()->has<RenderComponent>(id());
+    }
+
     bool ScreenPassView::is_resources_requested() const {
         const auto e_id = id();
         const auto* ecs = engine()->ecs();
@@ -191,6 +196,30 @@ namespace nasral::gfx
             engine()->ecs()->add_components_immediate<res::RequestComponent>(id(), {});
         }else {
             engine()->ecs()->add_components<res::RequestComponent>(id(), {});
+        }
+    }
+
+    void ScreenPassView::activate(const bool immediate) const {
+        if (immediate) {
+            engine()->ecs()->add_components_immediate<RenderComponent>(id(), {});
+        }else {
+            engine()->ecs()->add_components<RenderComponent>(id(), {});
+        }
+    }
+
+    void ScreenPassView::deactivate(const bool immediate) const {
+        if (immediate) {
+            engine()->ecs()->remove_components_immediate<RenderComponent>(id());
+        }else {
+            engine()->ecs()->remove_components<RenderComponent>(id());
+        }
+    }
+
+    void ScreenPassView::switch_activity(const bool immediate) const {
+        if (engine()->ecs()->has<RenderComponent>(id())) {
+            deactivate(immediate);
+        }else {
+            activate(immediate);
         }
     }
 
