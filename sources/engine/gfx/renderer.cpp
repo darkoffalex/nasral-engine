@@ -152,9 +152,10 @@ namespace nasral::gfx
         // Закрываем командный буфер
         vk_command_buffer().end();
 
-        // ИНДЕКСАЦИЯ СЕМАФОРОВ СТРОГО ПО current_frame (индексу кадра в полете)
+        // wait_semaphores индексируется по current_frame (освобождается по завершении submit, что гарантируется frame_fence)
+        // signal_semaphores индексируется по available_sc_image_ (освобождается при повторном acquire этой же картинки)
         std::array<vk::Semaphore, 1> wait_semaphores{ vk_render_available_semaphore_[current_frame].get() };
-        std::array<vk::Semaphore, 1> signal_semaphores{ vk_render_finished_semaphore_[current_frame].get() };
+        std::array<vk::Semaphore, 1> signal_semaphores{ vk_render_finished_semaphore_[available_sc_image_].get() };
         std::array<vk::PipelineStageFlags, 1> wait_stages{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
 
         // Получить очередь команд

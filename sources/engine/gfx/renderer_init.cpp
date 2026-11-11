@@ -984,19 +984,27 @@ namespace nasral::gfx
 
         // Резервируем место под максимальное количество кадров в полете
         const auto max_frames = static_cast<size_t>(config().max_frames_in_flight);
+        const auto sp_images = static_cast<size_t>(config().swap_chain_images);
+
         vk_render_available_semaphore_.reserve(max_frames);
-        vk_render_finished_semaphore_.reserve(max_frames);
         vk_frame_fence_.reserve(max_frames);
 
         for (size_t i = 0; i < max_frames; ++i)
         {
-            // Семафор: "Картинка получена из SwapChain и готова к рендерингу"
+            // Семафор: "Картинка получена из SwapChain и готова к рендерингу" (на каждый frame in flight)
             vk_render_available_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
-            // Семафор: "Рендеринг в командном буфере завершен, можно передавать на экран"
-            vk_render_finished_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
             // Фенс: "GPU полностью закончил выполнять этот кадр, CPU может собирать ресурсы"
             // Важно: создаем изначально в сигнальном состоянии, чтобы waitForFences не завис на самом первом кадре.
             vk_frame_fence_.emplace_back(ld.createFenceUnique(vk::FenceCreateInfo{vk::FenceCreateFlagBits::eSignaled}));
+        }
+
+        // Семафор завершения рендеринга создается под каждое изображение SwapChain (индексируется по available_sc_image_)
+        vk_render_finished_semaphore_.clear();
+        vk_render_finished_semaphore_.reserve(sp_images);
+        for (size_t i = 0; i < sp_images; ++i)
+        {
+            // Семафор: "Рендеринг в командном буфере завершен, можно передавать на экран"
+            vk_render_finished_semaphore_.emplace_back(ld.createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
         }
     }
 
@@ -1047,6 +1055,12 @@ namespace nasral::gfx
         // Создать новые командные буферы
         init_vk_command_buffers();
         log_info("Vulkan: command buffers recreated.");
+
+        // Пересоздать семафоры презентации для нового swap-chain
+        vk_render_finished_semaphore_.clear();
+        for (uint32_t i = 0; i < config().swap_chain_images; ++i){
+            vk_render_finished_semaphore_.emplace_back(vk_device_->logical_device().createSemaphoreUnique(vk::SemaphoreCreateInfo{}));
+        }
 
         // Связать кадровые (offscreen) буферами с дескрипторами пост-процессинга
         init_vk_framebuffer_bindings();
