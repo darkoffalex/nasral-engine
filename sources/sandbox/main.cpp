@@ -96,8 +96,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.gfx.composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
             config.gfx.enable_validation_layers = true;
             config.gfx.opengl_compatible = true;
-            config.gfx.max_frames_in_flight = 3;
-            config.gfx.swap_chain_images = 4;
+            config.gfx.max_frames_in_flight = 2;
+            config.gfx.swap_chain_images = 3;
 
             // Ввод
             config.inp.provider = std::make_shared<utils::GlfwInputProvider>(window);
