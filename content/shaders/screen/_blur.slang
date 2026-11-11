@@ -180,3 +180,71 @@ float3 linear_bilateral_blur(
     // 6. Усреднение (деление на вес)
     return result_c / max(result_w, 0.0001);
 }
+
+/**
+ * @brief Вычисляет равномерное (box) размытие текстуры ядром 3x3.
+ * @param[in] tex         Входная текстура.
+ * @param[in] uv          Текущие текстурные координаты.
+ * @param[in] texel_size  Размер одного текселя.
+ * @param[in] base_radius Базовый радиус (шаг) текселя (по умолчанию 1.0).
+ * @return Усредненный цвет в формате float3.
+ */
+[ForceInline]
+float3 box_blur(Sampler2D tex, float2 uv, float2 texel_size, float base_radius = 1.0)
+{
+    float3 result = float3(0.0);
+    float2 step = texel_size * base_radius;
+
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+        {
+            float2 offset = float2(float(x), float(y)) * step;
+            result += tex.Sample(uv + offset).rgb;
+        }
+    }
+
+    return result / 9.0;
+}
+
+/**
+ * @brief Вычисляет размытие текстуры ядром 3x3 с весами распределения Гаусса.
+ * @details Используется классическая матрица биномиальных весов 3x3 (сумма весов = 16):
+ *          [1, 2, 1]
+ *          [2, 4, 2]
+ *          [1, 2, 1]
+ * @param[in] tex         Входная текстура.
+ * @param[in] uv          Текущие текстурные координаты.
+ * @param[in] texel_size  Размер одного текселя.
+ * @param[in] base_radius Базовый радиус (шаг) текселя (по умолчанию 1.0).
+ * @return Взвешенный усредненный цвет в формате float3.
+ */
+[ForceInline]
+float3 box_gaussian_blur(Sampler2D tex, float2 uv, float2 texel_size, float base_radius = 1.0)
+{
+    static const float WEIGHTS[3][3] =
+    {
+        { 1.0, 2.0, 1.0 },
+        { 2.0, 4.0, 2.0 },
+        { 1.0, 2.0, 1.0 }
+    };
+
+    float3 result = float3(0.0);
+    float2 step = texel_size * base_radius;
+
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+        {
+            float2 offset = float2(float(x), float(y)) * step;
+            float weight = WEIGHTS[y + 1][x + 1];
+            result += tex.Sample(uv + offset).rgb * weight;
+        }
+    }
+
+    return result / 16.0;
+}

@@ -8,6 +8,7 @@
     {"type" : "eShaderProgram", "path" : "shaders/screen/final.slang.spv", "load_params": {"type": "eScreenPass"}},
     {"type" : "eShaderProgram", "path" : "shaders/screen/bloom.slang.spv", "load_params": {"type": "eScreenPass"}},
     {"type" : "eShaderProgram", "path" : "shaders/screen/ao.slang.spv", "load_params": {"type": "eScreenPass"}},
+    {"type" : "eShaderProgram", "path" : "shaders/screen/ao_blur.slang.spv", "load_params": {"type": "eScreenPass"}},
 
     {"type": "eTexture", "path": "textures/floor/floor_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
     {"type": "eTexture", "path": "textures/floor/floor_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
@@ -73,22 +74,56 @@
       "next" : [2, 2],
       "settings": {
         "type" : 0,
-        "samples" : 4,
-        "radius" : 0.3,
+        "samples" : 2,
+        "radius" : 0.4,
         "bias" : 0.02,
         "multiplier" : 1.0,
-        "power" : 1.0
+        "power" : 2.0
       }
     },
     {
       "uid" : [2, 2],
+      "name" : "AOBlurH",
+      "type" : "eBlur",
+      "input_attachments" : ["eAO", "eDepth", "eNormal"],
+      "output_attachments" : ["eTemp1"],
+      "shader_program_path" : "shaders/screen/ao_blur.slang.spv",
+      "previous" : [2, 1],
+      "next" : [2, 3],
+      "settings": {
+        "pass_index" : 0,
+        "samples" : 12,
+        "base_tex_radius" : 6,
+        "base_kernel_radius" : 6,
+        "direction" : [1.0, 0.0]
+      }
+    },
+    {
+      "uid" : [2, 3],
+      "name" : "AOBlurV",
+      "type" : "eBlur",
+      "input_attachments" : ["eTemp1", "eDepth", "eNormal"],
+      "output_attachments" : ["eAO"],
+      "shader_program_path" : "shaders/screen/ao_blur.slang.spv",
+      "previous" : [2, 2],
+      "next" : [2, 4],
+      "settings": {
+        "pass_index" : 1,
+        "samples" : 12,
+        "base_tex_radius" : 6,
+        "base_kernel_radius" : 6,
+        "direction" : [0.0, 1.0]
+      }
+    },
+    {
+      "uid" : [2, 4],
       "name" : "BloomBlurH",
       "type" : "eBlur",
       "input_attachments" : ["eEmission"],
       "output_attachments" : ["eTemp1"],
       "shader_program_path" : "shaders/screen/bloom.slang.spv",
-      "previous" : [2, 1],
-      "next" : [2, 3],
+      "previous" : [2, 3],
+      "next" : [2, 5],
       "settings": {
         "pass_index" : 0,
         "samples" : 10,
@@ -98,14 +133,14 @@
       }
     },
     {
-      "uid" : [2, 3],
+      "uid" : [2, 5],
       "name" : "BloomBlurV",
       "type" : "eBlur",
       "input_attachments" : ["eTemp1"],
       "output_attachments" : ["eEmission"],
       "shader_program_path" : "shaders/screen/bloom.slang.spv",
-      "previous" : [2, 2],
-      "next" : [2, 4],
+      "previous" : [2, 4],
+      "next" : [2, 6],
       "settings": {
         "pass_index" : 1,
         "samples" : 10,
@@ -115,13 +150,13 @@
       }
     },
     {
-      "uid" : [2, 4],
+      "uid" : [2, 6],
       "name" : "Final",
       "type" : "eCompositing",
       "input_attachments" : ["eColor", "eDepth", "eNormal", "eEmission"],
       "output_attachments" : ["eCompositing"],
       "shader_program_path" : "shaders/screen/final.slang.spv",
-      "previous" : [2, 3],
+      "previous" : [2, 5],
       "settings": {
         "bloom_blur_lod" : 2.5,
         "bloom_intensity" : 1.0,

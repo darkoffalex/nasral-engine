@@ -15,7 +15,7 @@ namespace nasral::gfx
     constexpr uint32_t kMaxCameras = 1;
     constexpr uint32_t kMaxObjects = 1024;
     constexpr uint32_t kMaxMaterials = 128;
-    constexpr uint32_t kMaxScreenPasses = 5;
+    constexpr uint32_t kMaxScreenPasses = 8;
     constexpr uint32_t kMaxMeshMaterials = 5;
     constexpr uint32_t kMaxLights = 64;
     constexpr uint32_t kMaxFramesInFlight = 6;
