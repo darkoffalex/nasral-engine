@@ -480,7 +480,8 @@ namespace vk::utils
                 }
 
                 // Проверка расширенных фич
-                auto vulkan13_features = vk::PhysicalDeviceVulkan13Features().setPNext(nullptr);
+                auto vulkan11_features = vk::PhysicalDeviceVulkan11Features().setPNext(nullptr);
+                auto vulkan13_features = vk::PhysicalDeviceVulkan13Features().setPNext(&vulkan11_features);
                 auto unused_attachments_features = vk::PhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT().setPNext(&vulkan13_features);
                 auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT().setPNext(&unused_attachments_features);
                 auto features2 = vk::PhysicalDeviceFeatures2().setPNext(&indexing_features);
@@ -490,6 +491,7 @@ namespace vk::utils
                     || !indexing_features.descriptorBindingVariableDescriptorCount
                     || !indexing_features.runtimeDescriptorArray
                     || !indexing_features.descriptorBindingSampledImageUpdateAfterBind
+                    || !vulkan11_features.shaderDrawParameters
                     || !vulkan13_features.dynamicRendering
                     || !vulkan13_features.synchronization2
                     || !unused_attachments_features.dynamicRenderingUnusedAttachments){
@@ -563,9 +565,14 @@ namespace vk::utils
                     .setFillModeNonSolid(true)
                     .setIndependentBlend(true);
 
+            // Включить поддержку параметров отрисовки в шейдерах (BaseVertex, BaseInstance, DrawIndex)
+            auto vulkan11_features = vk::PhysicalDeviceVulkan11Features()
+                .setPNext(nullptr)
+                .setShaderDrawParameters(true);
+
             // Включить поддержку динамического рендеринга (без render passes)
             auto vulkan13_features = vk::PhysicalDeviceVulkan13Features()
-                .setPNext(nullptr)
+                .setPNext(&vulkan11_features)
                 .setDynamicRendering(true)
                 .setSynchronization2(true);
 
