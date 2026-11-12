@@ -14,12 +14,18 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Пути для обнаружения CMake модулей (например, загруженных через Conan)
-set(CMAKE_PREFIX_PATH
+list(APPEND CMAKE_PREFIX_PATH
         build/generators
         build/Debug/generators
         build/Release/generators)
 
-set(CMAKE_MODULE_PATH
+if(DEFINED ENV{VULKAN_SDK})
+    list(PREPEND CMAKE_PREFIX_PATH
+            "$ENV{VULKAN_SDK}"
+            "$ENV{VULKAN_SDK}/lib/VulkanLoader")
+endif()
+
+list(APPEND CMAKE_MODULE_PATH
         build/generators
         build/Debug/generators
         build/Release/generators)

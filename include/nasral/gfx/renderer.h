@@ -43,7 +43,7 @@ namespace nasral::gfx
         void cmd_draw_screen_quad(uint32_t pass_uniform_idx, uint32_t active_stage_flags);
         void cmd_gen_frame_mipmaps(const FrameAttachmentType& type) const;
         void cmd_blit_to_screen(const FrameAttachmentType& type) const;
-        void cmd_build_tlas(uint32_t instance_count, bool initial = true);
+        void cmd_build_tlas(uint32_t instance_count, bool initial = true) const;
         void cmd_wait_for_all() const;
         void mark_surface_dirty();
         void mark_tlas_dirty();

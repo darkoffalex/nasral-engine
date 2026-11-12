@@ -79,6 +79,11 @@ namespace nasral::gfx
         // Начало кадра
         renderer()->cmd_begin_frame();
 
+        // Если нужно перестроить/обновить TLAS для трассировки лучей
+        if (renderer()->is_tlas_dirty(true)){
+            renderer()->cmd_build_tlas(engine()->gfx()->acquired_objects_count(), true);
+        }
+
         // ECS-система рисует сцену
         ecs_system_->render();
 

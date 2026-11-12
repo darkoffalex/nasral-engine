@@ -66,11 +66,6 @@ namespace nasral::gfx
         render_meshes();
         engine()->gfx()->renderer()->cmd_end_rasterization_pass();
 
-        // Если нужно перестроить/обновить TLAS
-        if (engine()->gfx()->renderer()->is_tlas_dirty(true)){
-            engine()->gfx()->renderer()->cmd_build_tlas(engine()->gfx()->acquired_objects_count(), true);
-        }
-
         // Цепочка экранных проходов (пост-обработка)
         bool post_processed = false;
         size_t pass_idx = 0;

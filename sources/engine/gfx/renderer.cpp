@@ -814,7 +814,7 @@ namespace nasral::gfx
         );
     }
 
-    void Renderer::cmd_build_tlas(const uint32_t instance_count, const bool initial)
+    void Renderer::cmd_build_tlas(const uint32_t instance_count, const bool initial) const
     {
         ENSURE_COMMANDS
 
