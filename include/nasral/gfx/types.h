@@ -43,6 +43,7 @@ namespace nasral::gfx
         eMaterialUBOs,
         eMaterialTextures,
         eLightUBOs,
+        eRayTracingTLAS,
         TOTAL
     };
 

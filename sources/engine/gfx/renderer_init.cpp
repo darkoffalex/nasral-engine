@@ -484,6 +484,19 @@ namespace nasral::gfx
                         }
                     },
                     1
+                },
+                // set = 5: (eRayTracingTLAS)
+                {
+                    {
+                        // Структура ускорения верхнего уровня (для Ray Query)
+                        {
+                            0,
+                            1,
+                            vk::DescriptorType::eAccelerationStructureKHR,
+                            vk::ShaderStageFlagBits::eAll
+                        }
+                    },
+                    config().max_frames_in_flight
                 }
             };
 
@@ -733,6 +746,35 @@ namespace nasral::gfx
         END_FOREACH
     }
 
+    void Renderer::init_vk_tlas_bindings()
+    {
+        // Связать структуры ускорения трассировки лучей верхнего уровня с вложениями дескрипторных наборов растеризации (ray query)
+        FOREACH_FRAME
+        auto& set = vk_rendering_d_sets_per_frame_[FRAME];
+        assert(set && "Ray tracing descriptor set is not initialized");
+        assert(vk_tlas_[FRAME] && "TLAS is not initialized");
+
+        // Получаем нативный handle структуры ускорения для текущего кадра
+        const vk::AccelerationStructureKHR tlas_handle = vk_tlas_[FRAME]->handle();
+
+        // Описываем структуру расширения для дескриптора AS
+        vk::WriteDescriptorSetAccelerationStructureKHR as_info{};
+        as_info.setAccelerationStructures(tlas_handle);
+
+        // Формируем запись дескриптора и подключаем as_info в pNext
+        vk::WriteDescriptorSet write{};
+        write.setPNext(&as_info)
+             .setDstSet(set.get())
+             .setDstBinding(0)
+             .setDstArrayElement(0)
+             .setDescriptorType(vk::DescriptorType::eAccelerationStructureKHR)
+             .setDescriptorCount(1);
+
+        // Обновляем дескрипторный набор на логическом устройстве
+        vk_device_->logical_device().updateDescriptorSets({write}, {});
+        END_FOREACH
+    }
+
     /**
      * @brief Инициализация TLAS (структура ускорения трассировки лучей верхнего уровня)
      * @details TLAS - структура, которая содержит информацию о всех объектах, которые нужно отрисовать, и позволяет
@@ -835,6 +877,12 @@ namespace nasral::gfx
         auto pp_sets = ul_screen_pass->allocate_sets(static_cast<size_t>(UniformScreenDSetType::eFrameTextures), config().max_frames_in_flight);
         FOREACH_FRAME
         vk_screen_d_sets_per_frame_[FRAME] = std::move(pp_sets[FRAME]);
+        END_FOREACH
+
+        // Выделить дескрипторные наборы трассировки лучей (TLAS) для стадии растеризации
+        auto rt_sets = ul_rasterize->allocate_sets(static_cast<size_t>(UniformRasterDSetType::eRayTracingTLAS), config().max_frames_in_flight);
+        FOREACH_FRAME
+        vk_rendering_d_sets_per_frame_[FRAME] = std::move(rt_sets[FRAME]);
         END_FOREACH
 
         // Uniform буферы

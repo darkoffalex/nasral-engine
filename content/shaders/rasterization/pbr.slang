@@ -54,6 +54,50 @@ float3 F_Schlick(float VoH, float3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - VoH, 5.0);
 }
 
+/**
+ * @brief Проверка затенения точки источником света через Ray Query
+ * @param origin Мировая позиция фрагмента
+ * @param light_pos Мировая позиция источника света
+ * @param normal Мировая нормаль фрагмента
+ * @return 1.0 если точка освещена, 0.0 если в тени
+ */
+float compute_shadow(float3 origin, float3 light_pos, float3 normal)
+{
+    float3 to_light = light_pos - origin;
+    float dist = length(to_light);
+    float3 dir = to_light / dist;
+
+    // Смещение начала луча вдоль нормали для предотвращения Shadow Acne
+    float3 ray_origin = origin + normal * 0.005;
+
+    RayDesc ray;
+    ray.Origin = ray_origin;
+    ray.Direction = dir;
+    ray.TMin = 0.001;
+    ray.TMax = dist - 0.01; // Не доходим до самого центра источника
+
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_FORCE_OPAQUE> rq;
+    rq.TraceRayInline(
+        u_tlas,
+        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_FORCE_OPAQUE,
+        0xFF,
+        ray
+    );
+
+    while (rq.Proceed())
+    {
+        // Ожидание завершения обхода
+    }
+
+    // Если луч что-то встретил на пути — точка в тени
+    if (rq.CommittedStatus() != COMMITTED_NOTHING)
+    {
+        return 0.0;
+    }
+
+    return 1.0;
+}
+
 // ============================================================================
 // ФРАГМЕНТНЫЙ ШЕЙДЕР
 // ============================================================================
@@ -103,6 +147,9 @@ FragmentOutput fragmentMain(GeometryOutput input)
         float attenuation = 1.0 / (1.0 + light.quadratic * dist * dist);
         float3 radiance   = light.color.rgb * attenuation * light.intensity;
 
+        // Расчет коэффициента тени через Ray Query
+        float shadow = compute_shadow(input.position, light.position.xyz, normal);
+
         // Векторы и скалярные произведения
         float3 V   = normalize(u_camera.position.xyz - input.position);
         float3 N   = normal;
@@ -125,7 +172,7 @@ FragmentOutput fragmentMain(GeometryOutput input)
         float3 diffuse = albedo * (1.0 - metallic) * (1.0 - F) / PI;
 
         // Накопление освещенности
-        Lo += (diffuse + specular) * NoL * radiance * tex_ao;
+        Lo += (diffuse + specular) * NoL * radiance * tex_ao * shadow;
     }
 
     // Применить emissive (светящиеся поверхности)

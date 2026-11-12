@@ -106,6 +106,9 @@ struct LightIndices
 };
 [[vk::binding(1, 4)]] StructuredBuffer<LightIndices> s_light_indices;
 
+// Структура ускорения для ray tracing / ray query (set = 5, binding = 0)
+[[vk::binding(0, 5)]] RaytracingAccelerationStructure u_tlas;
+
 // ============================================================================
 // ОБЩИЙ ВЕРШИННЫЙ ШЕЙДЕР
 // ============================================================================

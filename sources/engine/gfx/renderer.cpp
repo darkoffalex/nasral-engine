@@ -77,6 +77,9 @@ namespace nasral::gfx
         init_vk_framebuffer_bindings();
         log_info("Vulkan: Framebuffer attachments bound to post-processing descriptor sets.");
 
+        init_vk_tlas_bindings();
+        log_info("Vulkan: TLAS bound to rasterization descriptor sets.");
+
         init_vk_command_buffers();
         log_info("Vulkan: Command buffers initialized.");
 
@@ -312,7 +315,8 @@ namespace nasral::gfx
             vk_rendering_d_sets_[UniformRasterDSetType::eObjectUBOs].get(),
             vk_rendering_d_sets_[UniformRasterDSetType::eMaterialUBOs].get(),
             vk_rendering_d_sets_[UniformRasterDSetType::eMaterialTextures].get(),
-            vk_rendering_d_sets_[UniformRasterDSetType::eLightUBOs].get()
+            vk_rendering_d_sets_[UniformRasterDSetType::eLightUBOs].get(),
+            vk_rendering_d_sets_per_frame_[frame_index()].get()
         };
         vk_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 0, descriptor_sets, {});
     }
@@ -511,7 +515,7 @@ namespace nasral::gfx
         size_t barrier_count = 0;
 
         // Перевод всех задействованных в проходе выходных вложений:
-        // ColorAttachmentWrite (вывод цвета) -> ShaderRead (чтение в фрагментном шейдере следующих проходов)
+        // ColorAttachmentWrite (вывод цвета) -> ShaderRead (чтение во фрагментном шейдере следующих проходов)
         for (const auto type : magic_enum::enum_values<FrameAttachmentType>())
         {
             if (type == FrameAttachmentType::TOTAL || !last_screen_pass_output_attachments_.test(type)) {
