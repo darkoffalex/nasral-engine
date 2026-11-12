@@ -1,0 +1,11 @@
+newmtl Barrel_01
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+map_Kd ../../textures/barrel/barrel_albedo.png
+map_bump -bm 1.000000 ../../textures/barrel/barrel_nor.png

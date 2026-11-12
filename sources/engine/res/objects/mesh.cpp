@@ -37,7 +37,7 @@ namespace nasral::res
                 throw std::runtime_error("Failed to load mesh file: " + full_path);
             }
 
-            if (data->materials.size() > gfx::kMaxMaterialsPerMesh){
+            if (data->materials.size() > gfx::kMaxMeshMaterials){
                 throw std::runtime_error("Too many materials in mesh: " + full_path);
             }
 
@@ -120,6 +120,7 @@ namespace nasral::res
             set_status(Status::eError);
             set_error(error() == Error::eNone ? loader_->error() : error());
             RES_LOG_ERROR(error(), e.what());
+            return;
         }
 
         set_status(Status::eLoaded);
@@ -134,7 +135,7 @@ namespace nasral::res
         mesh_handle.index_buffer = vk_index_buffer();
         mesh_handle.blas_device_address = blas()->device_address();
 
-        const auto copy_size = std::min<size_t>(surfaces_.size(), gfx::kMaxMaterialsPerMesh);
+        const auto copy_size = std::min<size_t>(surfaces_.size(), gfx::kMaxMeshMaterials);
 
         if (copy_size > 0) {
             std::memcpy(

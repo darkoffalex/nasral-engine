@@ -50,9 +50,11 @@ namespace vk::utils
         Image():
             vk_device_(nullptr),
             image_(nullptr),
-            image_view_(nullptr),
+            sampling_view_(nullptr),
+            render_attachment_view_(nullptr),
             own_image_(nullptr),
             own_image_memory_(nullptr),
+            extent_({}),
             mip_levels_(1)
         {}
 
@@ -88,13 +90,15 @@ namespace vk::utils
               const std::vector<uint32_t>& queue_family_indices = {})
         : vk_device_(device->logical_device())
         , image_(nullptr)
-        , image_view_(nullptr)
+        , sampling_view_(nullptr)
+        , render_attachment_view_(nullptr)
         , own_image_(nullptr)
         , own_image_memory_(nullptr)
+        , extent_(extent)
         {
             assert(device);
             assert(array_layers > 0);
-            assert(extent.width > 0 && extent.height > 0 && extent.depth > 0);
+            assert(extent_.width > 0 && extent_.height > 0 && extent_.depth > 0);
 
             if(type == Type::eCube && array_layers != 6){
                 throw std::runtime_error("Array layers must be 6 for cube images");
@@ -108,7 +112,7 @@ namespace vk::utils
                 throw std::runtime_error("Device does not support cube array images");
             }
 
-            if(type == Type::eCube && extent.width != extent.height){
+            if(type == Type::eCube && extent_.width != extent_.height){
                 throw std::runtime_error("Cube images must have equal width and height");
             }
 
@@ -116,7 +120,7 @@ namespace vk::utils
             if(mip_levels > 0){
                 mip_levels_ = mip_levels;
             }else{
-                mip_levels_ = static_cast<uint32_t>(std::floor(std::log2((std::max)(extent.width, extent.height)))) + 1;
+                mip_levels_ = static_cast<uint32_t>(std::floor(std::log2((std::max)(extent_.width, extent_.height)))) + 1;
             }
 
             // Режим доступа (будут ли разные семейства обращаться к изображению)
@@ -134,7 +138,7 @@ namespace vk::utils
                     ImageCreateInfo()
                     .setImageType(vk_image_type(type))
                     .setFormat(format)
-                    .setExtent(extent)
+                    .setExtent(extent_)
                     .setUsage(usage)
                     .setSamples(samples)
                     .setTiling(tiling)
@@ -184,8 +188,8 @@ namespace vk::utils
                 return;
             }
 
-            // Создать объект image-vew (для доступа к памяти изображения)
-            image_view_ = device->logical_device().createImageViewUnique(
+            // Создать объект image-vew (для доступа к памяти изображения при семплинге)
+            sampling_view_ = device->logical_device().createImageViewUnique(
                     ImageViewCreateInfo()
                     .setImage(own_image_.get())
                     .setViewType(vk_image_view_type(type))
@@ -198,6 +202,20 @@ namespace vk::utils
                             .setBaseArrayLayer(0)
                             .setLayerCount(type == Type::eCube ? 6 : 1)));
 
+            // Создать image-vew вложения рендеринга
+            render_attachment_view_ = device->logical_device().createImageViewUnique(
+                    ImageViewCreateInfo()
+                    .setImage(own_image_.get())
+                    .setViewType(vk::ImageViewType::e2D)
+                    .setFormat(format)
+                    .setSubresourceRange(
+                            ImageSubresourceRange()
+                            .setAspectMask(aspect)
+                            .setBaseMipLevel(0)
+                            .setLevelCount(1)
+                            .setBaseArrayLayer(0)
+                            .setLayerCount(1)));
+
         }
 
         /**
@@ -205,6 +223,7 @@ namespace vk::utils
          * @param device Устройство Vulkan (обертка из utils)
          * @param type Тип изображения
          * @param image Существующее изображение Vulkan
+         * @param extent Разрешение изображения (вспомогательная информация)
          * @param format Формат пикселей изображения
          * @param aspect Аспект(ы) для создания представления (как интерпретировать при доступе - цвет/глубина/трафарет)
          * @param mip_levels Количество мип-уровней
@@ -212,6 +231,7 @@ namespace vk::utils
         Image(Device* device,
               const Type& type,
               const vk::Image& image,
+              const vk::Extent3D& extent,
               const vk::Format& format,
               const vk::ImageAspectFlags& aspect,
               const uint32_t mip_levels = 1u)
@@ -220,11 +240,14 @@ namespace vk::utils
             // Обычно у изображений swap-chain 1 мип-уровень
             mip_levels_ = mip_levels;
 
+            // Сохранить разрешение изображения
+            extent_ = extent;
+
             // Копирование handle'а
             image_ = image;
 
             // Создать объект image-vew (для доступа к памяти изображения)
-            image_view_ = device->logical_device().createImageViewUnique(
+            sampling_view_ = device->logical_device().createImageViewUnique(
                     ImageViewCreateInfo()
                     .setImage(image)
                     .setViewType(vk_image_view_type(type))
@@ -238,6 +261,20 @@ namespace vk::utils
                             .setLayerCount(1)
                     )
             );
+
+            // Создать image-vew вложения кадрового буфера
+            render_attachment_view_ = device->logical_device().createImageViewUnique(
+                    ImageViewCreateInfo()
+                    .setImage(image)
+                    .setViewType(vk::ImageViewType::e2D)
+                    .setFormat(format)
+                    .setSubresourceRange(
+                            ImageSubresourceRange()
+                            .setAspectMask(aspect)
+                            .setBaseMipLevel(0)
+                            .setLevelCount(1)
+                            .setBaseArrayLayer(0)
+                            .setLayerCount(1)));
         }
 
         /** @brief Деструктор */
@@ -250,11 +287,19 @@ namespace vk::utils
         Image& operator=(const Image&) = delete;
 
         /**
-         * @brief Возвращает представление изображения
+         * @brief Возвращает представление изображения для семплинга (чтения)
          * @return Константная ссылка на представление изображения
          */
-        [[nodiscard]] const vk::ImageView& image_view() const {
-            return image_view_.get();
+        [[nodiscard]] const vk::ImageView& sampling_view() const {
+            return sampling_view_.get();
+        }
+
+        /**
+         * @brief Возвращает представление изображения для записи (рендерига)
+         * @return Константная ссылка на представление изображения
+         */
+        [[nodiscard]] const vk::ImageView& render_attachment_view() const {
+            return render_attachment_view_.get();
         }
 
         /**
@@ -279,6 +324,14 @@ namespace vk::utils
          */
         [[nodiscard]] uint32_t mip_levels() const{
             return mip_levels_;
+        }
+
+        /**
+         * @brief Получить разрешение изображения
+         * @return Разрешение изображения
+         */
+        [[nodiscard]] const Extent3D& extent() const{
+            return extent_;
         }
 
         /**
@@ -338,7 +391,7 @@ namespace vk::utils
         {
             assert(vk_device_);
             assert(image_ || own_image_);
-            assert(dst_image.image() && dst_image.image_view());
+            assert(dst_image.image() && dst_image.sampling_view());
             assert(!queue_group.queues.empty() && !queue_group.command_pools.empty());
 
             // Командный пул и очередь для копирования
@@ -473,7 +526,6 @@ namespace vk::utils
         /**
          * Запись команд генерации мип уровней в командный буфер (должен быть открыт)
          * @param cmd_buffer Целевой командный буфер
-         * @param initial_extent Изначальное разрешение первого слоя
          * @param initial_layout Изначальное размещение памяти изображения (eTransferDstOptimal, eColorAttachmentOptimal)
          * @param initial_access Изначальный доступ к изображению (eTransferWrite, eShaderWrite)
          * @param initial_stage Изначальная стадия конвейера (eTransfer, eFragmentShader)
@@ -481,7 +533,6 @@ namespace vk::utils
          * @param layer_count Кол-во слоев
          */
         void write_gen_mipmaps_commands(const vk::CommandBuffer& cmd_buffer
-                                        , const vk::Extent3D& initial_extent
                                         , const vk::ImageLayout& initial_layout
                                         , const vk::AccessFlagBits& initial_access
                                         , const vk::PipelineStageFlagBits& initial_stage
@@ -513,7 +564,7 @@ namespace vk::utils
                 {}, 0, nullptr, 0, nullptr, 1, &barrier);
 
             // Цикл по мип-уровням
-            vk::Extent2D current_extent{initial_extent.width, initial_extent.height};
+            vk::Extent2D current_extent{extent_.width, extent_.height};
             for (uint32_t mip_level = 1; mip_level < mip_levels_; ++mip_level)
             {
                 // Вычислить размеры следующего мип-уровня
@@ -610,12 +661,10 @@ namespace vk::utils
          * Генерация мип-уровней для изображения
          * @warning Изображение должно быть создано с мип-уровнями
          * @param queue_group Группа очередей устройства с поддержкой команд копирования/перемещения
-         * @param initial_extent Изначальное разрешение первого слоя
          * @param aspect Аспект изображения для разметки (цвет, глубина и прочее)
          * @param layer_count Кол-во слоев
          */
         void generate_mipmaps(Device::QueueGroup& queue_group
-                              , const vk::Extent3D& initial_extent
                               , const vk::ImageAspectFlags& aspect
                               , const uint32_t layer_count) const
         {
@@ -652,7 +701,6 @@ namespace vk::utils
 
                 // Команды генерации мип-уровней
                 write_gen_mipmaps_commands(cmd_buffer.get()
-                    , initial_extent
                     , vk::ImageLayout::eTransferDstOptimal
                     , vk::AccessFlagBits::eTransferWrite
                     , vk::PipelineStageFlagBits::eTransfer
@@ -688,7 +736,7 @@ namespace vk::utils
          * @param type Тип изображения
          * @return Соответствующий VkImageType
          */
-        [[nodiscard]] static vk::ImageType vk_image_type(const Type& type) {
+        [[nodiscard]] static constexpr  vk::ImageType vk_image_type(const Type& type) {
             switch(type){
                 case Type::e1D:{
                     return vk::ImageType::e1D;
@@ -711,7 +759,7 @@ namespace vk::utils
          * @param type Тип изображения
          * @return Соответствующий VkImageViewType
          */
-        [[nodiscard]] static vk::ImageViewType vk_image_view_type(const Type& type) {
+        [[nodiscard]] static constexpr vk::ImageViewType vk_image_view_type(const Type& type) {
             switch(type){
                 case Type::e1D:{
                     return vk::ImageViewType::e1D;
@@ -740,12 +788,16 @@ namespace vk::utils
         vk::Device vk_device_;
         /// Handle внешнего изображения
         vk::Image image_;
-        /// Представление изображения (для доступа/просмотра изображения)
-        vk::UniqueImageView image_view_;
+        /// Представление изображения (для семплирования и чтения)
+        vk::UniqueImageView sampling_view_;
+        /// Представление изображения (для записи шейдера)
+        vk::UniqueImageView render_attachment_view_;
         /// Handle собственного изображения
         vk::UniqueImage own_image_;
         /// Память собственного изображения
         vk::UniqueDeviceMemory own_image_memory_;
+        /// Разрешение изображения
+        vk::Extent3D extent_;
         /// Количество мип-уровней
         uint32_t mip_levels_;
     };

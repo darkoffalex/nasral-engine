@@ -223,6 +223,18 @@ namespace vk::utils
         }
 
         /**
+         * @brief Проверяет поддержку фичей tiling для формата
+         * @param format Формат
+         * @param features Флаги фичей tiling
+         * @return True, если формат поддерживает указанные фичи tiling
+         */
+        [[nodiscard]] bool supports_format_tiling_features(const ::vk::Format& format, const vk::FormatFeatureFlags& features) const
+        {
+            const auto otf = physical_device_.getFormatProperties(format).optimalTilingFeatures;
+            return static_cast<bool>(otf & features);
+        }
+
+        /**
          * @brief Проверяет принадлежность групп очередей к одному семейству
          * @param indices Индексы проверяемых групп
          * @return True, если все группы принадлежат одному семейству
@@ -467,14 +479,22 @@ namespace vk::utils
                     continue;
                 }
 
-                // Проверка поддержки descriptor indexing (для bindless дескрипторов)
-                auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT().setPNext(nullptr);
+                // Проверка расширенных фич
+                auto vulkan11_features = vk::PhysicalDeviceVulkan11Features().setPNext(nullptr);
+                auto vulkan13_features = vk::PhysicalDeviceVulkan13Features().setPNext(&vulkan11_features);
+                auto unused_attachments_features = vk::PhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT().setPNext(&vulkan13_features);
+                auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT().setPNext(&unused_attachments_features);
                 auto features2 = vk::PhysicalDeviceFeatures2().setPNext(&indexing_features);
+
                 device.getFeatures2(&features2);
                 if (!indexing_features.descriptorBindingPartiallyBound
                     || !indexing_features.descriptorBindingVariableDescriptorCount
                     || !indexing_features.runtimeDescriptorArray
-                    || !indexing_features.descriptorBindingSampledImageUpdateAfterBind){
+                    || !indexing_features.descriptorBindingSampledImageUpdateAfterBind
+                    || !vulkan11_features.shaderDrawParameters
+                    || !vulkan13_features.dynamicRendering
+                    || !vulkan13_features.synchronization2
+                    || !unused_attachments_features.dynamicRenderingUnusedAttachments){
                     continue;
                 }
 
@@ -545,8 +565,25 @@ namespace vk::utils
                     .setFillModeNonSolid(true)
                     .setIndependentBlend(true);
 
+            // Включить поддержку параметров отрисовки в шейдерах (BaseVertex, BaseInstance, DrawIndex)
+            auto vulkan11_features = vk::PhysicalDeviceVulkan11Features()
+                .setPNext(nullptr)
+                .setShaderDrawParameters(true);
+
+            // Включить поддержку динамического рендеринга (без render passes)
+            auto vulkan13_features = vk::PhysicalDeviceVulkan13Features()
+                .setPNext(&vulkan11_features)
+                .setDynamicRendering(true)
+                .setSynchronization2(true);
+
+            // Включить поддержку не используемых вложений
+            auto unused_attachments_features = vk::PhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT()
+                .setPNext(&vulkan13_features)
+                .setDynamicRenderingUnusedAttachments(true);
+
             // Включить поддержку bindless дескрипторов
             auto indexing_features = vk::PhysicalDeviceDescriptorIndexingFeaturesEXT()
+                .setPNext(&unused_attachments_features)
                 .setDescriptorBindingPartiallyBound(true)
                 .setDescriptorBindingVariableDescriptorCount(true)
                 .setRuntimeDescriptorArray(true)

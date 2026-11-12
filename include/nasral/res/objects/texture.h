@@ -29,7 +29,7 @@ namespace nasral::res
         void load() noexcept override;
 
         [[nodiscard]] const auto& vk_image() const noexcept { return image_; }
-        [[nodiscard]] auto render_handles() const {return gfx::handles::Texture{image_->image_view()};}
+        [[nodiscard]] auto render_handles() const {return gfx::handles::Texture{image_->sampling_view()};}
 
     private:
         Loader<Data>::Ptr loader_;

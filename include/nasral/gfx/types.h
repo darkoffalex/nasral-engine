@@ -15,10 +15,13 @@ namespace nasral::gfx
     constexpr uint32_t kMaxCameras = 1;
     constexpr uint32_t kMaxObjects = 1024;
     constexpr uint32_t kMaxMaterials = 128;
-    constexpr uint32_t kMaxMaterialsPerMesh = 5;
+    constexpr uint32_t kMaxScreenPasses = 8;
+    constexpr uint32_t kMaxMeshMaterials = 5;
     constexpr uint32_t kMaxLights = 64;
-    constexpr uint32_t kMaxFramesInFlight = 5;
-    constexpr uint32_t kMaxPostProcessPipelines = 5;
+    constexpr uint32_t kMaxFramesInFlight = 6;
+    constexpr uint32_t kMaxSwapChainImages = 6;
+    constexpr uint32_t kMaxRasterAttachments = 5;
+    constexpr uint32_t kMaxScreenAttachments = 2;
 
     struct Vertex
     {
@@ -33,23 +36,21 @@ namespace nasral::gfx
         std::vector<uint32_t>
     > GeometryData;
 
-    enum class UniformLayoutType : uint32_t
-    {
-        eDummy = 0,
-        eRasterization,
-        ePostProcessing,
-        eRayTracing,
-        TOTAL
-    };
-
-    enum class UniformDSetType : uint32_t
+    enum class UniformRasterDSetType : uint32_t
     {
         eViewUBO = 0,
         eObjectUBOs,
         eMaterialUBOs,
         eMaterialTextures,
         eLightUBOs,
-        eScreenFxUBO,
+        TOTAL
+    };
+
+    enum class UniformScreenDSetType : uint32_t
+    {
+        eFrameTextures = 0,
+        eViewUBO,
+        eScreenPassUBOs,
         TOTAL
     };
 
@@ -57,11 +58,11 @@ namespace nasral::gfx
     {
         eView = 0,
         eObjects,
-        eMaterialsPhong,
-        eMaterialsPBR,
+        eMaterials,
+        eScreenPasses,
         eLightSources,
         eLightSourcesActive,
-        eScreenFxSettings,
+        TOTAL
     };
 
     enum class TextureSamplerType : uint32_t
@@ -87,46 +88,48 @@ namespace nasral::gfx
         TOTAL
     };
 
-    enum class ScreenFxType : uint32_t
-    {
-        eFinal = 0,
-        eAO,
-        eBlur,
-        TOTAL
-    };
-
-    enum class ScreenFxPassType : uint32_t
-    {
-        eFinal = 0,
-        ePingPong,
-        TOTAL
-    };
-
-    enum class OffscreenTextureType : uint32_t
+    enum class FrameAttachmentType : uint32_t
     {
         eColor = 0,
-        eDepth,
+        eGeometry,
+        eMaterial,
         eNormal,
-        eEmissive,
+        eDepth,
+        eEmission,
+        eAttenuation,
+        eAO,
+        eReflections,
+        eCompositing,
+        eTemp1,
+        eTemp2,
         TOTAL
     };
 
-    enum class ScreenFxAoType : uint32_t
+    enum class ShaderProgramType : uint32_t
     {
-        eNone = 0,
-        eSSAO,
-        eGTAO,
+        eRasterization = 0,
+        eScreenPass,
+        eRaytracing,
+        eCompute,
         TOTAL
     };
 
-    enum class MaterialBaseType : uint32_t
+    enum class MaterialType : uint32_t
     {
         eDummy = 0,
-        eColored,
-        eTextured,
+        eColor,
+        eUnlit,
         ePhong,
         ePBR,
-        ePostProcessing,
+        TOTAL
+    };
+
+    enum class ScreenPassType : uint32_t
+    {
+        eCompositing,
+        eEffects,
+        eBlur,
+        eAO,
         TOTAL
     };
 
@@ -167,7 +170,7 @@ namespace nasral::gfx
 
     namespace handles
     {
-        struct Material
+        struct ShaderProgram
         {
             vk::Pipeline pipeline = VK_NULL_HANDLE;
             [[nodiscard]] explicit operator bool() const noexcept{
@@ -195,7 +198,7 @@ namespace nasral::gfx
             vk::Buffer vertex_buffer = VK_NULL_HANDLE;
             vk::Buffer index_buffer = VK_NULL_HANDLE;
             vk::DeviceAddress blas_device_address = 0;
-            std::array<Surface, kMaxMaterialsPerMesh> surfaces = {};
+            std::array<Surface, kMaxMeshMaterials> surfaces = {};
             uint32_t surfaces_count = 0;
 
             [[nodiscard]] explicit operator bool() const noexcept{
@@ -227,6 +230,7 @@ namespace nasral::gfx
             glm::vec4 ambient = glm::vec4(0.05f);
             glm::float32 shininess = 32.0f;
             glm::float32 specular = 1.0f;
+            glm::float32 normal_mul = 1.0f;
         };
 
         struct MaterialPbr
@@ -236,6 +240,7 @@ namespace nasral::gfx
             glm::float32 metallic = 0.0f;
             glm::float32 ao = 1.0f;
             glm::float32 emission = 0.0f;
+            glm::float32 normal_mul = 1.0f;
         };
 
         using Material = std::variant<MaterialPhong, MaterialPbr>;
@@ -258,24 +263,36 @@ namespace nasral::gfx
             glm::uint32 indices[kMaxLights]{};
         };
 
-        struct ScreenFxSettings
+        struct ScreenPassAo
         {
-            glm::uint32 ao_type = 0;
-            glm::float32 ao_radius = 0.3f;
-            glm::float32 ao_bias = 0.02f;
-            glm::float32 ao_multiplier = 1.0f;
-            glm::float32 ao_power_pre = 1.0f;
-            glm::float32 ao_power_post = 1.0f;
-            glm::uint32 blur_samples = 16;
-            glm::float32 blur_base_tex_radius = 2.0f;
-            glm::float32 blur_base_kernel_radius = 6.0f;
+            glm::uint32 type = 0;
+            glm::uint32 samples = 16;
+            glm::float32 radius = 0.3f;
+            glm::float32 bias = 0.02f;
+            glm::float32 multiplier = 1.0f;
+            glm::float32 power = 1.0f;
+        };
+
+        struct ScreenPassBlur
+        {
+            glm::uint32 pass_index = 0;
+            glm::uint32 samples = 16;
+            glm::float32 base_tex_radius = 1.0f;
+            glm::float32 base_kernel_radius = 6.0f;
+            glm::vec2 direction = {0.0f, 1.0f};
+        };
+
+        struct ScreenPassCompositing
+        {
             glm::float32 bloom_blur_lod = 2.5f;
             glm::float32 bloom_intensity = 1.0f;
             glm::float32 gamma = 2.2f;
+            glm::float32 exposure = 1.0f;
         };
 
+        using ScreenPass = std::variant<ScreenPassAo, ScreenPassBlur, ScreenPassCompositing>;
+
         static_assert(sizeof(Camera) % 16 == 0, "Camera size must be multiple of 16 bytes");
-        static_assert(sizeof(ScreenFxSettings) % 16 == 0, "ScreenFxSettings size must be multiple of 16 bytes");
     }
 
     struct TextureBindingInfo
@@ -289,8 +306,8 @@ namespace nasral::gfx
     {
         UniqueId unique_id = {};
         std::string name = {};
-        MaterialBaseType base_material_type = MaterialBaseType::eDummy;
-        std::string base_material_path = {};
+        MaterialType type = MaterialType::eDummy;
+        std::string shader_program_path = {};
         EnumArray<TextureType, std::string> texture_paths;
         EnumArray<TextureType, TextureSamplerType> texture_samplers;
 
@@ -300,6 +317,7 @@ namespace nasral::gfx
             glm::vec4 ambient = glm::vec4(0.05f);
             glm::float32 shininess = 32.0f;
             glm::float32 specular = 1.0f;
+            glm::float32 normal_mul = 1.0f;
         } phong_settings = {};
 
         struct
@@ -309,14 +327,47 @@ namespace nasral::gfx
             glm::float32 metallic = 0.0f;
             glm::float32 ao = 1.0f;
             glm::float32 emission = 0.0f;
+            glm::float32 normal_mul = 1.0f;
         } pbr_settings = {};
     };
 
-    struct ScreenFxDesc
+    struct ScreenPassDesc
     {
         UniqueId unique_id = {};
         std::string name = {};
-        EnumArray<ScreenFxType, std::string> material_paths;
+        ScreenPassType type = ScreenPassType::eCompositing;
+        std::vector<FrameAttachmentType> input_attachments = {};
+        std::vector<FrameAttachmentType> output_attachments = {};
+        std::optional<UniqueId> previous = {};
+        std::optional<UniqueId> next = {};
+        std::string shader_program_path = {};
+
+        struct
+        {
+            glm::uint32 type = 0;
+            glm::uint32 samples = 16;
+            glm::float32 radius = 0.3f;
+            glm::float32 bias = 0.02f;
+            glm::float32 multiplier = 1.0f;
+            glm::float32 power = 1.0f;
+        } ao_settings;
+
+        struct
+        {
+            glm::uint32 pass_index = 0;
+            glm::uint32 samples = 16;
+            glm::float32 base_tex_radius = 1.0f;
+            glm::float32 base_kernel_radius = 6.0f;
+            glm::vec2 direction = {0.0f, 1.0f};
+        } blur_settings;
+
+        struct
+        {
+            glm::float32 bloom_blur_lod = 2.5f;
+            glm::float32 bloom_intensity = 1.0f;
+            glm::float32 gamma = 2.2f;
+            glm::float32 exposure = 1.0f;
+        } compositing_settings;
     };
 
     struct TlasInstanceDesc

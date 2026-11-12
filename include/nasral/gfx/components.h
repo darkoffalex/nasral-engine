@@ -6,27 +6,34 @@ namespace nasral::gfx
 {
     struct RenderComponent{};
 
-    struct ScreenFxHandlesComponent
+    struct ShaderHandlesComponent
     {
-        EnumArray<ScreenFxType, handles::Material> materials = {};
+        handles::ShaderProgram shader_program = {};
     };
 
-    struct MaterialHandlesComponent
+    struct TextureHandlesComponent
     {
-        handles::Material material = {};
         EnumArray<TextureType, handles::Texture> textures = {};
-    };
-
-    struct MaterialSettingsComponent
-    {
-        MaterialBaseType base_type = MaterialBaseType::eDummy;
-        uniforms::Material uniforms = {};
-        EnumArray<TextureType, TextureSamplerType> samplers = {};
     };
 
     struct MeshHandlesComponent
     {
         handles::Mesh mesh = {};
+    };
+
+    struct MaterialComponent
+    {
+        MaterialType type = MaterialType::eDummy;
+        uniforms::Material uniforms = {};
+        EnumArray<TextureType, TextureSamplerType> samplers = {};
+    };
+
+    struct ScreenPassComponent
+    {
+        ScreenPassType type = ScreenPassType::eCompositing;
+        uniforms::ScreenPass uniforms = {};
+        EnumMask<FrameAttachmentType> input_attachments = {};
+        EnumMask<FrameAttachmentType> output_attachments = {};
     };
 
     struct UniformIndexComponent

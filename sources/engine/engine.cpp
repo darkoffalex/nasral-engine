@@ -13,20 +13,28 @@ namespace nasral
 
                     if constexpr (std::is_same_v<SubsystemPtr, log::Logger::Ptr>) {
                         s = std::make_unique<log::Logger>(this, config.log);
+                        std::get<log::Logger*>(subsystems_finalizing_) = s.get();
                     } else if constexpr (std::is_same_v<SubsystemPtr, evt::Manager::Ptr>) {
                         s = std::make_unique<evt::Manager>(this);
+                        std::get<evt::Manager*>(subsystems_finalizing_) = s.get();
                     } else if constexpr (std::is_same_v<SubsystemPtr, run::Manager::Ptr>) {
                         s = std::make_unique<run::Manager>(this, config.run);
+                        std::get<run::Manager*>(subsystems_finalizing_) = s.get();
                     } else if constexpr (std::is_same_v<SubsystemPtr, ecs::Manager::Ptr>) {
                         s = std::make_unique<ecs::Manager>(this, config.ecs);
+                        std::get<ecs::Manager*>(subsystems_finalizing_) = s.get();
                     } else if constexpr (std::is_same_v<SubsystemPtr, gfx::Manager::Ptr>) {
                         s = std::make_unique<gfx::Manager>(this, config.gfx);
+                        std::get<gfx::Manager*>(subsystems_finalizing_) = s.get();
                     } else if constexpr (std::is_same_v<SubsystemPtr, res::Manager::Ptr>) {
                         s = std::make_unique<res::Manager>(this, config.res);
+                        std::get<res::Manager*>(subsystems_finalizing_) = s.get();
                     } else if constexpr (std::is_same_v<SubsystemPtr, scn::Manager::Ptr>) {
                         s = std::make_unique<scn::Manager>(this, config.scn);
+                        std::get<scn::Manager*>(subsystems_finalizing_) = s.get();
                     } else if constexpr (std::is_same_v<SubsystemPtr, inp::Manager::Ptr>) {
                         s = std::make_unique<inp::Manager>(this, config.inp);
+                        std::get<inp::Manager*>(subsystems_finalizing_) = s.get();
                     }
                     if (s) {
                         s->init();
@@ -59,7 +67,7 @@ namespace nasral
         // - Финализация подсистемы
         // - Отложенные действия подсистемы
         // - (Опционально) Синхронизация ECS, если текущая система не является ECS.
-        apply_reverse([&](auto&&... systems){
+        std::apply([&](auto&&... systems) {
             (..., (void)[&](auto* s) {
                 using SubsystemType = std::remove_pointer_t<decltype(s)>;
 
@@ -72,8 +80,8 @@ namespace nasral
                 if constexpr (!std::is_same_v<SubsystemType, ecs::Manager>){
                     ecs()->apply_deferred();
                 }
-            }(systems.get()));
-        }, subsystems_);
+            }(systems));
+        }, subsystems_finalizing_);
     }
 
     void Engine::update([[maybe_unused]] const float delta)

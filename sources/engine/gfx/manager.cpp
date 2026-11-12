@@ -1,99 +1,92 @@
 #include "pch.h"
 #include <nasral/gfx/manager.h>
 #include <nasral/gfx/utils.h>
+#include <nasral/gfx/entities/material.h>
+#include <nasral/gfx/entities/screen_pass.h>
 #include <nasral/evt/utils.h>
 #include <nasral/res/objects/project.h>
 #include <nasral/inp/provider.h>
+#include <nasral/ecs/view.h>
 #include <nasral/engine.h>
 
 namespace nasral::gfx
 {
-    Manager::Manager(Engine* e, const Config& config)
+    Manager::Manager(Engine *e, const Config &config)
         : Subsystem(e, config)
         , renderer_(std::make_unique<Renderer>(e, config))
+        , ecs_system_(std::make_unique<System>(this))
         , object_ubo_ids_(kMaxObjects)
         , material_ubo_ids_(kMaxMaterials)
+        , screen_pass_ubo_ids_(kMaxScreenPasses)
         , light_ubo_ids_(kMaxLights)
-        , screen_fx_materials_({})
-        , ecs_system_(std::make_unique<System>(this))
     {
         log_info("Initializing manager...");
     }
 
-    Manager::~Manager(){
+    Manager::~Manager() {
         log_info("Manager destroyed");
     }
 
-    void Manager::remove_material(const UniqueId& id)
+    void Manager::on_init()
     {
-        materials_.erase(std::remove_if(materials_.begin(), materials_.end(), [&](const auto& mat) {
-            return mat->data_view().uid == id;
-        }), materials_.end());
+        // Зарезервировать память для идентификаторов источников света
+        light_active_ids_.resize(kMaxLights);
+        light_states_.resize(kMaxLights);
+
+        // Слушать событие формирования списка ресурсов
+        evl_res_reg_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eResourceRegistryChanged,
+            evt::bind(this, &Manager::on_res_registry_changed));
+
+        // Слушать событие изменения поверхности отображения
+        evl_sfc_chg_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eDisplaySurfaceChanged,
+            evt::bind(this, &Manager::on_display_surface_changed));
     }
 
-    void Manager::remove_material(const ecs::EntityId& id)
+    void Manager::on_update(const float delta) const
     {
-        materials_.erase(std::remove_if(materials_.begin(), materials_.end(), [&](const auto& mat) {
-            return mat->entity() == id;
-        }), materials_.end());
+        if (engine()->run()->state().has_no(run::StateFlags::eRunning))
+            return;
+
+        ecs_system_->update(delta);
     }
 
-    MaterialInstance* Manager::find_material(const UniqueId& id) const
-    {
-        for (const auto& mat : materials_){
-            if (mat->data_view().uid == id){
-                return mat.get();
-            }
-        }
-        return nullptr;
+    void Manager::on_finalize() {
+        // Сброс слушателей события
+        evl_res_reg_.reset();
+        evl_sfc_chg_.reset();
+
+        // Очистка материалов и экранных проходов
+        clear_materials();
+        clear_screen_passes();
+
+        // Финализация ECS
+        ecs_system_->finalize();
+        log_info("Manager finalized");
     }
 
-    MaterialInstance* Manager::find_material(const ecs::EntityId& id) const
+    void Manager::on_render() const
     {
-        for (const auto& mat : materials_){
-            if (mat->entity() == id){
-                return mat.get();
-            }
-        }
-        return nullptr;
+        if (!renderer()->is_active())
+            return;
+
+        if (engine()->run()->state().has_no(run::StateFlags::eRunning))
+            return;
+
+        // Начало кадра
+        renderer()->cmd_begin_frame();
+
+        // ECS-система рисует сцену
+        ecs_system_->render();
+
+        // Завершение кадра, показ результата
+        renderer()->cmd_end_frame();
     }
 
-    void Manager::remove_screen_fx(const UniqueId& id)
-    {
-        screen_fxs_.erase(std::remove_if(screen_fxs_.begin(), screen_fxs_.end(), [&](const auto& pp) {
-            return pp->data_view().uid == id;
-        }), screen_fxs_.end());
-    }
-
-    void Manager::remove_screen_fx(const ecs::EntityId& id)
-    {
-        screen_fxs_.erase(std::remove_if(screen_fxs_.begin(), screen_fxs_.end(), [&](const auto& pp) {
-            return pp->entity() == id;
-        }), screen_fxs_.end());
-    }
-
-    ScreenFx* Manager::find_screen_fx(const UniqueId& id) const
-    {
-        for (const auto& pp : screen_fxs_){
-            if (pp->data_view().uid == id){
-                return pp.get();
-            }
-        }
-        return nullptr;
-    }
-
-    ScreenFx* Manager::find_screen_fx(const ecs::EntityId& id) const
-    {
-        for (const auto& pp : screen_fxs_){
-            if (pp->entity() == id){
-                return pp.get();
-            }
-        }
-        return nullptr;
-    }
-
-    void Manager::update_cam_uniforms(const uniforms::Camera& uniforms, const uint32_t index) const
-    {
+    void Manager::update_cam_uniforms(const uniforms::Camera &uniforms, const uint32_t index) const {
         const auto& pd = renderer()->vk_device().physical_device();
         const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eView);
         assert(ubo.is_mapped());
@@ -104,8 +97,7 @@ namespace nasral::gfx
             &uniforms);
     }
 
-    void Manager::update_obj_uniforms(const uniforms::Object& uniforms, const uint32_t index) const
-    {
+    void Manager::update_obj_uniforms(const uniforms::Object &uniforms, const uint32_t index) const {
         const auto& pd = renderer()->vk_device().physical_device();
         const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eObjects);
         assert(ubo.is_mapped());
@@ -116,34 +108,20 @@ namespace nasral::gfx
             &uniforms);
     }
 
-    void Manager::update_mat_uniforms(const uniforms::MaterialPhong& uniforms, const uint32_t index) const
-    {
+    void Manager::update_mat_uniforms(const uniforms::Material &uniforms, const uint32_t index) const {
         const auto& pd = renderer()->vk_device().physical_device();
-        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eMaterialsPhong);
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eMaterials);
         assert(ubo.is_mapped());
 
         ubo.update_mapped(
-            sbo_offset<uniforms::MaterialPhong>(pd, index),
-            aligned_sbo<uniforms::MaterialPhong>(pd),
+            sbo_offset<biggest_of_t<uniforms::Material>>(pd, index),
+            aligned_sbo<biggest_of_t<uniforms::Material>>(pd),
             &uniforms);
     }
 
-    void Manager::update_mat_uniforms(const uniforms::MaterialPbr& uniforms, const uint32_t index) const
-    {
-        const auto& pd = renderer()->vk_device().physical_device();
-        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eMaterialsPBR);
-        assert(ubo.is_mapped());
-
-        ubo.update_mapped(
-            sbo_offset<uniforms::MaterialPbr>(pd, index),
-            aligned_sbo<uniforms::MaterialPbr>(pd),
-            &uniforms);
-    }
-
-    void Manager::update_mat_textures(const TextureBindingInfo& info, const uint32_t index) const
-    {
+    void Manager::update_mat_textures(const TextureBindingInfo &info, const uint32_t index) const {
         const auto& ld = renderer()->vk_device().logical_device();
-        const auto& ds = renderer()->vk_rasterization_d_set(UniformDSetType::eMaterialTextures);
+        const auto& ds = renderer()->vk_rasterization_d_set(UniformRasterDSetType::eMaterialTextures);
         const auto& ts = renderer()->vk_texture_sampler(info.sampler_type);
 
         assert(index < kMaxMaterials);
@@ -165,8 +143,18 @@ namespace nasral::gfx
         ld.updateDescriptorSets({write}, {});
     }
 
-    void Manager::update_light_uniforms(const uniforms::LightSettings& uniforms, const uint32_t index) const
-    {
+    void Manager::update_screen_pass_uniforms(const uniforms::ScreenPass &uniforms, const uint32_t index) const {
+        const auto& pd = renderer()->vk_device().physical_device();
+        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eScreenPasses);
+        assert(ubo.is_mapped());
+
+        ubo.update_mapped(
+            sbo_offset<biggest_of_t<uniforms::ScreenPass>>(pd, index),
+            aligned_sbo<biggest_of_t<uniforms::ScreenPass>>(pd),
+            &uniforms);
+    }
+
+    void Manager::update_light_uniforms(const uniforms::LightSettings &uniforms, const uint32_t index) const {
         const auto& pd = renderer()->vk_device().physical_device();
         const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eLightSources);
         assert(ubo.is_mapped());
@@ -177,8 +165,7 @@ namespace nasral::gfx
             &uniforms);
     }
 
-    void Manager::update_light_states_unsafe(const std::vector<uint32_t>& ids, const bool active)
-    {
+    void Manager::update_light_states_unsafe(const std::vector<uint32_t> &ids, const bool active) {
         const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eLightSourcesActive);
         assert(ubo.is_mapped());
 
@@ -205,22 +192,9 @@ namespace nasral::gfx
         std::memcpy(pids->indices, light_active_ids_.data(), light_active_ids_.size() * sizeof(uint32_t));
     }
 
-    void Manager::update_light_states(const std::vector<uint32_t>& ids, const bool active)
-    {
+    void Manager::update_light_states(const std::vector<uint32_t> &ids, const bool active) {
         std::lock_guard lock(light_ids_mutex_);
         update_light_states_unsafe(ids, active);
-    }
-
-    void Manager::update_screen_fx_uniforms(const uniforms::ScreenFxSettings& uniforms) const
-    {
-        const auto& pd = renderer()->vk_device().physical_device();
-        const auto& ubo = renderer()->vk_uniform_buffer(UniformBufferType::eScreenFxSettings);
-        assert(ubo.is_mapped());
-
-        ubo.update_mapped(
-            ubo_offset<uniforms::ScreenFxSettings>(pd, 0),
-            aligned_ubo<uniforms::ScreenFxSettings>(pd),
-            &uniforms);
     }
 
     void Manager::update_tlas_instance(const TlasInstanceDesc& desc, const uint32_t index) const
@@ -261,6 +235,11 @@ namespace nasral::gfx
         return material_ubo_ids_.acquire();
     }
 
+    uint32_t Manager::acquire_screen_pass_id()
+    {
+        return screen_pass_ubo_ids_.acquire();
+    }
+
     uint32_t Manager::acquire_light_id()
     {
         return light_ubo_ids_.acquire();
@@ -274,6 +253,11 @@ namespace nasral::gfx
     size_t Manager::acquired_materials_count() const
     {
         return material_ubo_ids_.acquired_count();
+    }
+
+    size_t Manager::acquired_screen_passes_count() const
+    {
+        return screen_pass_ubo_ids_.acquired_count();
     }
 
     size_t Manager::acquired_lights_count() const
@@ -292,12 +276,137 @@ namespace nasral::gfx
         material_ubo_ids_.release(id);
     }
 
+    void Manager::release_screen_pass_id(const uint32_t id)
+    {
+        screen_pass_ubo_ids_.release(id);
+    }
+
     void Manager::release_light_id(const uint32_t id)
     {
         light_ubo_ids_.release(id);
     }
 
-    void Manager::on_res_registry_changed(const evt::Arg& arg)
+    ecs::EntityId Manager::add_material(const MaterialDesc &desc) {
+        auto* ecs = engine()->ecs();
+        const auto entity = ecs->spawn();
+        MaterialView::setup(ecs, entity, desc);
+        materials_.emplace_back(entity);
+        return entity;
+    }
+
+    ecs::EntityId Manager::find_material(const UniqueId &id) const {
+        for (auto e : materials_) {
+            if (auto node = engine()->ecs()->as_view<MaterialView>(e); node.has_value()) {
+                if (node->uid() == id) {
+                    return node->id();
+                }
+            }
+        }
+        return ecs::EntityId::invalid();
+    }
+
+    void Manager::remove_material(const ecs::EntityId &id) {
+        materials_.erase(std::remove_if(materials_.begin(), materials_.end(), [&](const auto& n){
+            return n == id;
+        }), materials_.end());
+
+        engine()->ecs()->add_components<ecs::DestroyComponent>(id, {});
+    }
+
+    void Manager::remove_material(const UniqueId &id) {
+        const auto to_erase = std::remove_if(materials_.begin(), materials_.end(), [&](const auto& n){
+            auto node = engine()->ecs()->as_view<MaterialView>(n);
+            return node.has_value() && node->uid() == id;
+        });
+        materials_.erase(to_erase, materials_.end());
+        engine()->ecs()->add_components<ecs::DestroyComponent>(*to_erase, {});
+    }
+
+    void Manager::clear_materials() {
+        for (auto e : materials_) {
+            if (auto node = engine()->ecs()->as_view<MaterialView>(e); node.has_value()) {
+                node->destroy(true);
+            }
+        }
+        materials_.clear();
+    }
+
+    ecs::EntityId Manager::add_screen_pass(const ScreenPassDesc &desc) {
+        auto* ecs = engine()->ecs();
+        const auto entity = ecs->spawn();
+        ScreenPassView::setup(ecs, entity, desc);
+        screen_passes_.emplace_back(entity);
+        return entity;
+    }
+
+    ecs::EntityId Manager::find_screen_pass(const UniqueId &id) const {
+        for (auto e : screen_passes_) {
+            if (auto node = engine()->ecs()->as_view<ScreenPassView>(e); node.has_value()) {
+                if (node->uid() == id) {
+                    return node->id();
+                }
+            }
+        }
+        return ecs::EntityId::invalid();
+    }
+
+    ecs::EntityId Manager::find_first_screen_pass() const
+    {
+        // Алиасы компонентов
+        using ScreenPass  = ScreenPassComponent;
+        using Next        = ecs::NextComponent;
+        using Prev        = ecs::PrevComponent;
+        using Dirty       = ecs::DirtyStateComponent;
+
+        // Для ситуации кода походов больше одного - первый тот, у которого есть следующий но нет предыдущего
+        {
+            const auto screen_pass = engine()->ecs()->view<
+                ScreenPass,
+                Next>(ecs::kMaskOf<Prev, Dirty>).begin();
+
+            if (screen_pass) {
+                auto&& [e, sp, next] = *screen_pass;
+                return e;
+            }
+        }
+
+
+        // Если проход один - у него нет ни предыдущего ни следующего
+        const auto screen_pass = engine()->ecs()->view<
+            ScreenPass>(ecs::kMaskOf<Next, Prev, Dirty>).begin();
+
+        if (!screen_pass) return ecs::EntityId::invalid();
+        auto&& [e, sp] = *screen_pass;
+        return e;
+    }
+
+    void Manager::remove_screen_pass(const ecs::EntityId &id) {
+        screen_passes_.erase(std::remove_if(screen_passes_.begin(), screen_passes_.end(), [&](const auto& n){
+            return n == id;
+        }), screen_passes_.end());
+
+        engine()->ecs()->add_components<ecs::DestroyComponent>(id, {});
+    }
+
+    void Manager::remove_screen_pass(const UniqueId &id) {
+        const auto to_erase = std::remove_if(screen_passes_.begin(), screen_passes_.end(), [&](const auto& n){
+            auto node = engine()->ecs()->as_view<ScreenPassView>(n);
+            return node.has_value() && node->uid() == id;
+        });
+        screen_passes_.erase(to_erase, screen_passes_.end());
+        engine()->ecs()->add_components<ecs::DestroyComponent>(*to_erase, {});
+    }
+
+    void Manager::clear_screen_passes() {
+        for (auto e : screen_passes_) {
+            if (auto node = engine()->ecs()->as_view<ScreenPassView>(e); node.has_value()) {
+                node->destroy(true);
+            }
+        }
+        screen_passes_.clear();
+    }
+
+    void Manager::on_res_registry_changed(const evt::Arg &arg)
     {
         const auto reason = evt::from_arg<evt::ChangeReason>(arg);
 
@@ -313,12 +422,12 @@ namespace nasral::gfx
 
             // Сформировать список материалов растеризации
             for (const auto& mat_desc : proj->materials()){
-                materials_.emplace_back(MaterialInstance::Ptr(new MaterialInstance(this, mat_desc)));
+                add_material(mat_desc);
             }
 
             // Сформировать список эффектов экрана
-            for (const auto& pp_desc : proj->screen_effects()){
-                screen_fxs_.emplace_back(ScreenFx::Ptr(new ScreenFx(this, pp_desc)));
+            for (const auto& sp_desc : proj->screen_passes()){
+                add_screen_pass(sp_desc);
             }
 
             // Список материалов готов
@@ -328,143 +437,8 @@ namespace nasral::gfx
         }
     }
 
-    void Manager::on_display_surface_changed([[maybe_unused]] const evt::Arg& arg) const
+    void Manager::on_display_surface_changed([[maybe_unused]] const evt::Arg &arg) const
     {
-        renderer()->request_surface_refresh();
-    }
-
-    void Manager::on_screen_fx_changed(const evt::Arg& arg)
-    {
-        // Эффект задан
-        if (const auto scr_fx_id = evt::from_arg<UniqueId>(arg); scr_fx_id.has_value()){
-            const auto* screen_fx = find_screen_fx(scr_fx_id.value());
-            screen_fx_materials_ = screen_fx->data_view().materials;
-        }
-        // Эффект сброшен
-        else{
-            screen_fx_materials_ = {};
-        }
-    }
-
-    /******************************************************************************************************************/
-
-    void Manager::on_init()
-    {
-        light_active_ids_.resize(kMaxLights);
-        light_states_.resize(kMaxLights);
-
-        // Слушать событие формирования списка ресурсов
-        evl_res_reg_ = evt::Listener::reg(
-            engine()->events(),
-            evt::Type::eResourceRegistryChanged,
-            evt::bind(this, &Manager::on_res_registry_changed));
-
-        // Слушать событие изменения поверхности отображения
-        evl_sfc_chg_ = evt::Listener::reg(
-            engine()->events(),
-            evt::Type::eDisplaySurfaceChanged,
-            evt::bind(this, &Manager::on_display_surface_changed));
-
-        // Слушать событие изменения экранного эффекта
-        evl_sfx_chg_ = evt::Listener::reg(
-            engine()->events(),
-            evt::Type::eScreenFxChanged,
-            evt::bind(this, &Manager::on_screen_fx_changed));
-
-        // Инициализация ECS системы
-        ecs_system_->init();
-
-        log_info("Manager initialized");
-    }
-
-    void Manager::on_update([[maybe_unused]] const float delta)
-    {
-        // Обновление ECS системы
-        ecs_system_->update(delta);
-
-        if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e0)){
-            ao_type_ = 0;
-        }else if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e1)){
-            ao_type_ = 1;
-        }
-    }
-
-    void Manager::on_finalize()
-    {
-        // Отписаться от событий
-        evl_res_reg_.reset();
-        evl_sfc_chg_.reset();
-
-        // Уничтожение регистров материалов и эффектов экрана
-        materials_.clear();
-        screen_fxs_.clear();
-
-        // Финализация ECS системы
-        ecs_system_->finalize();
-
-        // Уничтожение рендерера
-        renderer_->cmd_wait_for_all();
-        renderer_.reset();
-
-        log_info("Manager finalized");
-    }
-
-    void Manager::on_render()
-    {
-        if (!renderer()->is_active()) return;
-        if (engine()->run()->state().has_no(run::StateFlags::eRunning)) return;
-
-        // Начало кадра
-        renderer()->cmd_begin_frame();
-
-        // Проход растеризации
-        renderer()->cmd_begin_rasterization_pass();
-        ecs_system()->render();
-        renderer()->cmd_end_render_pass();
-
-        // Генерация мип-уровней для кадровых буферов
-        renderer()->cmd_gen_framebuffer_mipmaps(OffscreenTextureType::eEmissive);
-
-        // Если нужно перестроить/обновить TLAS
-        if (renderer()->is_tlas_dirty(true)){
-            renderer()->cmd_build_tlas(object_ubo_ids_.acquired_count(), true);
-        }
-
-        // Проход AO
-        if (screen_fx_materials_[ScreenFxType::eAO])
-        {
-            // Начать проход для нулевого буфера (ping)
-            renderer()->cmd_begin_screen_fx_ping_pong_pass(0);
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eAO], false);
-            renderer()->cmd_draw_post_processing_quad(ao_type_);
-            renderer()->cmd_end_render_pass();
-        }
-
-        // Проход размытия (для AO, теней)
-        if (screen_fx_materials_[ScreenFxType::eBlur])
-        {
-            // 1. Размытие по горизонтали, пишем в буфер 1 (pong)
-            renderer()->cmd_begin_screen_fx_ping_pong_pass(1);
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur], false);
-            renderer()->cmd_draw_post_processing_quad(0);
-            renderer()->cmd_end_render_pass();
-
-            // 2. Размытие по вертикали, пишем в буфер 0 (ping)
-            renderer()->cmd_begin_screen_fx_ping_pong_pass(0);
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eBlur], false);
-            renderer()->cmd_draw_post_processing_quad(1);
-            renderer()->cmd_end_render_pass();
-        }
-
-        // Финальная пост-обработка, используем буфер 0 (ping)
-        renderer()->cmd_begin_screen_fx_final_pass();
-        if (screen_fx_materials_[ScreenFxType::eFinal]){
-            renderer()->cmd_bind_post_processing_material(screen_fx_materials_[ScreenFxType::eFinal], true);
-            renderer()->cmd_draw_post_processing_quad(0);
-        }
-        renderer()->cmd_end_render_pass();
-
-        // Завершение кадра, показ результата
-        renderer()->cmd_end_frame();
+        renderer()->mark_surface_dirty();
     }
 }

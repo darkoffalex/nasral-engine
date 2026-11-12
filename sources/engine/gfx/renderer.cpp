@@ -1,5 +1,6 @@
 #include "pch.h"
 #include <nasral/gfx/renderer.h>
+#include <nasral/gfx/renderer_defs.h>
 #include <nasral/engine.h>
 #include <nasral/log/loggable.h>
 #include <nasral/gfx/utils.h>
@@ -25,11 +26,12 @@ namespace nasral::gfx
     Renderer::Renderer(Engine* e, const Config& config)
         : Subsystem(e, config)
         , is_active_(false)
-        , frame_in_progress_(false)
-        , surface_refresh_needed_(false)
+        , is_frame_started_(false)
+        , is_pass_started_(false)
+        , is_surface_dirty_(false)
         , frame_count_(0)
         , frame_index_(0)
-        , available_image_index_(0)
+        , available_sc_image_(0)
         , vk_last_rasterization_pipeline_(VK_NULL_HANDLE)
     {
         log_info("Initializing Vulkan renderer...");
@@ -50,18 +52,15 @@ namespace nasral::gfx
         const std::string device_name = vk_device_->physical_device().getProperties().deviceName;
         log_info("Vulkan: Device initialized (" + device_name + ").");
 
-        init_vk_render_passes();
-        log_info("Vulkan: Render passes initialized.");
-
         init_vk_swap_chain();
         log_info("Vulkan: Swap chain initialized.");
 
         init_vk_framebuffers();
-        const auto extent_render = vk_offscreen_framebuffers_[0]->extent();
-        const auto extent_swapchain = vk_swapchain_framebuffers_[0]->extent();
+        const auto extent_render = vk_offscreen_images_[FrameAttachmentType::eCompositing].front()->extent();
+        const auto extent_swap_chain = vk_swap_chain_images_.front()->extent();
         const std::string extent_render_str = std::to_string(extent_render.width) + "x" + std::to_string(extent_render.height);
-        const std::string extent_swapchain_str = std::to_string(extent_swapchain.width) + "x" + std::to_string(extent_swapchain.height);
-        log_info("Vulkan: Framebuffers initialized (" + extent_render_str + " -> " + extent_swapchain_str + ").");
+        const std::string extent_swap_chain_str = std::to_string(extent_swap_chain.width) + "x" + std::to_string(extent_swap_chain.height);
+        log_info("Vulkan: Framebuffers initialized (" + extent_render_str + " -> " + extent_swap_chain_str + ").");
 
         init_vk_uniform_layouts();
         log_info("Vulkan: Uniform layouts initialized.");
@@ -77,9 +76,6 @@ namespace nasral::gfx
 
         init_vk_framebuffer_bindings();
         log_info("Vulkan: Framebuffer attachments bound to post-processing descriptor sets.");
-
-        init_vk_tlas_rq_bindings();
-        log_info("Vulkan: TLAS attachments bound to ray tracing descriptor sets (ray query).");
 
         init_vk_command_buffers();
         log_info("Vulkan: Command buffers initialized.");
@@ -103,222 +99,482 @@ namespace nasral::gfx
 
     void Renderer::cmd_begin_frame()
     {
-        if (surface_refresh_needed_.exchange(false, std::memory_order_acquire)){
+        // Если поверхность отображения изменилась
+        if (is_surface_dirty_.exchange(false, std::memory_order_acquire)){
             refresh_vk_surface();
         }
+
         if (!is_active()) return;
 
-        assert(!frame_in_progress_ && "Frame already in progress");
-        frame_in_progress_ = true;
+        assert(!is_frame_started_ && "Frame already in progress");
+
+        // Берем ссылки на ресурсы текущего кадра в полете
+        const auto current_frame = frame_index();
+        const auto& frame_fence = vk_frame_fence_[current_frame].get();
+        const auto& render_semaphore = vk_render_available_semaphore_[current_frame].get();
+
+        // 1. Сначала СТРОГО дожидаемся, пока GPU завершит работу с ресурсами ЭТОГО фрейма
+        (void)vk_device_->logical_device().waitForFences(1u, &frame_fence, VK_TRUE, std::numeric_limits<uint64_t>::max());
+
+        // 2. Сбрасываем кэш пайплайна
         vk_last_rasterization_pipeline_ = VK_NULL_HANDLE;
 
-        // Ожидание забора кадра
-        (void)vk_device_->logical_device().waitForFences(1u, &vk_frame_fence_[frame()].get(), VK_TRUE, std::numeric_limits<uint64_t>::max());
-        (void)vk_device_->logical_device().resetFences(1u, &vk_frame_fence_[frame()].get());
+        // 3. Пытаемся получить картинку из swap chain ДО СБРОСА ФЕНСА
+        try {
+            const auto result = vk_device_->logical_device().acquireNextImageKHR(
+                vk_swap_chain_.get(),
+                std::numeric_limits<uint64_t>::max(),
+                render_semaphore,
+                VK_NULL_HANDLE,
+                &available_sc_image_
+            );
 
-        // Получить свободный Swapchain image
-        const auto result = vk_device_->logical_device().acquireNextImageKHR(
-            vk_swap_chain_.get(),
-            std::numeric_limits<uint64_t>::max(),
-            vk_render_available_semaphore_[frame()].get(),
-            VK_NULL_HANDLE,
-            &available_image_index_);
-
-        if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR) {
-            request_surface_refresh();
+            if (result == vk::Result::eSuboptimalKHR) {
+                mark_surface_dirty();
+            }
+        }
+        catch (const ::vk::OutOfDateKHRError&) {
+            mark_surface_dirty();
             return;
         }
 
-        // Открываем командный буфер для записи
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-        cmd_buffer->reset();
-        cmd_buffer->begin(vk::CommandBufferBeginInfo());
+        // 4. Точка невозврата: кадр успешно начат, сбрасываем фенс
+        is_frame_started_ = true;
+        (void)vk_device_->logical_device().resetFences(1u, &frame_fence);
+
+        // 5. Открываем командный буфер
+        vk_command_buffer().reset();
+        vk_command_buffer().begin(vk::CommandBufferBeginInfo());
     }
 
     void Renderer::cmd_end_frame()
     {
-        if (!ready_for_commands()) return;
+        ENSURE_COMMANDS
+        const auto current_frame = frame_index();
 
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-        cmd_buffer->end(); // Закрываем командный буфер
+        // Закрываем командный буфер
+        vk_command_buffer().end();
 
-        // Один submit отправляет ВСЕ команды на GPU
-        std::array<vk::Semaphore, 1> wait_semaphores{ vk_render_available_semaphore_[frame()].get() };
-        std::array<vk::Semaphore, 1> signal_semaphores{ vk_render_finished_semaphore_[available_image_index_].get() };
+        // wait_semaphores индексируется по current_frame (освобождается по завершении submit, что гарантируется frame_fence)
+        // signal_semaphores индексируется по available_sc_image_ (освобождается при повторном acquire этой же картинки)
+        std::array<vk::Semaphore, 1> wait_semaphores{ vk_render_available_semaphore_[current_frame].get() };
+        std::array<vk::Semaphore, 1> signal_semaphores{ vk_render_finished_semaphore_[available_sc_image_].get() };
         std::array<vk::PipelineStageFlags, 1> wait_stages{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
 
+        // Получить очередь команд
         const auto& group = vk_device_->queue_group(static_cast<size_t>(CmdGroupType::eGraphicsAndPresent));
-        auto& queue = group.queues[0];
+        auto& queue = group.queues.front();
 
+        // Отправка команд текущего кадра на GPU
         try
         {
             queue.submit(vk::SubmitInfo()
-                .setCommandBuffers(cmd_buffer.get())
+                .setCommandBuffers(vk_command_buffer())
                 .setWaitSemaphores(wait_semaphores)
                 .setWaitDstStageMask(wait_stages)
                 .setSignalSemaphores(signal_semaphores),
-                vk_frame_fence_[frame()].get());
+                vk_frame_fence_[current_frame].get());
         }
         catch (const ::vk::Error& e)
         {
             log_error("Vulkan: Failed to submit command buffer to queue (" + std::string(e.what()) + ")");
+            is_frame_started_ = false; // Сбрасываем флаг, так как кадр сломался
+            return;
         }
 
+        // Показ готового изображения
         try {
-            (void)queue.presentKHR(vk::PresentInfoKHR()
+            // Захватываем VkResult из презентации, так как Suboptimal не всегда генерирует Exception
+            const vk::Result present_result = queue.presentKHR(vk::PresentInfoKHR()
                 .setSwapchains(vk_swap_chain_.get())
                 .setWaitSemaphores(signal_semaphores)
-                .setImageIndices(available_image_index_));
+                .setImageIndices(available_sc_image_)); // Тут СТРОГО индекс картинки
+
+            if (present_result == vk::Result::eSuboptimalKHR) {
+                mark_surface_dirty();
+            }
         }
         catch (const ::vk::OutOfDateKHRError&) {
-            request_surface_refresh();
+            mark_surface_dirty();
+        }
+        catch (const ::vk::Error& e) {
+            log_error("Vulkan: Present failed (" + std::string(e.what()) + ")");
         }
 
+        // Кадр успешно завершен на стороне CPU (передан в очереди GPU)
+        is_frame_started_ = false;
+
+        // Обновляем индексы для СЛЕДУЮЩЕГО кадра
         ++frame_count_;
         frame_index_ = frame_count_ % static_cast<size_t>(config().max_frames_in_flight);
-        frame_in_progress_ = false;
     }
 
     void Renderer::cmd_begin_rasterization_pass()
     {
-        if (!ready_for_commands()){
-            return;
+        ENSURE_COMMANDS
+        ENSURE_NO_PASS
+
+        const auto extent = rendering_resolution();
+
+        constexpr std::array color_types{
+            FrameAttachmentType::eColor,
+            FrameAttachmentType::eNormal,
+            FrameAttachmentType::eEmission
+        };
+
+        // Размещаем массив барьеров на стеке без динамических аллокаций
+        constexpr size_t kMaxBarriers = color_types.size() + 1;
+        std::array<vk::ImageMemoryBarrier2, kMaxBarriers> image_barriers{};
+        std::array<vk::RenderingAttachmentInfo, color_types.size()> color_attachments{};
+        size_t barrier_count = 0;
+
+        for (size_t i = 0; i < color_types.size(); ++i)
+        {
+            const auto type = color_types[i];
+            const auto& image = vk_offscreen_images_[type][frame_index()];
+
+            // Стадии и маски доступа теперь задаются индивидуально для каждого вложения
+            image_barriers[barrier_count++] = vk::ImageMemoryBarrier2()
+                .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+                .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+                .setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
+                .setDstAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite)
+                .setOldLayout(vk::ImageLayout::eUndefined)
+                .setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setImage(image->image())
+                .setSubresourceRange(vk::ImageSubresourceRange()
+                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                    .setBaseMipLevel(0)
+                    .setLevelCount(1)
+                    .setBaseArrayLayer(0)
+                    .setLayerCount(1));
+
+            const auto attachment_clear = type == FrameAttachmentType::eColor
+                ? as_vk_clear_color(config().clear_color)
+                : vk::ClearColorValue(0.0f, 0.0f, 0.0f, 0.0f);
+
+            color_attachments[i] = vk::RenderingAttachmentInfo()
+                .setImageView(image->render_attachment_view())
+                .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)
+                .setClearValue(vk::ClearValue(attachment_clear));
         }
 
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-        const auto& extent = vk_offscreen_framebuffers_[frame()]->extent();
+        // Барьер для вложения глубины (со своими специфичными стадиями EarlyFragmentTests)
+        const auto& depth_image = vk_offscreen_images_[FrameAttachmentType::eDepth][frame_index_];
+        image_barriers[barrier_count++] = vk::ImageMemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+            .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests)
+            .setDstAccessMask(vk::AccessFlagBits2::eDepthStencilAttachmentWrite)
+            .setOldLayout(vk::ImageLayout::eUndefined)
+            .setNewLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setImage(depth_image->image())
+            .setSubresourceRange(vk::ImageSubresourceRange()
+                .setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
+                .setBaseMipLevel(0)
+                .setLevelCount(1)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1));
 
-        // Цвет и глубина/трафарет очистки
-        std::array<vk::ClearValue, 4> clear_values{};
-        clear_values[0].color = vk::ClearColorValue(config().clear_color.r, config().clear_color.g, config().clear_color.b, config().clear_color.a);
-        clear_values[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
-        clear_values[2].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-        clear_values[3].color = vk::ClearColorValue(1.0f, 1.0f, 1.0f, 1.0f);
+        // Единый вызов pipelineBarrier2 через DependencyInfo
+        vk_command_buffer().pipelineBarrier2(
+            vk::DependencyInfo()
+                .setPImageMemoryBarriers(image_barriers.data())
+                .setImageMemoryBarrierCount(static_cast<uint32_t>(barrier_count)),
+            vk_loader_
+        );
 
-        // Команда начала прохода
-        cmd_buffer->beginRenderPass(
-            vk::RenderPassBeginInfo()
-                .setRenderPass(vk_rasterization_pass_.get())
-                .setFramebuffer(vk_offscreen_framebuffers_[frame()]->vk_framebuffer())
-                .setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), extent))
-                .setClearValues(clear_values),
-            vk::SubpassContents::eInline);
+        const auto depth_attachment = vk::RenderingAttachmentInfo()
+            .setImageView(depth_image->render_attachment_view())
+            .setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+            .setLoadOp(vk::AttachmentLoadOp::eClear)
+            .setStoreOp(vk::AttachmentStoreOp::eStore)
+            .setClearValue(vk::ClearValue(vk::ClearDepthStencilValue(1.0f, 0)));
 
-        // Привязать UBO дескрипторы для 3D геометрии
-        const auto& pipeline_l = vk_uniform_layouts_[UniformLayoutType::eRasterization]->vk_pipeline_layout();
-        cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_l, 0,
-            {
-                vk_rasterization_d_sets_[UniformDSetType::eViewUBO].get(),
-                vk_rasterization_d_sets_[UniformDSetType::eObjectUBOs].get(),
-                vk_rasterization_d_sets_[UniformDSetType::eMaterialUBOs].get(),
-                vk_rasterization_d_sets_[UniformDSetType::eMaterialTextures].get(),
-                vk_rasterization_d_sets_[UniformDSetType::eLightUBOs].get(),
-                vk_ray_query_frame_d_sets_[frame()].get()
-            }, {});
+        vk::RenderingInfo rendering_info{};
+        rendering_info.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), extent));
+        rendering_info.setLayerCount(1);
+        rendering_info.setColorAttachments(color_attachments);
+        rendering_info.setPDepthAttachment(&depth_attachment);
+        vk_command_buffer().beginRendering(rendering_info, vk_loader_);
+
+        is_pass_started_ = true;
+
+        const auto& pipeline_layout = vk_uniform_layout(ShaderProgramType::eRasterization).vk_pipeline_layout();
+        const std::array descriptor_sets{
+            vk_rendering_d_sets_[UniformRasterDSetType::eViewUBO].get(),
+            vk_rendering_d_sets_[UniformRasterDSetType::eObjectUBOs].get(),
+            vk_rendering_d_sets_[UniformRasterDSetType::eMaterialUBOs].get(),
+            vk_rendering_d_sets_[UniformRasterDSetType::eMaterialTextures].get(),
+            vk_rendering_d_sets_[UniformRasterDSetType::eLightUBOs].get()
+        };
+        vk_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 0, descriptor_sets, {});
     }
 
-    void Renderer::cmd_begin_screen_fx_ping_pong_pass(const size_t pass_index)
+    void Renderer::cmd_end_rasterization_pass()
     {
-        if (!ready_for_commands()){
-            return;
+        ENSURE_COMMANDS
+        ENSURE_PASS
+
+        vk_command_buffer().endRendering();
+
+        constexpr std::array color_types{
+            FrameAttachmentType::eColor,
+            FrameAttachmentType::eNormal,
+            FrameAttachmentType::eEmission
+        };
+
+        constexpr size_t kMaxBarriers = color_types.size() + 1;
+        std::array<vk::ImageMemoryBarrier2, kMaxBarriers> image_barriers{};
+        size_t barrier_count = 0;
+
+        // 1. Цветовые вложения: ColorAttachmentWrite -> ShaderRead (FragmentShader)
+        for (const auto type : color_types)
+        {
+            const auto& image = vk_offscreen_images_[type][frame_index()];
+            image_barriers[barrier_count++] = vk::ImageMemoryBarrier2()
+                .setSrcStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
+                .setSrcAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite)
+                .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader)
+                .setDstAccessMask(vk::AccessFlagBits2::eShaderRead)
+                .setOldLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setImage(image->image())
+                .setSubresourceRange(vk::ImageSubresourceRange()
+                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                    .setBaseMipLevel(0)
+                    .setLevelCount(1)
+                    .setBaseArrayLayer(0)
+                    .setLayerCount(1));
         }
 
-        // Получить командный буфер ТЕКУЩЕГО КАДРА
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-        // Размер кадрового буфера промежуточного этапа (разрешение рендеринга)
-        const auto& extent = vk_ping_pong_framebuffers_[frame()][pass_index]->extent();
+        // 2. Вложение глубины: DepthStencilAttachmentWrite -> ShaderRead (FragmentShader)
+        const auto& depth_image = vk_offscreen_images_[FrameAttachmentType::eDepth][frame_index_];
+        image_barriers[barrier_count++] = vk::ImageMemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eLateFragmentTests)
+            .setSrcAccessMask(vk::AccessFlagBits2::eDepthStencilAttachmentWrite)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader)
+            .setDstAccessMask(vk::AccessFlagBits2::eShaderRead)
+            .setOldLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+            .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setImage(depth_image->image())
+            .setSubresourceRange(vk::ImageSubresourceRange()
+                .setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
+                .setBaseMipLevel(0)
+                .setLevelCount(1)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1));
 
-        // Очистка двух цветовых вложений
-        std::array<vk::ClearValue, 2> clear_values{};
-        clear_values[0].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+        // Батчинг цвета и глубины в один синхронизационный вызов
+        vk_command_buffer().pipelineBarrier2(
+            vk::DependencyInfo()
+                .setPImageMemoryBarriers(image_barriers.data())
+                .setImageMemoryBarrierCount(static_cast<uint32_t>(barrier_count)),
+            vk_loader_
+        );
 
-        // Команда начала прохода
-        cmd_buffer->beginRenderPass(
-            vk::RenderPassBeginInfo()
-                .setRenderPass(vk_screen_fx_ping_pong_pass_.get())
-                .setFramebuffer(vk_ping_pong_framebuffers_[frame()][pass_index]->vk_framebuffer())
-                .setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), extent))
-                .setClearValues(clear_values),
-            vk::SubpassContents::eInline);
-
-        // Привязать дескриптор текстур кадрового буфера ДЛЯ ТЕКУЩЕГО КАДРА и дескриптор данных камеры
-        const auto& pipeline_l = vk_uniform_layouts_[UniformLayoutType::ePostProcessing]->vk_pipeline_layout();
-        cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_l, 0,
-            {
-                vk_post_process_frame_d_sets_[frame()].get(),
-                vk_post_process_d_sets_[UniformDSetType::eViewUBO].get(),
-                vk_post_process_d_sets_[UniformDSetType::eScreenFxUBO].get(),
-            }, {});
+        is_pass_started_ = false;
+        vk_last_rasterization_pipeline_ = VK_NULL_HANDLE;
     }
 
-    void Renderer::cmd_begin_screen_fx_final_pass()
+    void Renderer::cmd_begin_screen_pass(const EnumMask<FrameAttachmentType> input, const EnumMask<FrameAttachmentType> output)
     {
-        if (!ready_for_commands()){
+        ENSURE_COMMANDS
+        ENSURE_NO_PASS
+
+        // 1. Валидация входных аргументов ДО изменения состояния движка
+        if (!(input.any() && output.any())) {
+            log_error("Screen pass input and output attachments must be specified.");
             return;
         }
 
-        // Получить командный буфер ТЕКУЩЕГО КАДРА
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-        // Размер ДОСТУПНОГО ИЗОБРАЖЕНИЯ swap chain
-        const auto& extent = vk_swapchain_framebuffers_[available_image_index_]->extent();
+        // На текущий момент поддерживается только один цветовой выходной буфер.
+        if (output.bitset.count() > 1) {
+            log_error("Screen pass currently supports a single color output attachment.");
+            return;
+        }
 
-        // Очистка (глубина не нужна)
-        std::array<vk::ClearValue, 1> clear_values{};
-        clear_values[0].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+        // Не поддерживается глубина в качестве выходного буфера.
+        if (output.test(FrameAttachmentType::eDepth)) {
+            log_error("Screen pass output cannot be a depth attachment.");
+            return;
+        }
 
-        // Команда начала прохода
-        cmd_buffer->beginRenderPass(
-            vk::RenderPassBeginInfo()
-                .setRenderPass(vk_screen_fx_final_pass_.get())
-                .setFramebuffer(vk_swapchain_framebuffers_[available_image_index_]->vk_framebuffer())
-                .setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), extent))
-                .setClearValues(clear_values),
-            vk::SubpassContents::eInline);
+        // Выходные и входные вложения не могут совпадать.
+        if constexpr (kDebugBuild) {
+            for (const auto type : magic_enum::enum_values<FrameAttachmentType>()) {
+                if (type != FrameAttachmentType::TOTAL && input.test(type) && output.test(type)) {
+                    log_error("Screen pass cannot sample from the same attachment it renders to.");
+                    return;
+                }
+            }
+        }
 
-        // Привязать дескриптор текстур кадрового буфера ДЛЯ ТЕКУЩЕГО КАДРА и дескриптор данных камеры
-        const auto& pipeline_l = vk_uniform_layouts_[UniformLayoutType::ePostProcessing]->vk_pipeline_layout();
-        cmd_buffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_l, 0,
-            {
-                vk_post_process_frame_d_sets_[frame()].get(),
-                vk_post_process_d_sets_[UniformDSetType::eViewUBO].get(),
-                vk_post_process_d_sets_[UniformDSetType::eScreenFxUBO].get(),
-            }, {});
+        // Проверки пройдены успешно — начинаем проход
+        is_pass_started_ = true;
+
+        const auto extent = rendering_resolution();
+        last_screen_pass_output_attachments_ = output;
+
+        // Массивы на стеке без динамических аллокаций
+        constexpr auto kMaxAttachments = static_cast<size_t>(FrameAttachmentType::TOTAL);
+        std::array<vk::ImageMemoryBarrier2, kMaxAttachments> image_barriers{};
+        std::array<vk::RenderingAttachmentInfo, kMaxAttachments> color_attachments{};
+        size_t attachment_count = 0;
+
+        // 2. Подготовка выходных цветовых вложений
+        for (const auto type : magic_enum::enum_values<FrameAttachmentType>())
+        {
+            if (type == FrameAttachmentType::TOTAL || !output.test(type)) {
+                continue;
+            }
+
+            const auto& image = vk_offscreen_images_[type][frame_index()];
+
+            // Защита от WAR-hazard (Write-After-Read):
+            // Гарантируем, что предыдущие проходы закончили читать это вложение в FragmentShader,
+            // прежде чем текущий проход начнет переводить его и писать в него цвет.
+            image_barriers[attachment_count] = vk::ImageMemoryBarrier2()
+                .setSrcStageMask(vk::PipelineStageFlagBits2::eFragmentShader | vk::PipelineStageFlagBits2::eColorAttachmentOutput)
+                .setSrcAccessMask(vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eColorAttachmentWrite)
+                .setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
+                .setDstAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite)
+                .setOldLayout(vk::ImageLayout::eUndefined)
+                .setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setImage(image->image())
+                .setSubresourceRange(vk::ImageSubresourceRange()
+                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                    .setBaseMipLevel(0)
+                    .setLevelCount(1)
+                    .setBaseArrayLayer(0)
+                    .setLayerCount(1));
+
+            // Описание цветового вложения с очисткой
+            color_attachments[attachment_count] = vk::RenderingAttachmentInfo()
+                .setImageView(image->render_attachment_view())
+                .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore)
+                .setClearValue(vk::ClearValue(vk::ClearColorValue(0.0f, 0.0f, 0.0f, 0.0f)));
+
+            ++attachment_count;
+        }
+
+        // 3. Вызов единого барьера Synchronization2
+        vk_command_buffer().pipelineBarrier2(
+            vk::DependencyInfo()
+                .setPImageMemoryBarriers(image_barriers.data())
+                .setImageMemoryBarrierCount(static_cast<uint32_t>(attachment_count)),
+            vk_loader_
+        );
+
+        // 4. Начать рендеринг во вложения
+        vk::RenderingInfo rendering_info{};
+        rendering_info.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), extent));
+        rendering_info.setLayerCount(1);
+        rendering_info.setPColorAttachments(color_attachments.data());
+        rendering_info.setColorAttachmentCount(static_cast<uint32_t>(attachment_count));
+        vk_command_buffer().beginRendering(rendering_info, vk_loader_);
+
+        // 5. Привязать наборы дескрипторов экранного прохода
+        const auto& pipeline_layout = vk_uniform_layout(ShaderProgramType::eScreenPass).vk_pipeline_layout();
+        const std::array descriptor_sets{
+            vk_screen_d_sets_per_frame_[frame_index()].get(),
+            vk_screen_d_sets_[UniformScreenDSetType::eViewUBO].get(),
+            vk_screen_d_sets_[UniformScreenDSetType::eScreenPassUBOs].get(),
+        };
+        vk_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 0, descriptor_sets, {});
     }
 
-    void Renderer::cmd_end_render_pass()
+    void Renderer::cmd_end_screen_pass()
     {
-        if (!ready_for_commands()){
-            return;
+        ENSURE_COMMANDS
+        ENSURE_PASS
+
+        vk_command_buffer().endRendering();
+
+        // Массив барьеров на стеке для всех переводимых вложений
+        constexpr auto kMaxAttachments = static_cast<size_t>(FrameAttachmentType::TOTAL);
+        std::array<vk::ImageMemoryBarrier2, kMaxAttachments> image_barriers{};
+        size_t barrier_count = 0;
+
+        // Перевод всех задействованных в проходе выходных вложений:
+        // ColorAttachmentWrite (вывод цвета) -> ShaderRead (чтение в фрагментном шейдере следующих проходов)
+        for (const auto type : magic_enum::enum_values<FrameAttachmentType>())
+        {
+            if (type == FrameAttachmentType::TOTAL || !last_screen_pass_output_attachments_.test(type)) {
+                continue;
+            }
+
+            const auto& image = vk_offscreen_images_[type][frame_index()];
+
+            image_barriers[barrier_count++] = vk::ImageMemoryBarrier2()
+                .setSrcStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
+                .setSrcAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite)
+                .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader)
+                .setDstAccessMask(vk::AccessFlagBits2::eShaderRead)
+                .setOldLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+                .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .setImage(image->image())
+                .setSubresourceRange(vk::ImageSubresourceRange()
+                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                    .setBaseMipLevel(0)
+                    .setLevelCount(1)
+                    .setBaseArrayLayer(0)
+                    .setLayerCount(1));
         }
 
-        vk_command_buffers_[frame()]->endRenderPass();
+        if (barrier_count > 0)
+        {
+            vk_command_buffer().pipelineBarrier2(
+                vk::DependencyInfo()
+                    .setPImageMemoryBarriers(image_barriers.data())
+                    .setImageMemoryBarrierCount(static_cast<uint32_t>(barrier_count)),
+                vk_loader_
+            );
+        }
+
+        // Проход завершен
+        is_pass_started_ = false;
+        last_screen_pass_output_attachments_.clear();
     }
 
-    void Renderer::cmd_bind_rasterization_material(const handles::Material& handles, const uint32_t uniform_idx)
+    void Renderer::cmd_bind_shader_program(const handles::ShaderProgram &handles)
     {
-        if (!ready_for_commands()){
-            return;
-        }
+        ENSURE_COMMANDS
+        ENSURE_PASS
 
-        // Размеры области рендеринга
-        const auto& extent = rendering_resolution();
-        const auto& width = extent.width;
-        const auto& height = extent.height;
+        // Текущее разрешение рендеринга
+        const auto extent = rendering_resolution();
 
         // Область вида (динамическое состояние конвейера)
         auto viewport = vk::Viewport()
             .setX(0.0f)
-            .setWidth(static_cast<float>(width))
+            .setWidth(static_cast<float>(extent.width))
             .setMinDepth(0.0f)
             .setMaxDepth(1.0f);
 
         // Совместимость координат с OpenGL
         if (config().opengl_compatible){
-            viewport.setY(static_cast<float>(height));
-            viewport.setHeight(-static_cast<float>(height));
+            viewport.setY(static_cast<float>(extent.height));
+            viewport.setHeight(-static_cast<float>(extent.height));
         }else{
             viewport.setY(0.0f);
-            viewport.setHeight(static_cast<float>(height));
+            viewport.setHeight(static_cast<float>(extent.height));
         }
 
         // Ножницы (динамическое состояние конвейера)
@@ -326,190 +582,244 @@ namespace nasral::gfx
             .setOffset(vk::Offset2D(0, 0))
             .setExtent(extent);
 
-        // Получить макет конвейера
-        const auto& pipeline_l = vk_uniform_layouts_[UniformLayoutType::eRasterization]->vk_pipeline_layout();
-
-        // Получить буфер команд
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-
-        // Передать индекс uniform параметров материала через push constant
-        cmd_buffer->pushConstants(
-            pipeline_l,
-            vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
-            0,
-            sizeof(uint32_t),
-            &uniform_idx);
-
-        /* Запись команд */
-
         // Если конвейер сменился - привязать
         if (vk_last_rasterization_pipeline_ != handles.pipeline){
-            cmd_buffer->bindPipeline(vk::PipelineBindPoint::eGraphics, handles.pipeline);
+            vk_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, handles.pipeline);
         }
 
         // Обновить последний привязанный конвейер
         vk_last_rasterization_pipeline_ = handles.pipeline;
 
         // Запись команд. Привязать динамические состояния
-        cmd_buffer->setViewport(0, {viewport});
-        cmd_buffer->setScissor(0, {scissor});
+        vk_command_buffer().setViewport(0, {viewport});
+        vk_command_buffer().setScissor(0, {scissor});
     }
 
-    void Renderer::cmd_bind_post_processing_material(const handles::Material& handles, const bool final_output)
+    void Renderer::cmd_bind_mesh_geometry(const handles::Mesh &handles) const
     {
-        if (!ready_for_commands()){
-            return;
-        }
+        ENSURE_COMMANDS
+        ENSURE_PASS
 
-        // Получить командный буфер ТЕКУЩЕГО КАДРА
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-
-        // Размер ДОСТУПНОГО ИЗОБРАЖЕНИЯ swap chain
-        const auto& extent = final_output ?
-            vk_swapchain_framebuffers_[available_image_index_]->extent() :
-            vk_ping_pong_framebuffers_[frame()][0]->extent();
-
-        const auto& width = extent.width;
-        const auto& height = extent.height;
-
-        // Область вида (динамическое состояние конвейера)
-        auto viewport = vk::Viewport()
-            .setX(0.0f)
-            .setWidth(static_cast<float>(width))
-            .setMinDepth(0.0f)
-            .setMaxDepth(1.0f);
-
-        // Совместимость координат с OpenGL
-        if (config().opengl_compatible){
-            viewport.setY(static_cast<float>(height));
-            viewport.setHeight(-static_cast<float>(height));
-        }else{
-            viewport.setY(0.0f);
-            viewport.setHeight(static_cast<float>(height));
-        }
-
-        // Ножницы (динамическое состояние конвейера)
-        auto scissor = vk::Rect2D()
-            .setOffset(vk::Offset2D(0, 0))
-            .setExtent(extent);
-
-        // Привязать конвейер и динамические состояния
-        cmd_buffer->bindPipeline(vk::PipelineBindPoint::eGraphics, handles.pipeline);
-        cmd_buffer->setViewport(0, {viewport});
-        cmd_buffer->setScissor(0, {scissor});
+        // Запись команд. Привязать геометрию
+        vk_command_buffer().bindVertexBuffers(0, {handles.vertex_buffer}, {0});
+        vk_command_buffer().bindIndexBuffer(handles.index_buffer, 0, vk::IndexType::eUint32);
     }
 
-    void Renderer::cmd_bind_rasterization_geometry(const handles::Mesh& handles, const uint32_t uniform_idx)
+    void Renderer::cmd_draw_bound_geometry(
+        const uint32_t index_offset,
+        const uint32_t index_count,
+        const uint32_t obj_uniform_idx,
+        const uint32_t mat_uniform_idx)
     {
-        if (!ready_for_commands()){
-            return;
-        }
+        ENSURE_COMMANDS
+        ENSURE_PASS
 
-        // Получить макет конвейера
-        const auto& pipeline_l = vk_uniform_layouts_[UniformLayoutType::eRasterization]->vk_pipeline_layout();
+        // Командный буфер кадра и макет конвейера
+        auto& pipeline_layout = vk_uniform_layouts_[ShaderProgramType::eRasterization]->vk_pipeline_layout();
 
-        // Получить буфер команд
-        auto& cmd_buffer = vk_command_buffers_[frame()];
+        // Шаг (с выравниванием) для буфера материалов в шейдерах
+        const auto mat_stride = aligned_sbo<biggest_of_t<uniforms::Material>>(vk_device().physical_device());
 
-        // Передать индекс uniform объекта через push constant
-        cmd_buffer->pushConstants(
-            pipeline_l,
-            vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
-            sizeof(uint32_t),
-            sizeof(uint32_t),
-            &uniform_idx);
+        // Push-константы - uniform индекс материала и объекта (порядок важен!)
+        const std::array<uint32_t, 3> push_constants{
+            mat_uniform_idx,
+            obj_uniform_idx,
+            static_cast<uint32_t>(mat_stride)
+        };
 
-        // Запись команд. Привязать геометрию и нарисовать её
-        cmd_buffer->bindVertexBuffers(0, {handles.vertex_buffer}, {0});
-        cmd_buffer->bindIndexBuffer(handles.index_buffer, 0, vk::IndexType::eUint32);
-    }
-
-    void Renderer::cmd_draw_geometry(const uint32_t index_offset, const uint32_t index_count)
-    {
-        if (!ready_for_commands()){
-            return;
-        }
-
-        // Получить буфер команд
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-
-        cmd_buffer->drawIndexed(index_count, 1, index_offset, 0, 0);
-    }
-
-    void Renderer::cmd_draw_post_processing_quad(const uint32_t pass_index)
-    {
-        if (!ready_for_commands()){
-            return;
-        }
-
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-        const auto& pipeline_l = vk_uniform_layouts_[UniformLayoutType::ePostProcessing]->vk_pipeline_layout();
-
-        // Передать индекс uniform объекта через push constant
-        cmd_buffer->pushConstants(
-            pipeline_l,
+        // Передать push-константы
+        vk_command_buffer().pushConstants(
+            pipeline_layout,
             vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
             0,
-            sizeof(uint32_t),
-            &pass_index);
+            sizeof(push_constants),
+            push_constants.data());
 
-        cmd_buffer->draw(6, 1, 0, 0);
+        // Рисование геометрии
+        vk_command_buffer().drawIndexed(index_count, 1, index_offset, 0, 0);
     }
 
-    /*
-    void Renderer::cmd_clear_color_attachment(const uint32_t attachment_index, const vk::ClearColorValue& clear_color)
+    void Renderer::cmd_draw_screen_quad(const uint32_t pass_uniform_idx, const uint32_t active_stage_flags)
     {
-        if (!ready_for_commands()) {
-            return;
-        }
+        ENSURE_COMMANDS
+        ENSURE_PASS
 
-        auto& cmd_buffer = vk_command_buffers_[frame()];
-        const auto& extent = vk_intermediate_framebuffers_[frame()]->extent();
+        // Макет конвейера
+        auto& pipeline_layout = vk_uniform_layouts_[ShaderProgramType::eScreenPass]->vk_pipeline_layout();
 
-        // Описание того, какое вложение и каким значением очищаем
-        vk::ClearAttachment clear_attachment{};
-        clear_attachment.setAspectMask(vk::ImageAspectFlagBits::eColor)
-                        .setColorAttachment(attachment_index) // Индекс вложения в текущем subpass (location)
-                        .setClearValue(vk::ClearValue(clear_color));
+        // Шаг (с выравниванием) для буфера настроек экранных проходов
+        const auto pass_stride = aligned_sbo<biggest_of_t<uniforms::ScreenPass>>(vk_device().physical_device());
 
-        // Описание области прямоугольника (или слоёв) для очистки
-        vk::ClearRect clear_rect{};
-        clear_rect.setRect(vk::Rect2D(vk::Offset2D(0, 0), extent))
-                  .setBaseArrayLayer(0)
-                  .setLayerCount(1);
+        // Push-константы - индекс прохода, шаг буфера и флаги активных стадий (порядок важен!)
+        const std::array<uint32_t, 3> push_constants{
+            pass_uniform_idx,
+            static_cast<uint32_t>(pass_stride),
+            active_stage_flags
+        };
 
-        // Запись команды
-        cmd_buffer->clearAttachments({clear_attachment}, {clear_rect});
+        // Передать push-константы
+        vk_command_buffer().pushConstants(
+            pipeline_layout,
+            vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment,
+            0,
+            sizeof(push_constants),
+            push_constants.data());
+
+        // Нарисовать 2 треугольника
+        vk_command_buffer().draw(6, 1, 0, 0);
     }
-    */
 
-    void Renderer::cmd_gen_framebuffer_mipmaps(const OffscreenTextureType& type) const
+    void Renderer::cmd_gen_frame_mipmaps(const FrameAttachmentType &type) const
     {
-        if (!ready_for_commands()){
-            return;
-        }
+        ENSURE_COMMANDS
 
-        const auto& cmd_buffer = vk_command_buffers_[frame()];
-        const auto& framebuffer = vk_offscreen_framebuffers_[frame()];
-        const auto& attachment = framebuffer->attachments()[static_cast<size_t>(type)];
-        const auto& extent = framebuffer->extent();
+        // Запись команд генерации мип-уровней
+        vk_offscreen_image(type).write_gen_mipmaps_commands(
+            vk_command_buffer(),
+            vk::ImageLayout::eShaderReadOnlyOptimal,
+            vk::AccessFlagBits::eShaderRead,
+            vk::PipelineStageFlagBits::eFragmentShader,
+            vk::ImageAspectFlagBits::eColor);
+    }
 
-        attachment->write_gen_mipmaps_commands(cmd_buffer.get()
-            , {extent.width, extent.height, 1}
-            , vk::ImageLayout::eShaderReadOnlyOptimal
-            , vk::AccessFlagBits::eShaderWrite
-            , vk::PipelineStageFlagBits::eFragmentShader
-            , vk::ImageAspectFlagBits::eColor);
+    void Renderer::cmd_blit_to_screen(const FrameAttachmentType &type) const
+    {
+        ENSURE_COMMANDS
+        ENSURE_NO_PASS
+
+        const auto& src_image = vk_offscreen_image(type);
+        const auto& dst_image = vk_swap_chain_image();
+
+        const auto& src_extent = src_image.extent();
+        const auto& dst_extent = dst_image.extent();
+
+        // 1. Барьеры перед blit:
+        // - Исходное вложение: ShaderReadOnlyOptimal -> TransferSrcOptimal
+        // - SwapChain картинка: Undefined -> TransferDstOptimal
+        std::array<vk::ImageMemoryBarrier2, 2> pre_barriers{};
+
+        pre_barriers[0] = vk::ImageMemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput | vk::PipelineStageFlagBits2::eFragmentShader)
+            .setSrcAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite | vk::AccessFlagBits2::eShaderRead)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
+            .setDstAccessMask(vk::AccessFlagBits2::eTransferRead)
+            .setOldLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+            .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setImage(src_image.image())
+            .setSubresourceRange(vk::ImageSubresourceRange()
+                .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setBaseMipLevel(0)
+                .setLevelCount(1)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1));
+
+        pre_barriers[1] = vk::ImageMemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+            .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
+            .setDstAccessMask(vk::AccessFlagBits2::eTransferWrite)
+            .setOldLayout(vk::ImageLayout::eUndefined)
+            .setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setImage(dst_image.image())
+            .setSubresourceRange(vk::ImageSubresourceRange()
+                .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setBaseMipLevel(0)
+                .setLevelCount(1)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1));
+
+        vk_command_buffer().pipelineBarrier2(
+            vk::DependencyInfo()
+                .setPImageMemoryBarriers(pre_barriers.data())
+                .setImageMemoryBarrierCount(static_cast<uint32_t>(pre_barriers.size())),
+            vk_loader_
+        );
+
+        // 2. Выполнение blit (с масштабированием и линейной фильтрацией, если разрешения отличаются)
+        const vk::ImageBlit blit_region = vk::ImageBlit()
+            .setSrcSubresource(vk::ImageSubresourceLayers()
+                .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setMipLevel(0)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1))
+            .setSrcOffsets({
+                vk::Offset3D{0, 0, 0},
+                vk::Offset3D{static_cast<int32_t>(src_extent.width), static_cast<int32_t>(src_extent.height), 1}
+            })
+            .setDstSubresource(vk::ImageSubresourceLayers()
+                .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setMipLevel(0)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1))
+            .setDstOffsets({
+                vk::Offset3D{0, 0, 0},
+                vk::Offset3D{static_cast<int32_t>(dst_extent.width), static_cast<int32_t>(dst_extent.height), 1}
+            });
+
+        vk_command_buffer().blitImage(
+            src_image.image(), vk::ImageLayout::eTransferSrcOptimal,
+            dst_image.image(), vk::ImageLayout::eTransferDstOptimal,
+            {blit_region},
+            vk::Filter::eLinear
+        );
+
+        // 3. Барьеры после blit:
+        // - Исходное вложение: TransferSrcOptimal -> ShaderReadOnlyOptimal (возвращаем в исходное)
+        // - SwapChain картинка: TransferDstOptimal -> PresentSrcKHR (готова к отправке на монитор)
+        std::array<vk::ImageMemoryBarrier2, 2> post_barriers{};
+
+        post_barriers[0] = vk::ImageMemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+            .setSrcAccessMask(vk::AccessFlagBits2::eTransferRead)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader)
+            .setDstAccessMask(vk::AccessFlagBits2::eShaderRead)
+            .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
+            .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setImage(src_image.image())
+            .setSubresourceRange(vk::ImageSubresourceRange()
+                .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setBaseMipLevel(0)
+                .setLevelCount(1)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1));
+
+        post_barriers[1] = vk::ImageMemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+            .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eBottomOfPipe)
+            .setDstAccessMask(vk::AccessFlagBits2::eNone)
+            .setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+            .setNewLayout(vk::ImageLayout::ePresentSrcKHR)
+            .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .setImage(dst_image.image())
+            .setSubresourceRange(vk::ImageSubresourceRange()
+                .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setBaseMipLevel(0)
+                .setLevelCount(1)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1));
+
+        vk_command_buffer().pipelineBarrier2(
+            vk::DependencyInfo()
+                .setPImageMemoryBarriers(post_barriers.data())
+                .setImageMemoryBarrierCount(static_cast<uint32_t>(post_barriers.size())),
+            vk_loader_
+        );
     }
 
     void Renderer::cmd_build_tlas(const uint32_t instance_count, const bool initial)
     {
-        if (!ready_for_commands()) {
-            return;
-        }
+        ENSURE_COMMANDS
 
         // Получить буфер инстансов для соответствующего кадра
-        const auto& instances_buffer = *vk_tlas_instance_buffers_[frame()];
+        const auto& instances_buffer = *vk_tlas_instance_buffers_[frame_index()];
 
         // Формируем структуру геометрии инстансов для сборки
         vk::AccelerationStructureGeometryInstancesDataKHR instances_data{};
@@ -517,8 +827,8 @@ namespace nasral::gfx
         vk::AccelerationStructureGeometryKHR geometry{};
         geometry.setGeometryType(vk::GeometryTypeKHR::eInstances).setGeometry(instances_data);
 
-        const auto& tlas = *vk_tlas_[frame()];
-        const auto& scratch = *vk_tlas_scratch_buffers_[frame()];
+        const auto& tlas = *vk_tlas_[frame_index()];
+        const auto& scratch = *vk_tlas_scratch_buffers_[frame_index()];
 
         vk::AccelerationStructureBuildGeometryInfoKHR build_info{};
         build_info.setType(vk::AccelerationStructureTypeKHR::eTopLevel)
@@ -535,9 +845,8 @@ namespace nasral::gfx
                   .setTransformOffset(0);
 
         // Записываем команду сборки прямо в cmd_buffer текущего кадра
-        auto& cmd_buffer = vk_command_buffers_[frame()];
         const auto* range_info_ptr = &range_info;
-        cmd_buffer->buildAccelerationStructuresKHR(1, &build_info, &range_info_ptr, vk_loader_);
+        vk_command_buffer().buildAccelerationStructuresKHR(1, &build_info, &range_info_ptr, vk_loader_);
 
         // Барьер памяти: гарантируем, что TLAS полностью собран перед тем,
         // как к нему обратятся Ray Tracing / Compute / Fragment шейдеры
@@ -545,7 +854,7 @@ namespace nasral::gfx
         barrier.setSrcAccessMask(vk::AccessFlagBits::eAccelerationStructureWriteKHR)
                .setDstAccessMask(vk::AccessFlagBits::eAccelerationStructureReadKHR);
 
-        cmd_buffer->pipelineBarrier(
+        vk_command_buffer().pipelineBarrier(
             vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR,
             vk::PipelineStageFlagBits::eRayTracingShaderKHR | vk::PipelineStageFlagBits::eFragmentShader,
             {},
@@ -560,9 +869,11 @@ namespace nasral::gfx
         vk_device_->logical_device().waitIdle();
     }
 
-    void Renderer::request_surface_refresh()
+#pragma endregion
+
+    void Renderer::mark_surface_dirty()
     {
-        surface_refresh_needed_.store(true, std::memory_order_release);
+        is_surface_dirty_.store(true, std::memory_order_release);
     }
 
     void Renderer::mark_tlas_dirty()
@@ -572,88 +883,43 @@ namespace nasral::gfx
         }
     }
 
-#pragma endregion
-
-    /**
-     * @brief Обновляет (пересоздаёт) объекты, зависящие от поверхности.
-     * @details Вызывается при изменении размеров/параметров поверхности (resize, смена DPI, alt‑tab и т.п.).
-     * Выполняет полную реконфигурацию: ждём завершения GPU (waitIdle), временно отключаем рендеринг и сбрасываем
-     * индекс кадра; очищаем командные буферы и уничтожаем кадровые буферы; пересоздаём swap‑chain (с учётом oldSwapchain),
-     * затем создаём новые framebuffer’ы под его изображения и заново выделяем командные буферы для актуальных кадровых
-     * буферов. Командные буферы выделяются заново, так как старые могли содержать команды, ссылающиеся на объекты
-     * старого swap‑chain (изображения, размеры, макеты), что недопустимо. В конце рендеринг снова включается.
-     */
-    void Renderer::refresh_vk_surface()
+    vk::Extent2D Renderer::rendering_resolution() const noexcept
     {
-        assert(vk_instance_ && "Vulkan instance is not initialized");
-        assert(vk_surface_ && "Vulkan surface is not initialized");
-        assert(vk_device_ && "Vulkan device is not initialized");
-
-        // Ожидать завершения всех команд
-        cmd_wait_for_all();
-
-        // Отключить рендеринг и сбросить кадр
-        is_active_ = false;
-        frame_count_ = 0;
-        frame_index_ = 0;
-
-        // Очистить командные буферы
-        vk_command_buffers_.clear();
-        log_info("Vulkan: command buffers cleared.");
-
-        // Уничтожить кадровые буферы
-        vk_swapchain_framebuffers_.clear();
-        vk_offscreen_framebuffers_.clear();
-        vk_ping_pong_framebuffers_.clear();
-        log_info("Vulkan: Framebuffers cleared.");
-
-        // Пере-создать swap-chain (старый будет задействован при создании нового, затем удален)
-        init_vk_swap_chain();
-        log_info("Vulkan: swap-chain recreated.");
-
-        // Создать новые кадровые буферы
-        init_vk_framebuffers();
-        const auto extent_render = vk_offscreen_framebuffers_[0]->extent();
-        const auto extent_swapchain = vk_swapchain_framebuffers_[0]->extent();
-        const std::string extent_render_str = std::to_string(extent_render.width) + "x" + std::to_string(extent_render.height);
-        const std::string extent_swapchain_str = std::to_string(extent_swapchain.width) + "x" + std::to_string(extent_swapchain.height);
-        log_info("Vulkan: Framebuffers initialized (" + extent_render_str + " -> " + extent_swapchain_str + ").");
-
-        // Создать новые командные буферы
-        init_vk_command_buffers();
-        log_info("Vulkan: command buffers recreated.");
-
-        // Связать кадровые (offscreen) буферами с дескрипторами пост-процессинга
-        init_vk_framebuffer_bindings();
-
-        // Включить рендеринг
-        is_active_ = true;
-    }
-
-    const vk::Extent2D& Renderer::rendering_resolution() const noexcept{
         return config().rendering_resolution;
     }
 
-    float Renderer::rendering_aspect() const noexcept{
-        const auto& extent = rendering_resolution();
-        return static_cast<float>(extent.width) / static_cast<float>(extent.height);
+    vk::Extent2D Renderer::output_resolution() const noexcept
+    {
+        return vk_device_->clamp_swapchain_extent(
+            config().surface_provider->framebuffer_extent(),
+            *vk_surface_);
     }
 
-    bool Renderer::ready_for_commands() const noexcept{
-        if (!is_active()) {
-            return false;
-        }
-
-        assert(frame_in_progress_ && "Frame not in progress");
-        return frame_in_progress_;
+    float Renderer::aspect_ratio() const noexcept
+    {
+        const auto& extent = rendering_resolution();
+        return static_cast<float>(extent.width) / static_cast<float>(extent.height);
     }
 
     bool Renderer::is_tlas_dirty(const bool exchange) noexcept
     {
         if (exchange){
-            return vk_tlas_buffers_dirty_[frame()].exchange(false, std::memory_order_acq_rel);
+            return vk_tlas_buffers_dirty_[frame_index()].exchange(false, std::memory_order_acq_rel);
         }
 
-        return vk_tlas_buffers_dirty_[frame()].load(std::memory_order_acquire);
+        return vk_tlas_buffers_dirty_[frame_index()].load(std::memory_order_acquire);
+    }
+
+    vk::ImageAspectFlags Renderer::frame_attachment_aspect(
+        const FrameAttachmentType &type,
+        [[maybe_unused]] const vk::Format &format)
+    {
+        // Если это не глубина, то используется как цветовое вложение
+        if (type != FrameAttachmentType::eDepth) {
+            return vk::ImageAspectFlagBits::eColor;
+        }
+
+        // В остальных случаях используется как глубина
+        return vk::ImageAspectFlagBits::eDepth;
     }
 }

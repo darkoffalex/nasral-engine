@@ -33,6 +33,10 @@ namespace nasral::gfx
         return aligned_sbo<T>(device) * index;
     }
 
+    inline vk::ClearColorValue as_vk_clear_color(const glm::vec4& color) {
+        return {color.r, color.g, color.b, color.a};
+    }
+
     inline vk::TransformMatrixKHR to_vk_transform(const glm::mat4& m) {
         return vk::TransformMatrixKHR{
             std::array<std::array<float, 4>, 3>{

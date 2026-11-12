@@ -24,6 +24,9 @@ namespace nasral::ecs
         EntityListComponent,
         RefsCountComponent,
         RefsChangedComponent,
+        NextComponent,
+        PrevComponent,
+        DirtyStateComponent,
 
         // Ресурсы
         res::ResourcesComponent,
@@ -35,9 +38,10 @@ namespace nasral::ecs
 
         // Графика
         gfx::RenderComponent,
-        gfx::ScreenFxHandlesComponent,
-        gfx::MaterialHandlesComponent,
-        gfx::MaterialSettingsComponent,
+        gfx::MaterialComponent,
+        gfx::ScreenPassComponent,
+        gfx::TextureHandlesComponent,
+        gfx::ShaderHandlesComponent,
         gfx::MeshHandlesComponent,
         gfx::UniformIndexComponent,
         gfx::UniformStateComponent,
@@ -50,9 +54,7 @@ namespace nasral::ecs
         scn::SpatialComponent,
         scn::ViewComponent,
         scn::MeshComponent,
-        scn::LightComponent,
-        scn::ScreenFxComponent,
-        scn::DirtyStateComponent
+        scn::LightComponent
     >;
 
     // Проверка типов компонентов на соответствие требования (на этапе компиляции)

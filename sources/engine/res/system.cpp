@@ -136,7 +136,7 @@ namespace nasral::res
         // - Список ресурсов
         // - Загружен
         // - Освободить
-        for (auto [e, resources, l_tag, r_tag] : engine()->ecs()->view<
+        for (auto&& [e, resources, l_tag, r_tag] : engine()->ecs()->view<
             ResourcesComponent,
             LoadedComponent,
             ReleaseComponent>())
@@ -167,7 +167,7 @@ namespace nasral::res
         // - Запросить
         // - Освободить
         // - Загружается
-        for (auto [e, res, refs, rc_tag] : engine()->ecs()->view<
+        for (const auto& [e, res, refs, rc_tag] : engine()->ecs()->view<
             ResourcesComponent,
             ecs::RefsCountComponent,
             ecs::RefsChangedComponent>(ecs::kMaskOf<RequestComponent, ReleaseComponent, LoadingComponent>))

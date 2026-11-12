@@ -1,0 +1,53 @@
+{
+  "nodes": [
+    {
+      "name": "Main camera",
+      "type": "eCamera",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 3.0, 0.0],
+        "rotation": [-30.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "camera": {
+        "type": "ePerspective",
+        "fov": 90.0,
+        "aspect": 1.0,
+        "near": 0.1,
+        "far": 1000.0
+      }
+    },
+    {
+      "name": "Floor",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "mesh": {
+        "mesh_path": "meshes/checkers/checkers.obj",
+        "materials": [[0, 11], [0, 12]]
+      }
+    },
+    {
+      "name": "Light1",
+      "type": "eLight",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 4.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "light": {
+        "dynamic" : true,
+        "type": "ePointLight",
+        "intensity": 8.0,
+        "radius": 1.0,
+        "quadratic": 1.0,
+        "color": [1.0, 1.0, 1.0, 1.0]
+      }
+    }
+  ]
+}

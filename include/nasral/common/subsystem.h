@@ -57,10 +57,11 @@ namespace nasral
         }
 
         void apply_deferred() {
-            for (auto& action : deferred_actions_) {
+            while (!deferred_actions_.empty()){
+                auto action = std::move(deferred_actions_.front());
+                deferred_actions_.pop_front();
                 action(*static_cast<Derived*>(this));
             }
-            deferred_actions_.clear();
         }
 
     protected:
@@ -78,7 +79,7 @@ namespace nasral
     private:
         Engine* const engine_;
         Config config_;
-        std::vector<DeferredAction> deferred_actions_;
+        std::deque<DeferredAction> deferred_actions_;
     };
 
 

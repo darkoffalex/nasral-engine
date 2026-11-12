@@ -125,7 +125,7 @@ namespace nasral
     }
 
     /**
-     * @brief Инвертированый обход (std::apply) по типам std::tuple (реализация)
+     * @brief Инвертированный обход (std::apply) по типам std::tuple (реализация)
      * @tparam Func Тип функции обратного вызова
      * @tparam Tuple Тип кортежа
      * @tparam Is Индексы
@@ -152,6 +152,54 @@ namespace nasral
         constexpr auto Size = std::tuple_size_v<std::decay_t<Tuple>>;
         return apply_reverse_impl(std::forward<Func>(f), std::forward<Tuple>(t), std::make_index_sequence<Size>{});
     }
+
+    /**
+     * @brief Вспомогательная структура для поиска максимального sizeof среди типов пакета
+     */
+    template <typename... Ts>
+    constexpr std::size_t max_sizeof_pack() noexcept {
+        std::size_t max_sz = 0;
+        // Fold expression (свёртка через запятую в C++17)
+        ((max_sz = (sizeof(Ts) > max_sz ? sizeof(Ts) : max_sz)), ...);
+        return max_sz;
+    }
+
+    /**
+     * @brief Вспомогательная структура для поиска типа с максимальным размером в пакете
+     */
+    template <typename T, typename... Ts>
+    struct biggest_type {
+    private:
+        using rest_type = typename biggest_type<Ts...>::type;
+    public:
+        using type = std::conditional_t<(sizeof(T) >= sizeof(rest_type)), T, rest_type>;
+    };
+
+    template <typename T>
+    struct biggest_type<T> {
+        using type = T;
+    };
+
+    template <typename... Ts>
+    using biggest_type_t = typename biggest_type<Ts...>::type;
+
+    /**
+     * @brief Метафункция получения типа с максимальным размером из std::variant
+     */
+    template <typename Variant>
+    struct biggest_of;
+
+    template <typename... Ts>
+    struct biggest_of<std::variant<Ts...>> {
+        using type = biggest_type_t<Ts...>;
+    };
+
+    /**
+     * @brief Получение наибольшего типа std::variant:
+     * using T = biggest_of_t<std::variant<A, B, C>>;
+     */
+    template <typename Variant>
+    using biggest_of_t = typename biggest_of<Variant>::type;
 }
 
 #define DECLARE_DETECTOR(method) \

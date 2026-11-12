@@ -1,0 +1,96 @@
+{
+  "nodes": [
+    {
+      "name": "Main camera",
+      "type": "eCamera",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 3.0, -2.0],
+        "rotation": [-30.0, 180.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "camera": {
+        "type": "ePerspective",
+        "fov": 90.0,
+        "aspect": 1.0,
+        "near": 0.1,
+        "far": 1000.0
+      }
+    },
+    {
+      "name": "Floor",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [0.7, 0.7, 0.7]
+      },
+      "mesh": {
+        "mesh_path": "meshes/floor/floor.obj",
+        "materials": [[0, 2], [0, 3]]
+      }
+    },
+    {
+      "name": "Barrel1",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [-2.0, -0.05, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "mesh": {
+        "mesh_path": "meshes/barrel/barrel.obj",
+        "materials": [[0, 4]]
+      }
+    },
+    {
+      "name": "Barrel2",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, -0.05, 2.0],
+        "rotation": [0.0, 45.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "mesh": {
+        "mesh_path": "meshes/barrel/barrel.obj",
+        "materials": [[0, 4]]
+      }
+    },
+    {
+      "name": "LightSphere",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [-3.0, 1.5, 3.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [0.2, 0.2, 0.2]
+      },
+      "mesh": {
+        "mesh_path": "builtin:mesh/sphere",
+        "materials": [[0, 11]],
+        "dynamic" : true
+      }
+    },
+    {
+      "name": "Light1",
+      "type": "eLight",
+      "uid": "auto",
+      "spatial": {
+        "position": [-3.0, 1.5, 3.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "light": {
+        "dynamic" : true,
+        "type": "ePointLight",
+        "intensity": 8.0,
+        "radius": 1.0,
+        "quadratic": 1.0,
+        "color": [1.0, 1.0, 1.0, 1.0]
+      }
+    }
+  ]
+}

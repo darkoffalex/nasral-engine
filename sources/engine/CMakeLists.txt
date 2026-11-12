@@ -29,10 +29,9 @@ add_library(Engine OBJECT
         res/objects/resource.cpp
         res/objects/file.cpp
         res/objects/project.cpp
-        res/objects/shader.cpp
+        res/objects/shader_program.cpp
         res/objects/texture.cpp
         res/objects/mesh.cpp
-        res/objects/material.cpp
         res/objects/project.cpp
         res/objects/scene.cpp
 
@@ -40,19 +39,18 @@ add_library(Engine OBJECT
         gfx/manager.cpp
         gfx/renderer.cpp
         gfx/renderer_init.cpp
-        gfx/objects/material.cpp
-        gfx/objects/screen_fx.cpp
+        gfx/entities/material.cpp
+        gfx/entities/screen_pass.cpp
         gfx/system.cpp
         gfx/utils.cpp
 
         # Сцена
         scn/manager.cpp
-        scn/objects/node.cpp
-        scn/objects/spatial.cpp
-        scn/objects/camera.cpp
-        scn/objects/mesh.cpp
-        scn/objects/light.cpp
-        scn/objects/screen_fx_state.cpp
+        scn/entities/node.cpp
+        scn/entities/spatial.cpp
+        scn/entities/mesh.cpp
+        scn/entities/camera.cpp
+        scn/entities/light.cpp
         scn/system.cpp
 )
 add_default_configurations(Engine demo_app)
@@ -75,4 +73,5 @@ target_link_libraries(Engine PRIVATE
         Vulkan::Vulkan
         magic_enum::magic_enum
         nlohmann_json::nlohmann_json
+        SPIRV-Headers::SPIRV-Headers
 )

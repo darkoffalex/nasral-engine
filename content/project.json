@@ -1,41 +1,32 @@
 {
   "resources": [
-    {"type": "eMaterial", "path": "materials/dummy/material.json", "load_params": {}},
-    {"type": "eShader", "path": "materials/dummy/shader.vert.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/dummy/shader.frag.spv", "load_params": {}},
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/dummy.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/colored.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/unlit.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/phong.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/rasterization/pbr.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/screen/final.slang.spv", "load_params": {"type": "eScreenPass"}},
+    {"type" : "eShaderProgram", "path" : "shaders/screen/bloom.slang.spv", "load_params": {"type": "eScreenPass"}},
+    {"type" : "eShaderProgram", "path" : "shaders/screen/ao.slang.spv", "load_params": {"type": "eScreenPass"}},
+    {"type" : "eShaderProgram", "path" : "shaders/screen/ao_blur.slang.spv", "load_params": {"type": "eScreenPass"}},
 
-    {"type": "eMaterial", "path": "materials/colored/material.json", "load_params": {}},
-    {"type": "eShader", "path": "materials/colored/shader.vert.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/colored/shader.frag.spv", "load_params": {}},
+    {"type": "eTexture", "path": "textures/floor/floor_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/floor/floor_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/floor/floor_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/floor/floor_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/floor/floor_ao.png", "load_params": {}},
 
-    {"type": "eMaterial", "path": "materials/textured/material.json", "load_params": {}},
-    {"type": "eShader", "path": "materials/textured/shader.vert.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/textured/shader.frag.spv", "load_params": {}},
+    {"type": "eTexture", "path": "textures/floor/brick_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/floor/brick_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/floor/brick_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/floor/brick_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/floor/brick_ao.png", "load_params": {}},
 
-    {"type": "eMaterial", "path": "materials/phong/material.json", "load_params": {}},
-    {"type": "eShader", "path": "materials/phong/shader.vert.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/phong/shader.geom.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/phong/shader.frag.spv", "load_params": {}},
-
-    {"type": "eMaterial", "path": "materials/pbr/material.json", "load_params": {}},
-    {"type": "eShader", "path": "materials/pbr/shader.vert.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/pbr/shader.geom.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/pbr/shader.frag.spv", "load_params": {}},
-
-    {"type": "eMaterial", "path": "materials/post/final.json", "load_params": {}},
-    {"type": "eMaterial", "path": "materials/post/blur.json", "load_params": {}},
-    {"type": "eMaterial", "path": "materials/post/ao.json", "load_params": {}},
-    {"type": "eShader", "path": "materials/post/common.vert.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/post/final.frag.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/post/blur.frag.spv", "load_params": {}},
-    {"type": "eShader", "path": "materials/post/ao.frag.spv", "load_params": {}},
-
-    {"type": "eTexture", "path": "textures/tiles_01/tiles_diff.png", "load_params": {}},
-    {"type": "eTexture", "path": "textures/tiles_01/tiles_diff.png:v2", "load_params": {"srgb": true, "generate_mipmaps": false}},
-    {"type": "eTexture", "path": "textures/tiles_01/tiles_disp.png", "load_params": {}},
-    {"type": "eTexture", "path": "textures/tiles_01/tiles_nor_gl.png", "load_params": {}},
-    {"type": "eTexture", "path": "textures/tiles_01/tiles_rough.png", "load_params": {}},
-    {"type": "eTexture", "path": "textures/tiles_01/tiles_spec.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/barrel/barrel_albedo.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/barrel/barrel_albedo.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/barrel/barrel_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/barrel/barrel_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/barrel/barrel_metallic.png", "load_params": {}},
 
     {"type": "eTexture", "path": "textures/chair/chair_diff_1k.png:v0", "load_params": {}},
     {"type": "eTexture", "path": "textures/chair/chair_diff_1k.png:v1", "load_params": {"srgb": true, "generate_mipmaps": false}},
@@ -61,28 +52,117 @@
 
     {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/hallway/hallway.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
-    {"type": "eMesh", "path": "meshes/corridor/corridor_fbt.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
-    {"type": "eMesh", "path": "meshes/corridor/corridor_fbt_ems.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/floor/floor.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/barrel/barrel.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/checkers/checkers.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/checkers/lines.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
 
     {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}},
-    {"type": "eScene", "path": "scenes/hallway.json", "load_params": {}},
-    {"type": "eScene", "path": "scenes/corridor.json", "load_params": {}}
+    {"type": "eScene", "path": "scenes/corridor.json", "load_params": {}},
+    {"type": "eScene", "path": "scenes/barrels.json", "load_params": {}},
+    {"type": "eScene", "path": "scenes/checkers.json", "load_params": {}}
   ],
 
-  "screen_effects" : [
+  "screen_passes": [
     {
-      "uid" : [2,0],
-      "name" : "Basic",
-      "materials" : [{
-        "type" : "eFinal",
-        "path" : "materials/post/final.json"
-      },{
-        "type" : "eAO",
-        "path" : "materials/post/ao.json"
-      },{
-        "type" : "eBlur",
-        "path" : "materials/post/blur.json"
-      }]
+      "uid" : [2, 1],
+      "name" : "AmbientOcclusion",
+      "type" : "eAO",
+      "input_attachments" : ["eNormal", "eDepth"],
+      "output_attachments" : ["eAO"],
+      "shader_program_path" : "shaders/screen/ao.slang.spv",
+      "next" : [2, 2],
+      "settings": {
+        "type" : 0,
+        "samples" : 2,
+        "radius" : 0.4,
+        "bias" : 0.02,
+        "multiplier" : 1.0,
+        "power" : 2.0
+      }
+    },
+    {
+      "uid" : [2, 2],
+      "name" : "AOBlurH",
+      "type" : "eBlur",
+      "input_attachments" : ["eAO", "eDepth", "eNormal"],
+      "output_attachments" : ["eTemp1"],
+      "shader_program_path" : "shaders/screen/ao_blur.slang.spv",
+      "previous" : [2, 1],
+      "next" : [2, 3],
+      "settings": {
+        "pass_index" : 0,
+        "samples" : 12,
+        "base_tex_radius" : 6,
+        "base_kernel_radius" : 6,
+        "direction" : [1.0, 0.0]
+      }
+    },
+    {
+      "uid" : [2, 3],
+      "name" : "AOBlurV",
+      "type" : "eBlur",
+      "input_attachments" : ["eTemp1", "eDepth", "eNormal"],
+      "output_attachments" : ["eAO"],
+      "shader_program_path" : "shaders/screen/ao_blur.slang.spv",
+      "previous" : [2, 2],
+      "next" : [2, 4],
+      "settings": {
+        "pass_index" : 1,
+        "samples" : 12,
+        "base_tex_radius" : 6,
+        "base_kernel_radius" : 6,
+        "direction" : [0.0, 1.0]
+      }
+    },
+    {
+      "uid" : [2, 4],
+      "name" : "BloomBlurH",
+      "type" : "eBlur",
+      "input_attachments" : ["eEmission"],
+      "output_attachments" : ["eTemp1"],
+      "shader_program_path" : "shaders/screen/bloom.slang.spv",
+      "previous" : [2, 3],
+      "next" : [2, 5],
+      "settings": {
+        "pass_index" : 0,
+        "samples" : 10,
+        "base_tex_radius" : 4,
+        "base_kernel_radius" : 5,
+        "direction" : [1.0, 0.0]
+      }
+    },
+    {
+      "uid" : [2, 5],
+      "name" : "BloomBlurV",
+      "type" : "eBlur",
+      "input_attachments" : ["eTemp1"],
+      "output_attachments" : ["eEmission"],
+      "shader_program_path" : "shaders/screen/bloom.slang.spv",
+      "previous" : [2, 4],
+      "next" : [2, 6],
+      "settings": {
+        "pass_index" : 1,
+        "samples" : 10,
+        "base_tex_radius" : 4,
+        "base_kernel_radius" : 5,
+        "direction" : [0.0, 1.0]
+      }
+    },
+    {
+      "uid" : [2, 6],
+      "name" : "Final",
+      "type" : "eCompositing",
+      "input_attachments" : ["eColor", "eDepth", "eNormal", "eEmission"],
+      "output_attachments" : ["eCompositing"],
+      "shader_program_path" : "shaders/screen/final.slang.spv",
+      "previous" : [2, 5],
+      "settings": {
+        "bloom_blur_lod" : 2.5,
+        "bloom_intensity" : 1.0,
+        "gamma": 2.2,
+        "exposure": 1.0
+      }
     }
   ],
 
@@ -90,76 +170,103 @@
     {
       "uid" : [0,1],
       "name": "Colored",
-      "base_material_path" : "materials/colored/material.json",
-      "base_material_type" : "eColored"
+      "shader_program_path" : "shaders/rasterization/colored.slang.spv",
+      "type" : "eColored"
     },
     {
       "uid" : [0,2],
-      "name": "Textured",
-      "base_material_path" : "materials/textured/material.json",
-      "base_material_type" : "eTextured",
+      "name": "Floor",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 3.0
+      },
       "textures": [{
         "type" : "eAlbedoColor",
-        "path" : "textures/tiles_01/tiles_diff.png",
+        "path" : "textures/floor/floor_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/floor/floor_nor.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eRoughOrSpec",
+        "path" : "textures/floor/floor_rough.png",
         "filter" : "eLinear"
       }]
     },
     {
       "uid" : [0,3],
-      "name": "TilesPhong",
-      "base_material_path" : "materials/phong/material.json",
-      "base_material_type" : "ePhong",
+      "name": "Walls",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
-        "ambient": [0.0, 0.0, 0.0, 1.0],
-        "shininess": 64.0,
-        "specular": 1.0
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 3.0
       },
       "textures": [{
         "type" : "eAlbedoColor",
-        "path" : "textures/tiles_01/tiles_diff.png",
+        "path" : "textures/floor/brick_diff.png:v1",
         "filter" : "eLinear"
-      },{
+      }, {
         "type" : "eNormal",
-        "path" : "textures/tiles_01/tiles_nor_gl.png",
+        "path" : "textures/floor/brick_nor.png",
         "filter" : "eLinear"
       },{
         "type" : "eRoughOrSpec",
-        "path" : "textures/chair/tiles_spec.png",
+        "path" : "textures/floor/brick_rough.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eAO",
+        "path" : "textures/floor/brick_ao.png",
         "filter" : "eLinear"
       }]
     },
     {
       "uid" : [0,4],
-      "name": "TilesPbr",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "name": "BarrelPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
-        "roughness": 0.35,
-        "metallic": 0.0,
+        "roughness": 1.0,
+        "metallic": 1.0,
         "ao": 1.0,
-        "emission": 0.0
+        "emission": 0.0,
+        "normal_mul": 1.0
       },
       "textures": [{
         "type" : "eAlbedoColor",
-        "path" : "textures/tiles_01/tiles_diff.png:v2",
+        "path" : "textures/barrel/barrel_albedo.png:v1",
         "filter" : "eLinear"
       }, {
         "type" : "eNormal",
-        "path" : "textures/tiles_01/tiles_nor_gl.png",
+        "path" : "textures/barrel/barrel_nor.png",
         "filter" : "eLinear"
       },{
         "type" : "eRoughOrSpec",
-        "path" : "textures/tiles_01/tiles_rough.png",
+        "path" : "textures/barrel/barrel_rough.png",
+        "filter" : "eLinear"
+      },{
+        "type" : "eMetalOrReflect",
+        "path" : "textures/barrel/barrel_metallic.png",
         "filter" : "eLinear"
       }]
     },
     {
       "uid" : [0,5],
       "name": "ChairUnlit",
-      "base_material_path" : "materials/textured/material.json",
-      "base_material_type" : "eTextured",
+      "shader_program_path" : "shaders/rasterization/unlit.slang.spv",
+      "type" : "eUnlit",
       "textures": [{
         "type" : "eAlbedoColor",
         "path" : "textures/chair/chair_diff_1k.png:v0",
@@ -169,8 +276,8 @@
     {
       "uid" : [0,6],
       "name": "ChairPhong",
-      "base_material_path" : "materials/phong/material.json",
-      "base_material_type" : "ePhong",
+      "shader_program_path" : "shaders/rasterization/phong.slang.spv",
+      "type" : "ePhong",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "ambient": [0.0, 0.0, 0.0, 1.0],
@@ -194,8 +301,8 @@
     {
       "uid" : [0,7],
       "name": "ChairPBR",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
@@ -220,8 +327,8 @@
     {
       "uid" : [0,8],
       "name": "HallwayFloor",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
@@ -250,8 +357,8 @@
     {
       "uid" : [0,9],
       "name": "HallwayRoom01",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
@@ -280,8 +387,8 @@
     {
       "uid" : [0,10],
       "name": "HallwayRoom02",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
@@ -309,21 +416,29 @@
     },
     {
       "uid" : [0,11],
-      "name": "EmissivePBR",
-      "base_material_path" : "materials/pbr/material.json",
-      "base_material_type" : "ePBR",
+      "name": "Emission",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 2.0
+      }
+    },
+    {
+      "uid" : [0,12],
+      "name": "Matte",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
       "settings": {
         "color": [1.0, 1.0, 1.0, 1.0],
         "roughness": 1.0,
         "metallic": 0.0,
-        "ao": 0.0,
-        "emission": 1.0
-      },
-      "textures": [{
-        "type" : "eNormal",
-        "path" : "builtin:tex/normal-pixel",
-        "filter" : "eLinear"
-      }]
+        "ao": 1.0,
+        "emission": 0.0
+      }
     }
   ],
 
@@ -340,5 +455,5 @@
     ]
   },
 
-  "initial_scene": "scenes/hallway.json"
+  "initial_scene": "scenes/barrels.json"
 }

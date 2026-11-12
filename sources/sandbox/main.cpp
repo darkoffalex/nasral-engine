@@ -5,8 +5,8 @@
 
 #include <nasral/engine.h>
 
-constexpr int kWindowWidth = 1280;
-constexpr int kWindowHeight = 720;
+constexpr int kWindowWidth = 1920;
+constexpr int kWindowHeight = 1080;
 constexpr auto kWindowTitle = "Sandbox";
 
 /**
@@ -85,7 +85,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.gfx.app_name = "Nasral Sandbox";
             config.gfx.engine_name = "Nasral Engine";
             config.gfx.surface_provider = std::make_shared<utils::GlfwSurfaceProvider>(window);
-            config.gfx.clear_color = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+            config.gfx.clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
             config.gfx.pfn_vk_get_proc_addr = glfwGetInstanceProcAddress;
             config.gfx.rendering_resolution = config.gfx.surface_provider->framebuffer_extent();
             config.gfx.offscreen_color_format = vk::Format::eR16G16B16A16Sfloat;
@@ -96,8 +96,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.gfx.composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
             config.gfx.enable_validation_layers = true;
             config.gfx.opengl_compatible = true;
-            config.gfx.max_frames_in_flight = 3;
-            config.gfx.swap_chain_images = 4;
+            config.gfx.max_frames_in_flight = 2;
+            config.gfx.swap_chain_images = 3;
 
             // Ввод
             config.inp.provider = std::make_shared<utils::GlfwInputProvider>(window);

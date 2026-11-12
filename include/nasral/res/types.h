@@ -46,8 +46,7 @@ namespace nasral::res
         eFile,
         eTexture,
         eMesh,
-        eShader,
-        eMaterial,
+        eShaderProgram,
         eProjectFile,
         eScene,
         TOTAL
@@ -76,9 +75,23 @@ namespace nasral::res
         bool winding_order_ccw = false;
     };
 
+    struct ShaderLoadParams
+    {
+        enum Type : uint32_t
+        {
+            eRasterization = 0,
+            eScreenPass,
+            eRaytracing,
+            eCompute,
+        };
+
+        Type type = eRasterization;
+    };
+
     using LoadParams = std::variant<
         TextureLoadParams,
-        MeshLoadParams
+        MeshLoadParams,
+        ShaderLoadParams
     >;
 
     struct Path
@@ -117,7 +130,10 @@ namespace nasral::res
     };
 
     using ResourceId = uint32_t;
-    using ResourceDesc = std::tuple<Type, std::string, std::optional<LoadParams>>;
+    using ResourceDesc = std::tuple<
+        Type,
+        std::string,
+        std::optional<LoadParams>>;
 
     struct Config
     {

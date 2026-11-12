@@ -30,24 +30,18 @@ namespace nasral::scn
         // Обработка ввода
         update_cam_input(delta);
         update_light_input(delta); // <-- Временно: для отладки
-        update_mesh_input(delta); // <-- Временно: для отладки
 
         // Состояние источников света (активация/деактивация)
         update_light_states();
 
-        // Экранные эффекты
-        update_screen_fx();
-
         // Уничтожение узлов
         update_mesh_destroy();
         update_light_destroy();
-        update_screen_fx_destroy();
     }
 
     void System::on_finalize() const{
         update_mesh_destroy();
         update_light_destroy();
-        update_screen_fx_destroy();
         log_info("ECS-system finalized");
     }
 
@@ -73,65 +67,9 @@ namespace nasral::scn
         // - Запрос
         // - Загрузка
         // - Загружен
-        for (auto [e, n, res] : engine()->ecs()->view<Node, Resources>(ecs::kMaskOf<Request, Loading, Loaded>))
+        for (const auto& [e, n, res] : engine()->ecs()->view<Node, Resources>(ecs::kMaskOf<Request, Loading, Loaded>))
         {
             engine()->ecs()->add_components<Request>(e, {});
-        }
-    }
-
-    void System::update_screen_fx() const
-    {
-        // Алиасы компонентов
-        using ScreenFx = ScreenFxComponent;
-        using DirtyState = DirtyStateComponent;
-
-        // Пройти по всем сущностям с компонентами:
-        // - Экранный эффект
-        // - Обновлён (грязный)
-        for (auto[e, sfx, dirty] : engine()->ecs()->view<ScreenFx, DirtyState>())
-        {
-            // Если прежде был эффект - больше не ссылаться на него
-            if (!sfx.screen_fx_prev_released && engine()->ecs()->is_valid(sfx.screen_fx_prev)){
-                ecs::dec_entity_refs(engine()->ecs(), sfx.screen_fx_prev);
-                sfx.screen_fx_prev_released = true;
-            }
-
-            // Если новый эффект корректен - ссылаться на него
-            if (!sfx.screen_fx_requested && engine()->ecs()->is_valid(sfx.screen_fx)){
-                ecs::inc_entity_refs(engine()->ecs(), sfx.screen_fx);
-                sfx.screen_fx_requested = true;
-            }
-
-            // Когда на entity эффекта начинают ссылаться, её в определенный момент будут загружены
-            // Нужно проверять готовность screen fx entity, при загрузке (готовности) отправлять событие
-            if (sfx.screen_fx_requested
-                && engine()->ecs()->is_valid(sfx.screen_fx)
-                && engine()->ecs()->has<gfx::ScreenFxHandlesComponent, res::LoadedComponent>(sfx.screen_fx)
-                && !engine()->ecs()->has<gfx::DirtyHandlesComponent>(sfx.screen_fx))
-            {
-                // Получить UID объекта
-                assert(engine()->ecs()->has<ecs::UidComponent>(sfx.screen_fx) && "Screen FX entity must have ecs::UidComponent");
-                const auto& [uid] = engine()->ecs()->get_component<ecs::UidComponent>(sfx.screen_fx);
-
-                // Отправить событие о изменении экранного эффекта
-                engine()->events()->send(
-                    evt::Type::eScreenFxChanged,
-                    evt::Arg{uid});
-
-                // Состояние экранного эффекта обновлено
-                engine()->ecs()->remove_components<DirtyState>(e);
-            }
-            // Если новый эффект не установлен, но только лишь сброшен предыдущий
-            else if (sfx.screen_fx_prev_released)
-            {
-                // Отправить событие о сбросе экранного эффекта
-                engine()->events()->send(
-                    evt::Type::eScreenFxChanged,
-                    evt::Arg{evt::ChangeReason::eRemoved});
-
-                // Состояние экранного эффекта обновлено
-                engine()->ecs()->remove_components<DirtyState>(e);
-            }
         }
     }
 
@@ -154,7 +92,7 @@ namespace nasral::scn
         if (!first_cam) return;
 
         // Внести изменения (если еще не внесены)
-        if (auto [e, n, spatial, cam, uniform] = *first_cam; !uniform.is_dirty)
+        if (auto&& [e, n, spatial, cam, uniform] = *first_cam; !uniform.is_dirty)
         {
             // Вектор перемещения (управление с клавиатуры)
             auto movement = engine()->inp()->get_movement_vector(
@@ -196,22 +134,51 @@ namespace nasral::scn
     {
         // Алиасы компонентов
         using Node       = NodeComponent;
-        using Light      = LightComponent;
+        //using Light      = LightComponent;
         using Spatial    = SpatialComponent;
         using Uniform    = gfx::UniformStateComponent;
 
+        for (auto&& [e, n, spatial, uniform] : engine()->ecs()->view<Node, Spatial, Uniform>(ecs::kMaskOf<ViewComponent>)) {
+            constexpr float move_speed = 2.5f;
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eUp))
+            {
+                spatial.position.y += move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eDown))
+            {
+                spatial.position.y -= move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eLeft))
+            {
+                spatial.position.x -= move_speed * delta;
+                uniform.is_dirty = true;
+            }
+
+            if (engine()->inp()->is_key_pressed(inp::KeyCode::eRight))
+            {
+                spatial.position.x += move_speed * delta;
+                uniform.is_dirty = true;
+            }
+        }
+
+        /*
         // Найти первый источник
         const auto first_light = engine()->ecs()->view<
             Node,
             Spatial,
-            Light,
-            Uniform>().begin();
+            // Light,
+            Uniform>(ecs::kMaskOf<ViewComponent>).begin();
 
         // Если нет - выход
         if (!first_light) return;
 
         // Внести изменения (если еще не внесены)
-        if (auto [e, n, spatial, light, uniform] = *first_light; !uniform.is_dirty)
+        if (auto&& [e, n, spatial, uniform] = *first_light; !uniform.is_dirty)
         {
             constexpr float move_speed = 2.5f;
 
@@ -239,61 +206,7 @@ namespace nasral::scn
                 uniform.is_dirty = true;
             }
         }
-    }
-
-    void System::update_mesh_input(const float delta) const
-    {
-        // Алиасы компонентов
-        using Node       = NodeComponent;
-        using Mesh       = MeshComponent;
-        using Spatial    = SpatialComponent;
-        using Uniform    = gfx::UniformStateComponent;
-
-        // Найти первый динамический mesh
-        const auto first_d_mesh = engine()->ecs()->view<
-            Node,
-            Spatial,
-            Mesh,
-            Uniform>().begin();
-
-        // Если нет - выход
-        if (!first_d_mesh) return;
-
-        // Внести изменения (если еще не внесены)
-        if (auto [e, n, spatial, light, uniform] = *first_d_mesh; !uniform.is_dirty)
-        {
-            constexpr float move_speed = 2.5f;
-
-            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp8))
-            {
-                spatial.position.y += move_speed * delta;
-                uniform.is_dirty = true;
-            }
-
-            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp2))
-            {
-                spatial.position.y -= move_speed * delta;
-                uniform.is_dirty = true;
-            }
-
-            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp4))
-            {
-                spatial.position.x -= move_speed * delta;
-                uniform.is_dirty = true;
-            }
-
-            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp6))
-            {
-                spatial.position.x += move_speed * delta;
-                uniform.is_dirty = true;
-            }
-
-            if (engine()->inp()->is_key_pressed(inp::KeyCode::eKp5))
-            {
-                spatial.rotation.y += 30.0f * delta;
-                uniform.is_dirty = true;
-            }
-        }
+        */
     }
 
     void System::update_mesh_destroy() const
@@ -306,13 +219,25 @@ namespace nasral::scn
 
         // Пройти по всем mesh-ам, помеченным к удалению.
         // Предполагается, что в конце update-итерации сущность будет удалена (повторной обработки не случится)
-        for (auto [e, n, m, ui, d_tag] : engine()->ecs()->view<
+        for (const auto& [e, n, m, ui, d_tag] : engine()->ecs()->view<
             Node,
             Mesh,
             UniformId,
             Destroy>())
         {
+            // Освободить UBO-индекс
             engine()->gfx()->release_object_id(ui.index);
+
+            // Уменьшить кол-во ссылок на entity материалов
+            auto& [materials, requested] = engine()->ecs()->get_component<MeshComponent>(e);
+            for (size_t i = 0; i < materials.size(); ++i){
+                if (!requested[i]) continue;
+                if (!engine()->ecs()->is_valid(materials[i])) continue;
+                ecs::dec_entity_refs(engine()->ecs(), materials[i]);
+            }
+
+            // Пометить для освобождения ресурсов
+            engine()->ecs()->add_components_immediate<res::ReleaseComponent>(e, {});
         }
     }
 
@@ -326,35 +251,13 @@ namespace nasral::scn
 
         // Пройти по всем источникам света, помеченным к удалению.
         // Предполагается, что в конце update-итерации сущность будет удалена (повторной обработки не случится)
-        for (auto [e, n, l, ui, d_tag] : engine()->ecs()->view<
+        for (const auto& [e, n, l, ui, d_tag] : engine()->ecs()->view<
             Node,
             Light,
             UniformId,
             Destroy>())
         {
-            engine()->gfx()->release_object_id(ui.index);
-        }
-    }
-
-    void System::update_screen_fx_destroy() const
-    {
-        // Алиасы компонентов
-        using ScreenFx  = ScreenFxComponent;
-        using Destroy   = ecs::DestroyComponent;
-
-        // Пройти по всем настройкам экранных эффектов помеченных к удалению.
-        // Предполагается, что в конце update-итерации сущность будет удалена (повторной обработки не случится)
-        for (auto [e, sf, d_tag] : engine()->ecs()->view<
-            ScreenFx,
-            Destroy>())
-        {
-            // Уменьшить кол-вл ссылок на entity экранного эффекта
-            ecs::dec_entity_refs(engine()->ecs(), sf.screen_fx);
-
-            // Уведомить другие подсистеме о сбросе эффекта
-            engine()->events()->send(
-                evt::Type::eScreenFxChanged,
-                evt::Arg{evt::ChangeReason::eRemoved});
+            engine()->gfx()->release_light_id(ui.index);
         }
     }
 
@@ -369,7 +272,7 @@ namespace nasral::scn
 
         // Пройти по источникам, которые необходимо активировать, и сформировать список
         activate_lights_.clear();
-        for (auto [e, n, l, ui, a_tag] : engine()->ecs()->view<
+        for (const auto& [e, n, l, ui, a_tag] : engine()->ecs()->view<
             Node,
             Light,
             UniformId,
@@ -386,7 +289,7 @@ namespace nasral::scn
 
         // Пройтись по источникам, которые необходимо деактивировать, и сформировать список
         deactivate_lights_.clear();
-        for (auto [e, n, l, ui, d_tag] : engine()->ecs()->view<
+        for (const auto& [e, n, l, ui, d_tag] : engine()->ecs()->view<
             Node,
             Light,
             UniformId,

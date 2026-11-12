@@ -5,7 +5,7 @@
 #include <nasral/gfx/types.h>
 
 #include <vulkan/utils/device.hpp>
-#include <vulkan/utils/framebuffer.hpp>
+#include <vulkan/utils/image.hpp>
 #include <vulkan/utils/uniform_layout.hpp>
 #include <vulkan/utils/buffer.hpp>
 #include <vulkan/utils/acceleration_structure.hpp>
@@ -34,46 +34,79 @@ namespace nasral::gfx
         void cmd_begin_frame();
         void cmd_end_frame();
         void cmd_begin_rasterization_pass();
-        void cmd_begin_screen_fx_ping_pong_pass(size_t pass_index);
-        void cmd_begin_screen_fx_final_pass();
-        void cmd_end_render_pass();
-        void cmd_bind_rasterization_material(const handles::Material& handles, uint32_t uniform_idx);
-        void cmd_bind_post_processing_material(const handles::Material& handles, bool final_output = false);
-        void cmd_bind_rasterization_geometry(const handles::Mesh& handles, uint32_t uniform_idx);
-        void cmd_draw_geometry(uint32_t index_offset, uint32_t index_count);
-        void cmd_draw_post_processing_quad(uint32_t pass_index = 0);
-        //void cmd_clear_color_attachment(uint32_t attachment_index, const vk::ClearColorValue& clear_color);
-        void cmd_gen_framebuffer_mipmaps(const OffscreenTextureType& type) const;
+        void cmd_end_rasterization_pass();
+        void cmd_begin_screen_pass(EnumMask<FrameAttachmentType> input, EnumMask<FrameAttachmentType> output);
+        void cmd_end_screen_pass();
+        void cmd_bind_shader_program(const handles::ShaderProgram& handles);
+        void cmd_bind_mesh_geometry(const handles::Mesh& handles) const;
+        void cmd_draw_bound_geometry(uint32_t index_offset, uint32_t index_count, uint32_t obj_uniform_idx, uint32_t mat_uniform_idx);
+        void cmd_draw_screen_quad(uint32_t pass_uniform_idx, uint32_t active_stage_flags);
+        void cmd_gen_frame_mipmaps(const FrameAttachmentType& type) const;
+        void cmd_blit_to_screen(const FrameAttachmentType& type) const;
         void cmd_build_tlas(uint32_t instance_count, bool initial = true);
         void cmd_wait_for_all() const;
-
-        void request_surface_refresh();
+        void mark_surface_dirty();
         void mark_tlas_dirty();
 
-        [[nodiscard]] auto is_active() const noexcept{ return is_active_; }
-        [[nodiscard]] auto frames() const noexcept{ return frame_count_; }
-        [[nodiscard]] auto frame() const noexcept{ return frame_index_; }
-        [[nodiscard]] const auto& vk_instance() const noexcept{ return *vk_instance_; }
-        [[nodiscard]] auto& vk_loader() const noexcept{ return vk_loader_; }
-        [[nodiscard]] auto& vk_device() const noexcept{ return *vk_device_; }
-        [[nodiscard]] const auto& vk_rasterization_pass() const noexcept{ return *vk_rasterization_pass_; }
-        [[nodiscard]] const auto& vk_ping_pong_pass() const noexcept{ return *vk_screen_fx_ping_pong_pass_; }
-        [[nodiscard]] const auto& vk_post_processing_pass() const noexcept{ return *vk_screen_fx_final_pass_; }
-        [[nodiscard]] const auto& vk_surface() const noexcept{ return *vk_surface_; }
-        [[nodiscard]] const auto& vk_offscreen_framebuffer(const size_t frame) const noexcept{ return *vk_offscreen_framebuffers_[frame]; }
-        [[nodiscard]] const auto& vk_ping_pong_framebuffer(const size_t frame, const size_t n) const noexcept{ return *vk_ping_pong_framebuffers_[frame][n]; }
-        [[nodiscard]] const auto& vk_swapchain_framebuffer(const size_t frame) const noexcept{ return *vk_swapchain_framebuffers_[frame]; }
-        [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{ return *vk_texture_samplers_[type]; }
-        [[nodiscard]] const auto& vk_uniform_layout(const UniformLayoutType& type) const noexcept{ return *vk_uniform_layouts_[type]; }
-        [[nodiscard]] const auto& vk_rasterization_d_set(const UniformDSetType& type) const noexcept{ return *vk_rasterization_d_sets_[type]; }
-        [[nodiscard]] const auto& vk_post_process_frame_d_set(const size_t frame) const noexcept{ return *vk_post_process_frame_d_sets_[frame]; }
-        [[nodiscard]] auto& vk_uniform_buffer(const UniformBufferType& type) const noexcept{ return *vk_uniform_buffers_[type]; }
-        [[nodiscard]] auto& vk_tlas_instance_buffer(const size_t frame) const noexcept{ return *vk_tlas_instance_buffers_[frame]; }
-
-        [[nodiscard]] const vk::Extent2D& rendering_resolution() const noexcept;
-        [[nodiscard]] float rendering_aspect() const noexcept;
-        [[nodiscard]] bool ready_for_commands() const noexcept;
+        [[nodiscard]] vk::Extent2D rendering_resolution() const noexcept;
+        [[nodiscard]] vk::Extent2D output_resolution() const noexcept;
+        [[nodiscard]] float aspect_ratio() const noexcept;
         [[nodiscard]] bool is_tlas_dirty(bool exchange = true) noexcept;
+
+        [[nodiscard]] auto is_active() const{
+            return is_active_;
+        }
+        [[nodiscard]] auto is_frame_started() const{
+            return is_frame_started_;
+        }
+        [[nodiscard]] auto is_pass_started() const{
+            return is_pass_started_;
+        }
+        [[nodiscard]] auto frame_count() const{
+            return frame_count_;
+        }
+        [[nodiscard]] auto frame_index() const{
+            return frame_index_;
+        }
+        [[nodiscard]] const auto& vk_instance() const noexcept{
+            return *vk_instance_;
+        }
+        [[nodiscard]] auto& vk_loader() const noexcept{
+            return vk_loader_;
+        }
+        [[nodiscard]] auto& vk_device() const noexcept{
+            return *vk_device_;
+        }
+        [[nodiscard]] const auto& vk_surface() const noexcept{
+            return *vk_surface_;
+        }
+        [[nodiscard]] const auto& vk_offscreen_image(const FrameAttachmentType& frame_type) const noexcept{
+            return *vk_offscreen_images_[frame_type][frame_index()];
+        }
+        [[nodiscard]] const auto& vk_swap_chain_image() const noexcept{
+            return *vk_swap_chain_images_[available_sc_image_];
+        }
+        [[nodiscard]] const auto& vk_texture_sampler(const TextureSamplerType& type) const noexcept{
+            return *vk_texture_samplers_[type];
+        }
+        [[nodiscard]] const auto& vk_uniform_layout(const ShaderProgramType& program_type) const noexcept{
+            return *vk_uniform_layouts_[program_type];
+        }
+        [[nodiscard]] auto& vk_uniform_buffer(const UniformBufferType& type) const noexcept{
+            return *vk_uniform_buffers_[type];
+        }
+        [[nodiscard]] auto& vk_tlas_instance_buffer(const size_t frame) const noexcept{
+            return *vk_tlas_instance_buffers_[frame];
+        }
+        [[nodiscard]] auto& vk_command_buffer() const noexcept{
+            return *vk_command_buffers_[frame_index()];
+        }
+        [[nodiscard]] auto& vk_rasterization_d_set(const UniformRasterDSetType& type) const noexcept{
+            return *vk_rendering_d_sets_[type];
+        }
+        [[nodiscard]] auto& vk_screen_d_set(const UniformScreenDSetType& type) const noexcept{
+            return *vk_screen_d_sets_[type];
+        }
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_report_callback(
             vk::Flags<vk::DebugReportFlagBitsEXT> flags,
@@ -85,20 +118,21 @@ namespace nasral::gfx
             const char* msg,
             void* user_data);
 
+        static vk::ImageAspectFlags frame_attachment_aspect(
+            const FrameAttachmentType& type,
+            const vk::Format& format);
+
     protected:
         void init_vk_instance();
         void init_vk_loader();
         void init_vk_debug_callback();
         void init_vk_surface();
         void init_vk_device();
-        void init_vk_render_passes();
         void init_vk_swap_chain();
         void init_vk_framebuffers();
         void init_vk_uniform_layouts();
         void init_vk_texture_samplers();
         void init_vk_framebuffer_bindings();
-        void init_vk_tlas_rt_bindings();
-        void init_vk_tlas_rq_bindings();
         void init_vk_tlas();
         void init_vk_uniforms();
         void init_vk_command_buffers();
@@ -108,8 +142,9 @@ namespace nasral::gfx
     private:
         // Состояние
         bool is_active_;
-        bool frame_in_progress_;
-        std::atomic<bool> surface_refresh_needed_;
+        bool is_frame_started_;
+        bool is_pass_started_;
+        std::atomic<bool> is_surface_dirty_;
 
         // Основные сущности Vulkan (включая кастомные RAII обертки)
         vk::UniqueInstance vk_instance_;
@@ -117,24 +152,22 @@ namespace nasral::gfx
         vk::detail::DispatchLoaderDynamic vk_loader_;
         vk::UniqueSurfaceKHR vk_surface_;
         vk::utils::Device::Ptr vk_device_;
-        vk::UniqueRenderPass vk_rasterization_pass_;
-        vk::UniqueRenderPass vk_screen_fx_ping_pong_pass_;
-        vk::UniqueRenderPass vk_screen_fx_final_pass_;
         vk::UniqueSwapchainKHR vk_swap_chain_;
-        std::vector<vk::utils::Framebuffer::Ptr> vk_offscreen_framebuffers_;     //< Основные вложения (цвет, нормали, глубина)
-        std::vector<std::array<vk::utils::Framebuffer::Ptr, 2>> vk_ping_pong_framebuffers_; //< Ping-pong буферы для промежуточной пост-обработки
-        std::vector<vk::utils::Framebuffer::Ptr> vk_swapchain_framebuffers_;     //< Буферы вывода на экран (финальный проход)
 
-        // Макеты конвейеров (для растеризации, пост-процессинга и прочего)
-        EnumArray<UniformLayoutType, vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
-        // Дескрипторные наборы растеризации и пост-процессинга (камера, трансформации и материалы объектов, текстуры объектов)
-        EnumArray<UniformDSetType, vk::UniqueDescriptorSet> vk_rasterization_d_sets_;
-        EnumArray<UniformDSetType, vk::UniqueDescriptorSet> vk_post_process_d_sets_;
+        // Кадровые изображения (для показа и рендеринга)
+        std::array<vk::utils::Image::Ptr, kMaxSwapChainImages> vk_swap_chain_images_;
+        EnumArray<FrameAttachmentType, std::array<vk::utils::Image::Ptr, kMaxFramesInFlight>> vk_offscreen_images_;
+
+        // Макеты uniform-буферов для каждого типа шейдерного пайплайна
+        EnumArray<ShaderProgramType, vk::utils::UniformLayout::Ptr> vk_uniform_layouts_;
+
+        // Дескрипторные наборы для рендеринга и экранного прохода (камера, трансформации, материалы, текстуры объектов)
+        EnumArray<UniformRasterDSetType, vk::UniqueDescriptorSet> vk_rendering_d_sets_;
+        EnumArray<UniformScreenDSetType, vk::UniqueDescriptorSet> vk_screen_d_sets_;
+
         // Дескрипторные наборы пост-процессинга на кадр (текстуры кадровых буферов)
-        std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_post_process_frame_d_sets_;
-        // Дескрипторные наборы трассировки лучей на кадр (TLAS и прочие данные) для стадии растеризации (ray query) и трассировки
-        std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_ray_query_frame_d_sets_;
-        std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_ray_tracing_frame_d_sets_;
+        std::array<vk::UniqueDescriptorSet, kMaxFramesInFlight> vk_screen_d_sets_per_frame_;
+
         // Uniform буферы объектов (камера, трансформации, материалы, источники света)
         EnumArray<UniformBufferType, vk::utils::Buffer::Ptr> vk_uniform_buffers_;
         // Семплеры текстур
@@ -149,14 +182,18 @@ namespace nasral::gfx
         // Синхронизация и команды (кол-во примитивов соответствует кол-ву активных кадров)
         size_t frame_count_;
         size_t frame_index_;
-        uint32_t available_image_index_;
+        uint32_t available_sc_image_;
         std::vector<vk::UniqueCommandBuffer> vk_command_buffers_;
         std::vector<vk::UniqueSemaphore> vk_render_available_semaphore_;
         std::vector<vk::UniqueSemaphore> vk_render_finished_semaphore_;
         std::vector<vk::UniqueFence> vk_frame_fence_;
 
-        // Последний использованный конвейер (pipeline)
+        // Последний использованный конвейер
         vk::Pipeline vk_last_rasterization_pipeline_;
+
+        // Выходные вложения последнего экранного прохода
+        EnumMask<FrameAttachmentType> last_screen_pass_output_attachments_;
+
     };
 }
 

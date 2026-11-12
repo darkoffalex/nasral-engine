@@ -49,8 +49,7 @@ namespace nasral
         /**
          * @brief Подсистемы
          * @details От порядка подсистем в кортеже зависит порядок
-         * инициализации, обновления, финализации.
-         * Финализация происходит в порядке, обратном порядку инициализации.
+         * инициализации, обновления, уничтожения.
          */
         using SubsystemTuple = std::tuple<
             log::Logger::Ptr,
@@ -62,6 +61,22 @@ namespace nasral
             scn::Manager::Ptr,
             inp::Manager::Ptr>;
 
+        /**
+         * @brief Порядок финализации подсистем
+         * @details Порядок финализации подсистем несколько отличается от обратного порядка,
+         * поскольку некоторые подсистемы должны быть завершены до других.
+         */
+        using SubsystemTupleFinalizing = std::tuple<
+            inp::Manager*,
+            scn::Manager*,
+            gfx::Manager*,
+            res::Manager*,
+            ecs::Manager*,
+            run::Manager*,
+            evt::Manager*,
+            log::Logger*>;
+
         SubsystemTuple subsystems_;
+        SubsystemTupleFinalizing subsystems_finalizing_;
     };
 }

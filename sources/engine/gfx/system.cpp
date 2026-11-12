@@ -1,16 +1,16 @@
 #include "pch.h"
 #include <nasral/gfx/system.h>
 #include <nasral/gfx/manager.h>
-#include <nasral/gfx/objects/material.h>
-#include <nasral/gfx/utils.h>
+#include <nasral/gfx/entities/material.h>
+#include <nasral/gfx/entities/screen_pass.h>
 #include <nasral/ecs/manager.h>
 #include <nasral/ecs/view.h>
 #include <nasral/ecs/utils.h>
 #include <nasral/res/components.h>
 #include <nasral/scn/components.h>
-#include <nasral/res/objects/material.h>
 #include <nasral/res/objects/texture.h>
 #include <nasral/res/objects/mesh.h>
+#include <nasral/res/objects/shader_program.h>
 #include <nasral/engine.h>
 
 namespace nasral::gfx
@@ -25,15 +25,17 @@ namespace nasral::gfx
 
     void System::on_update([[maybe_unused]] const float delta) const
     {
-        // Материалы (основные)
+        // Материалы
         update_mtl_ubo();
         update_mtl_handles();
         update_mtl_textures();
         update_mtl_destroy();
 
-        // Материалы (пост-процессинг)
-        update_screen_fx_handles();
-        update_screen_fx_ubo();
+        // Экранные проходы
+        update_sp_ubo();
+        update_sp_handles();
+        update_sp_destroy();
+        update_sp_states();
 
         // Объекты
         update_obj_static_ubo();
@@ -46,22 +48,75 @@ namespace nasral::gfx
 
         // Камеры
         update_cam_ubo();
+
+        // Переключение настроек проходов (отладка)
+        update_sp_debug_settings();
     }
 
-    void System::on_finalize() const{
+    void System::on_finalize() const {
         update_mtl_destroy();
+        update_sp_destroy();
         log_info("ECS-system finalized");
     }
 
     void System::on_render() const
     {
+        // Проход растеризации
+        engine()->gfx()->renderer()->cmd_begin_rasterization_pass();
         render_meshes();
+        engine()->gfx()->renderer()->cmd_end_rasterization_pass();
+
+        // Если нужно перестроить/обновить TLAS
+        if (engine()->gfx()->renderer()->is_tlas_dirty(true)){
+            engine()->gfx()->renderer()->cmd_build_tlas(engine()->gfx()->acquired_objects_count(), true);
+        }
+
+        // Цепочка экранных проходов (пост-обработка)
+        bool post_processed = false;
+        size_t pass_idx = 0;
+        std::bitset<sizeof(uint32_t) * 8> active_stage_flags = {};
+
+        // Начать с первого прохода
+        auto pass_e = engine()->gfx()->find_first_screen_pass();
+        while (pass_e != ecs::EntityId::invalid()) {
+            const auto pass_view = engine()->ecs()->as_view<ScreenPassView>(pass_e);
+
+            // Если какой-то их проходов не готов (ресурсы не загружены)
+            if (!pass_view->is_ready()) {
+                // Запрос ресурсов (в случае необходимости)
+                if (!pass_view->is_resources_requested()) {
+                    pass_view->request_resources();
+                }
+                // Пост обработка отменена
+                post_processed = false;
+                break;
+            }
+
+            // Если проход активен
+            if (pass_view->is_active()) {
+                active_stage_flags.set(pass_idx);
+
+                engine()->gfx()->renderer()->cmd_begin_screen_pass(pass_view->input_attachments(), pass_view->output_attachments());
+                engine()->gfx()->renderer()->cmd_bind_shader_program(pass_view->shader_program());
+                engine()->gfx()->renderer()->cmd_draw_screen_quad(pass_view->uniform_index(), static_cast<uint32_t>(active_stage_flags.to_ulong()));
+                engine()->gfx()->renderer()->cmd_end_screen_pass();
+            }
+
+            // Получить следующий проход
+            pass_e = pass_view->next_pass();
+            ++pass_idx;
+
+            // Пост обработка задействована
+            post_processed = true;
+        }
+
+        // Отправка вложения на показ
+        engine()->gfx()->renderer()->cmd_blit_to_screen(post_processed ? FrameAttachmentType::eCompositing : FrameAttachmentType::eColor);
     }
 
-    void System::update_mtl_ubo() const
-    {
+    void System::update_mtl_ubo() const {
         // Алиасы компонентов
-        using Settings  = MaterialSettingsComponent;
+        using Settings  = MaterialComponent;
         using UniformId = UniformIndexComponent;
         using Dirty     = DirtyUnformComponent;
 
@@ -81,58 +136,73 @@ namespace nasral::gfx
         }
     }
 
-    void System::update_mtl_handles() const
-    {
+    void System::update_mtl_handles() const {
         // Алиасы компонентов
-        using Handles   = MaterialHandlesComponent;
-        using Resources = res::ResourcesComponent;
-        using Dirty     = DirtyHandlesComponent;
-        using Loaded    = res::LoadedComponent;
+        using ShaderHandles  = ShaderHandlesComponent;
+        using TextureHandles = TextureHandlesComponent;
+        using Resources      = res::ResourcesComponent;
+        using Dirty          = DirtyHandlesComponent;
+        using Loaded         = res::LoadedComponent;
 
         // Алиасы для индексов ресурсов
-        using ResIndices = MaterialInstance::ResIndices;
+        using ResIndices = MaterialView::ResIndices;
 
         // Пройти по всем сущностям с компонентами:
-        // - Handles материала
+        // - Handles шейдерной программы
+        // - Handles текстур
         // - Список ресурсов
         // - Грязные (не обновленные) handles
         // - Ресурсы загружены
-        for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
+        // Где нет компонентов:
+        // - Экранный проход
+        for (auto&& [e, sh, th, rsc, d_tag, l_tag] : engine()->ecs()->view<
+            ShaderHandles,
+            TextureHandles,
+            Resources,
+            Dirty,
+            Loaded>(ecs::kMaskOf<ScreenPassComponent>))
         {
-            // Материал должен быть загружен
+            // Шейдер растеризации должен быть загружен
             if (kDebugBuild){
-                assert(rsc.active[ResIndices::eBaseMaterial]);
-                assert(rsc.ids[ResIndices::eBaseMaterial] != res::kInvalidResourceId);
+                assert(rsc.active[ResIndices::eRasterizationShader]);
+                assert(rsc.ids[ResIndices::eRasterizationShader] != res::kInvalidResourceId);
             }
 
-            // Ресурс материала (должен быть доступен)
-            const auto* mat_res = engine()->res()->get<res::Material>(rsc.ids[ResIndices::eBaseMaterial]);
-            assert(mat_res != nullptr && "Bad material");
+            // Ресурс шейдера должен существовать
+            const auto* shader_res = engine()->res()->get<res::ShaderProgram>(rsc.ids[ResIndices::eRasterizationShader]);
+            assert(shader_res != nullptr && "Bad shader");
+
             // Если загружен - обновить handles, если нет - fallback
-            if (mat_res->status() == res::Status::eLoaded){
-                mh.material = mat_res->render_handles();
+            if (shader_res->status() == res::Status::eLoaded){
+                sh.shader_program = shader_res->render_handles();
             }else{
                 // TODO: Fallback
             }
 
             // Итерация по типам текстур
-            for (const auto type : magic_enum::enum_values<TextureType>()){
+            for (const auto type : magic_enum::enum_values<TextureType>())
+            {
                 if (type == TextureType::TOTAL) continue;
-                const auto res_index = MaterialInstance::kTexResMap[type];
+
                 // Если текстура используется
-                if (rsc.active[res_index]){
+                if (const auto res_index = MaterialView::kTexResMap[type]; rsc.active[res_index])
+                {
+                    // Текстура должна быть задана
                     assert(rsc.ids[res_index] != res::kInvalidResourceId);
+
+                    // Ресурс должен существовать
                     const auto* tex_res = engine()->res()->get<res::Texture>(rsc.ids[res_index]);
                     assert(tex_res != nullptr && "Bad texture");
+
                     if (tex_res->status() == res::Status::eLoaded){
-                        mh.textures[type] = tex_res->render_handles();
+                        th.textures[type] = tex_res->render_handles();
                     }
                     else{
                         // TODO: Fallback
                     }
                 }
                 else{
-                    mh.textures[type] = {};
+                    th.textures[type] = {};
                 }
             }
 
@@ -144,34 +214,34 @@ namespace nasral::gfx
     void System::update_mtl_textures() const
     {
         // Алиасы компонентов
-        using Handles       = MaterialHandlesComponent;
-        using Settings      = MaterialSettingsComponent;
+        using Handles       = TextureHandlesComponent;
+        using Material      = MaterialComponent;
         using UniformId     = UniformIndexComponent;
         using DirtyHandles  = DirtyHandlesComponent;
         using DirtyTextures = DirtyTexturesComponent;
 
         // Пройти по всем сущностям с компонентами:
-        // - Handles материала
+        // - Handles текстур
         // - Настройки материала
         // - Uniform index
         // - Грязные (не обновленные) текстуры
         // Где нет компонентов:
         // - Грязные (не обновленные) handles
-        for (auto [e, mh, ms, ui, dt_tag] : engine()->ecs()->view<
+        for (auto [e, th, ms, ui, dt_tag] : engine()->ecs()->view<
             Handles,
-            Settings,
+            Material,
             UniformId,
             DirtyTextures>(ecs::kMaskOf<DirtyHandles>))
         {
             // Итерация по типам текстур
             for (const auto type : magic_enum::enum_values<TextureType>()){
                 if (type == TextureType::TOTAL) continue;
-                if (!mh.textures[type]) continue;
+                if (!th.textures[type]) continue;
 
                 engine()->gfx()->update_mat_textures({
                     type,
                     ms.samplers[type],
-                    mh.textures[type]
+                    th.textures[type]
                 }, ui.index);
             }
 
@@ -183,7 +253,7 @@ namespace nasral::gfx
     void System::update_mtl_destroy() const
     {
         // Алиасы компонентов
-        using Material  = MaterialSettingsComponent;
+        using Material  = MaterialComponent;
         using UniformId = UniformIndexComponent;
         using Destroy   = ecs::DestroyComponent;
 
@@ -198,49 +268,67 @@ namespace nasral::gfx
         }
     }
 
-    void System::update_screen_fx_handles() const
-    {
+    void System::update_sp_ubo() const {
         // Алиасы компонентов
-        using Handles   = ScreenFxHandlesComponent;
-        using Resources = res::ResourcesComponent;
-        using Dirty     = DirtyHandlesComponent;
-        using Loaded    = res::LoadedComponent;
-
-        // Алиасы для индексов ресурсов
-        using ResIndices = ScreenFx::ResIndices;
+        using Settings  = ScreenPassComponent;
+        using UniformId = UniformIndexComponent;
+        using Dirty     = DirtyUnformComponent;
 
         // Пройти по всем сущностям с компонентами:
-        // - Handles материала
+        // - Настройки материала
+        // - Uniform index
+        // - Грязный (не обновленный) uniform
+        for (auto [e, sps, ui, du_tag] : engine()->ecs()->view<Settings, UniformId, Dirty>())
+        {
+            // Для всех вариаций настроек материала
+            std::visit([&, index = ui.index](auto&& uniforms){
+                engine()->gfx()->update_screen_pass_uniforms(uniforms, index);
+            }, sps.uniforms);
+
+            // Обновлено
+            engine()->ecs()->remove_components<Dirty>(e);
+        }
+    }
+
+    void System::update_sp_handles() const {
+        // Алиасы компонентов
+        using ShaderHandles  = ShaderHandlesComponent;
+        using Resources      = res::ResourcesComponent;
+        using Dirty          = DirtyHandlesComponent;
+        using Loaded         = res::LoadedComponent;
+
+        // Алиасы для индексов ресурсов
+        using ResIndices = ScreenPassView::ResIndices;
+
+        // Пройти по всем сущностям с компонентами:
+        // - Handles шейдерной программы
+        // - Handles текстур
         // - Список ресурсов
         // - Грязные (не обновленные) handles
         // - Ресурсы загружены
-        for (auto [e, mh, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, Resources, Dirty, Loaded>())
+        // Где нет компонентов:
+        // - Материал
+        for (auto&& [e, sh, rsc, d_tag, l_tag] : engine()->ecs()->view<
+            ShaderHandles,
+            Resources,
+            Dirty,
+            Loaded>(ecs::kMaskOf<MaterialComponent>))
         {
-            // Материал для финального этапа пост-обработки должен быть загружен
+            // Шейдер растеризации должен быть загружен
             if (kDebugBuild){
-                assert(rsc.active[ResIndices::eFinalPassMaterial]);
-                assert(rsc.ids[ResIndices::eFinalPassMaterial] != res::kInvalidResourceId);
+                assert(rsc.active[ResIndices::eScreenPassShader]);
+                assert(rsc.ids[ResIndices::eScreenPassShader] != res::kInvalidResourceId);
             }
 
-            // Итерация по типам проходов экранного эффекта пост-обработки (для каждого прохода свой материал)
-            for (const auto type : magic_enum::enum_values<ScreenFxType>()){
-                if (type == ScreenFxType::TOTAL) continue;
-                const auto res_index = ScreenFx::kMaterialResMap[type];
-                // Если ресурс используется
-                if (rsc.active[res_index]){
-                    assert(rsc.ids[res_index] != res::kInvalidResourceId);
-                    const auto* mat_res = engine()->res()->get<res::Material>(rsc.ids[res_index]);
-                    assert(mat_res != nullptr && "Bad material");
-                    if (mat_res->status() == res::Status::eLoaded){
-                        mh.materials[type] = mat_res->render_handles();
-                    }
-                    else{
-                        // TODO: Fallback
-                    }
-                }
-                else{
-                    mh.materials[type] = {};
-                }
+            // Ресурс шейдера должен существовать
+            const auto* shader_res = engine()->res()->get<res::ShaderProgram>(rsc.ids[ResIndices::eScreenPassShader]);
+            assert(shader_res != nullptr && "Bad shader");
+
+            // Если загружен - обновить handles, если нет - fallback
+            if (shader_res->status() == res::Status::eLoaded){
+                sh.shader_program = shader_res->render_handles();
+            }else{
+                // TODO: Fallback
             }
 
             // Обновлено
@@ -248,37 +336,49 @@ namespace nasral::gfx
         }
     }
 
-    void System::update_screen_fx_ubo() const
-    {
+    void System::update_sp_destroy() const {
         // Алиасы компонентов
-        using ScreenFx = scn::ScreenFxComponent;
-        using Dirty    = DirtyUnformComponent;
+        using ScreenPass = ScreenPassComponent;
+        using UniformId  = UniformIndexComponent;
+        using Destroy    = ecs::DestroyComponent;
 
-        // Пройти по всем сущностям с компонентами:
-        // - Настройки экранного эффекта
-        // - Грязный (не обновленный) UBO
-        for (const auto& [e, sf, d_tag] : engine()->ecs()->view<ScreenFx, Dirty>())
+        // Пройти по всем сущностям с компонентами
+        // - Параметры экранного прохода
+        // - Uniform index
+        // - Уничтожение
+        // Внимание: ожидается, что в конце полной итерации update сущность удаляется (что предотвратит повторную обработку)
+        for (const auto& [e, ms, ui, d_tag] : engine()->ecs()->view<ScreenPass, UniformId, Destroy>())
         {
-            // Получить unform данные
-            uniforms::ScreenFxSettings uniforms = {};
-            uniforms.ao_bias = sf.ao_bias;
-            uniforms.ao_radius = sf.ao_radius;
-            uniforms.ao_bias = sf.ao_bias;
-            uniforms.ao_power_pre = sf.ao_power_pre;
-            uniforms.ao_power_post = sf.ao_power_post;
-            uniforms.blur_samples = sf.blur_samples;
-            uniforms.blur_base_tex_radius = sf.blur_base_tex_radius;
-            uniforms.blur_base_kernel_radius = sf.blur_base_kernel_radius;
-            uniforms.bloom_blur_lod = sf.bloom_blur_lod;
-            uniforms.bloom_intensity = sf.bloom_intensity;
-            uniforms.gamma = sf.gamma;
-            // uniforms.exposure = sf.exposure;
+            // Освободить uniform buffer object
+            engine()->gfx()->release_screen_pass_id(ui.index);
 
-            // Обновить буфер
-            engine()->gfx()->update_screen_fx_uniforms(uniforms);
+            // Пометить entity для освобождения ресурсов
+            engine()->ecs()->add_components<res::ReleaseComponent>(e, {});
+        }
+    }
+
+    void System::update_sp_states() const {
+        // Алиасы компонентов
+        using ScreenPass = ScreenPassComponent;
+        using DirtyTag   = ecs::DirtyStateComponent;
+
+        // Пройти по всем сущностям с компонентами
+        // - Параметры экранного прохода
+        // - Грязная entity (требует обновления состояния)
+        for (const auto& [e, ms, d_tag] : engine()->ecs()->view<ScreenPass, DirtyTag>()) {
+            // Получить соответствующий entity ID для предыдущего экранного прохода
+            if (engine()->ecs()->has<ecs::PrevComponent>(e)) {
+                auto&[uid, entity] = engine()->ecs()->get_component<ecs::PrevComponent>(e);
+                entity = engine()->gfx()->find_screen_pass(uid);
+            }
+            // Получить соответствующий entity ID для следующего экранного прохода
+            if (engine()->ecs()->has<ecs::NextComponent>(e)) {
+                auto&[uid, entity] = engine()->ecs()->get_component<ecs::NextComponent>(e);
+                entity = engine()->gfx()->find_screen_pass(uid);
+            }
 
             // Обновлено
-            engine()->ecs()->remove_components<Dirty>(e);
+            engine()->ecs()->remove_components<DirtyTag>(e);
         }
     }
 
@@ -288,13 +388,11 @@ namespace nasral::gfx
         using Spatial   = scn::SpatialComponent;
         using UniformId = UniformIndexComponent;
         using Render    = RenderComponent;
-        // using Handles   = MeshHandlesComponent;
         using Dirty     = DirtyUnformComponent;
 
         // Пройти по всем сущностям с компонентами:
         // - Пространственные параметры
         // - Uniform index
-        // - Handles
         // - Рендеринг
         // - Грязный (не обновленный) UBO
         for (const auto& [e, sp, ui, r_tag, d_tag] : engine()->ecs()->view<Spatial, UniformId, Render, Dirty>())
@@ -327,14 +425,12 @@ namespace nasral::gfx
         }
     }
 
-
     void System::update_obj_dynamic_ubo() const
     {
         // Алиасы компонентов
         using Spatial   = scn::SpatialComponent;
         using UniformId = UniformIndexComponent;
         using State     = UniformStateComponent;
-        using Handles   = MeshHandlesComponent;
         using Render    = RenderComponent;
 
         // Пройти по всем сущностям с компонентами:
@@ -342,7 +438,7 @@ namespace nasral::gfx
         // - Uniform index
         // - Состояние UBO
         // - Рендеринг
-        for (auto [e, sp, ui, state, h, r_tag] : engine()->ecs()->view<Spatial, UniformId, State, Handles, Render>())
+        for (auto&& [e, sp, ui, state, r_tag] : engine()->ecs()->view<Spatial, UniformId, State, Render>())
         {
             if (!state.is_dirty) continue;
 
@@ -377,18 +473,18 @@ namespace nasral::gfx
     void System::update_obj_mesh_handles() const
     {
         // Алиасы компонентов
-        using Handles      = MeshHandlesComponent;
-        using UniformId    = UniformIndexComponent;
-        using Resources    = res::ResourcesComponent;
-        using DirtyHandles = DirtyHandlesComponent;
-        using Loaded       = res::LoadedComponent;
+        using Handles   = MeshHandlesComponent;
+        using UniformId = UniformIndexComponent;
+        using Resources = res::ResourcesComponent;
+        using Dirty     = DirtyHandlesComponent;
+        using Loaded    = res::LoadedComponent;
 
         // Пройти по всем сущностям с компонентами:
         // - Handles меша
         // - Список ресурсов
         // - Грязные (не обновленные) handles
         // - Ресурсы загружены
-        for (auto [e, mh, ui, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, UniformId, Resources, DirtyHandles, Loaded>())
+        for (auto&& [e, mh, ui, rsc, d_tag, l_tag] : engine()->ecs()->view<Handles, UniformId, Resources, Dirty, Loaded>())
         {
             // Меш должен быть загружен
             if (kDebugBuild){
@@ -400,7 +496,7 @@ namespace nasral::gfx
             const auto* mesh_res = engine()->res()->get<res::Mesh>(rsc.ids[0]);
             assert(mesh_res != nullptr && "Bad mesh resource");
 
-            // Если загружен
+            // Если загружен - обновить handles, если нет - fallback
             if (mesh_res->status() == res::Status::eLoaded)
             {
                 // Обновить handles
@@ -415,13 +511,12 @@ namespace nasral::gfx
                     0xFF
                 }, ui.index);
             }
-            // Fallback
             else{
                 // TODO: Fallback
             }
 
             // Обновлено
-            engine()->ecs()->remove_components<DirtyHandles>(e);
+            engine()->ecs()->remove_components<Dirty>(e);
         }
     }
 
@@ -434,7 +529,7 @@ namespace nasral::gfx
         using Dirty     = DirtyUnformComponent;
 
         // Пройти по всем сущностям с компонентами:
-        for (auto [e, sp, l, ui, d_tag] : engine()->ecs()->view<Spatial, Light, UniformId, Dirty>())
+        for (const auto& [e, sp, l, ui, d_tag] : engine()->ecs()->view<Spatial, Light, UniformId, Dirty>())
         {
             // Параметры источника
             uniforms::LightSettings uniforms = {};
@@ -445,8 +540,6 @@ namespace nasral::gfx
             uniforms.intensity = l.intensity;
             uniforms.quadratic = l.quadratic;
             uniforms.radius = l.radius;
-
-            // TODO: Вычислить матрицу пространства источника (для потенциальной реализации теней)
 
             // Обновить параметры источника
             engine()->gfx()->update_light_uniforms(uniforms, ui.index);
@@ -469,7 +562,7 @@ namespace nasral::gfx
         // - Источник света
         // - Uniform index
         // - Состояние UBO
-        for (auto [e, sp, l, ui, state] : engine()->ecs()->view<Spatial, Light, UniformId, State>())
+        for (auto&& [e, sp, l, ui, state] : engine()->ecs()->view<Spatial, Light, UniformId, State>())
         {
             if (!state.is_dirty) continue;
 
@@ -482,8 +575,6 @@ namespace nasral::gfx
             uniforms.intensity = l.intensity;
             uniforms.quadratic = l.quadratic;
             uniforms.radius    = l.radius;
-
-            // TODO: Вычислить матрицу пространства источника (для потенциальной реализации теней)
 
             // Обновить параметры источника
             engine()->gfx()->update_light_uniforms(uniforms, ui.index);
@@ -509,7 +600,7 @@ namespace nasral::gfx
         // - Состояние UBO
         // Где нет компонентов:
         // - Рендеринг
-        for (auto [e, cam, sp, ui, state] : engine()->ecs()->view<
+        for (auto&& [e, cam, sp, ui, state] : engine()->ecs()->view<
             Camera,
             Spatial,
             UniformId,
@@ -532,7 +623,7 @@ namespace nasral::gfx
             uniforms.view = glm::inverse(uniforms.view_inverse);
             uniforms.projection = glm::perspectiveRH_ZO(
                     glm::radians(cam.fov),
-                    engine()->gfx()->renderer()->rendering_aspect(),
+                    engine()->gfx()->renderer()->aspect_ratio(),
                     cam.near,
                     cam.far);
             uniforms.projection_inverse = glm::inverse(uniforms.projection);
@@ -540,6 +631,40 @@ namespace nasral::gfx
             // Обновить
             engine()->gfx()->update_cam_uniforms(uniforms, ui.index);
             state.is_dirty = false;
+        }
+    }
+
+    void System::update_sp_debug_settings() const
+    {
+        // Переключение AO прохода (AO + размытия)
+        if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e1)) {
+            const std::array<ecs::EntityId, 3> ao_passes_e = {
+                engine()->gfx()->find_screen_pass({2,1}),
+                engine()->gfx()->find_screen_pass({2,2}),
+                engine()->gfx()->find_screen_pass({2,3})
+            };
+
+            for (const auto& ao_pass_e : ao_passes_e) {
+                if (ao_pass_e != ecs::EntityId::invalid()) {
+                    const auto ao_blur_pass = engine()->ecs()->as_view<ScreenPassView>(ao_pass_e);
+                    ao_blur_pass->switch_activity();
+                }
+            }
+        }
+
+        // Переключение размытия Bloom
+        if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e2)) {
+            const std::array<ecs::EntityId, 2> bloom_blur_passes_e = {
+                engine()->gfx()->find_screen_pass({2,4}),
+                engine()->gfx()->find_screen_pass({2,5})
+            };
+
+            for (const auto& bloom_blur_pass_e :  bloom_blur_passes_e) {
+                if (bloom_blur_pass_e != ecs::EntityId::invalid()) {
+                    const auto bloom_blur_pass = engine()->ecs()->as_view<ScreenPassView>(bloom_blur_pass_e);
+                    bloom_blur_pass->switch_activity();
+                }
+            }
         }
     }
 
@@ -559,7 +684,7 @@ namespace nasral::gfx
         // - Тег рендеринга
         // Где нет компонентов:
         // - Грязные handles
-        for (auto[e, mh, ui, mesh, r_tag] : engine()->ecs()->view<
+        for (auto&& [e, mh, ui, mesh, r_tag] : engine()->ecs()->view<
             Handles,
             UniformId,
             Mesh,
@@ -573,8 +698,8 @@ namespace nasral::gfx
                 log_warn("Missing materials for renderable mesh entity" + e.to_string());
             }
 
-            // Привязка всей геометрии меша
-            subsystem()->renderer()->cmd_bind_rasterization_geometry(mh.mesh, ui.index);
+            // Привязка геометрии меша
+            subsystem()->renderer()->cmd_bind_mesh_geometry(mh.mesh);
 
             // Проход по поверхностям
             for (uint32_t i = 0; i < mh.mesh.surfaces_count; ++i)
@@ -583,7 +708,6 @@ namespace nasral::gfx
                 const auto& surface = mh.mesh.surfaces[i];
                 // Найти соответствующий экземпляр материала
                 const auto& mat_e = mesh.materials[i];
-                // const auto& mat_e = mesh.materials[surface.material_index-1];
 
                 // Если меш еще не ссылался на entity материала - сослаться (запрос готовности)
                 if (!mesh.materials_requested[i]){
@@ -592,22 +716,18 @@ namespace nasral::gfx
                 }
 
                 // Если материал не готов - пропуск
-                if (!engine()->ecs()->is_valid(mat_e)
-                    || !engine()->ecs()->has<MaterialHandlesComponent>(mat_e)
-                    || !engine()->ecs()->has<res::LoadedComponent>(mat_e)
-                    || engine()->ecs()->has<DirtyHandles>(mat_e))
-                {
+                const auto mat_view = engine()->ecs()->as_view<MaterialView>(mat_e);
+                if (!mat_view->is_ready()) {
                     continue;
                 }
 
-                // Получить UBO id и handles материала
-                auto [mat_ubo, mat_hdl] = engine()->ecs()->get_components<
-                    UniformId,
-                    MaterialHandlesComponent>(mat_e);
-
-                // Привязать материал, нарисовать поверхность
-                subsystem()->renderer()->cmd_bind_rasterization_material(mat_hdl.material, mat_ubo.index);
-                subsystem()->renderer()->cmd_draw_geometry(surface.index_offset, surface.index_count);
+                // Привязать шейдерную программу
+                subsystem()->renderer()->cmd_bind_shader_program(mat_view->shader_program());
+                subsystem()->renderer()->cmd_draw_bound_geometry(
+                    surface.index_offset,
+                    surface.index_count,
+                    ui.index,
+                    mat_view->uniform_index());
             }
         }
     }
