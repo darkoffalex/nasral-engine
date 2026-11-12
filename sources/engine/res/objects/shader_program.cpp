@@ -64,7 +64,6 @@ namespace nasral::res
                 break;
             default:
                 throw std::runtime_error("Invalid shader program type");
-                break;
             }
 
         }
@@ -81,7 +80,7 @@ namespace nasral::res
     }
 
     gfx::handles::ShaderProgram ShaderProgram::render_handles() const {
-        gfx::handles::ShaderProgram handles{};
+        gfx::handles::ShaderProgram handles;
         handles.pipeline = vk_pipeline();
         return handles;
     }
@@ -91,8 +90,8 @@ namespace nasral::res
         const std::vector<Data::EntryPointInfo>& entry_points)
     {
         // Данный метод может только инициализировать конвейер растеризации и пост-обработки
-        assert(program_type() == gfx::ShaderProgramType::eRasterization
-            || program_type() == gfx::ShaderProgramType::eScreenPass && "Invalid shader program type");
+        assert((program_type() == gfx::ShaderProgramType::eRasterization
+            || program_type() == gfx::ShaderProgramType::eScreenPass) && "Invalid shader program type");
 
         // Получить рендерер
         const auto* renderer = subsystem()->engine()->gfx()->renderer();

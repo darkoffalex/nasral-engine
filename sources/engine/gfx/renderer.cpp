@@ -843,7 +843,7 @@ namespace nasral::gfx
 
     vk::ImageAspectFlags Renderer::frame_attachment_aspect(
         const FrameAttachmentType &type,
-        const vk::Format &format)
+        [[maybe_unused]] const vk::Format &format)
     {
         // Если это не глубина, то используется как цветовое вложение
         if (type != FrameAttachmentType::eDepth) {

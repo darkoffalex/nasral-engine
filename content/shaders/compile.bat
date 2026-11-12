@@ -14,7 +14,7 @@ set SLANGC=%VULKAN_SDK%\Bin\slangc.exe
 
 :: Проверяем наличие glslangValidator.exe
 if not exist "%SLANGC%" (
-    echo Compiler glslangValidator.exe not found in path  %SLANGC%.
+    echo Compiler slangc.exe not found in path  %SLANGC%.
     pause
     exit /b 1
 )

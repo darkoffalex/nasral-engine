@@ -1,5 +1,6 @@
 #pragma once
 
+#include <list>
 #include <nasral/common/subsystem.h>
 #include <nasral/common/index_pool.h>
 #include <nasral/log/loggable.h>
@@ -83,7 +84,7 @@ namespace nasral::gfx
 
         /// Глобальный реестр материалов
         std::list<ecs::EntityId> materials_;
-        /// Глобальные реестр экранных проходов (пост-эффектов)
+        /// Глобальный реестр экранных проходов (пост-эффектов)
         std::list<ecs::EntityId> screen_passes_;
     };
 }

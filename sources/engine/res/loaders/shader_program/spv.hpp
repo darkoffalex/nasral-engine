@@ -3,7 +3,12 @@
 #include <fstream>
 #include <nasral/res/objects/shader_program.h>
 #include <nasral/res/manager.h>
+
+#if __has_include(<spirv/unified1/spirv.hpp>)
+#include <spirv/unified1/spirv.hpp>
+#else
 #include <spirv-headers/spirv.hpp>
+#endif
 
 namespace nasral::res
 {

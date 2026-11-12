@@ -92,7 +92,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.gfx.offscreen_depth_format = vk::Format::eD32SfloatS8Uint;
             config.gfx.present_color_format = vk::Format::eB8G8R8A8Unorm;
             config.gfx.present_color_space = vk::ColorSpaceKHR::eSrgbNonlinear;
-            config.gfx.present_mode = vk::PresentModeKHR::eImmediate;
+            config.gfx.present_mode = vk::PresentModeKHR::eMailbox;
             config.gfx.composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
             config.gfx.enable_validation_layers = true;
             config.gfx.opengl_compatible = true;

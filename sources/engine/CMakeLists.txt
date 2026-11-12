@@ -73,4 +73,5 @@ target_link_libraries(Engine PRIVATE
         Vulkan::Vulkan
         magic_enum::magic_enum
         nlohmann_json::nlohmann_json
+        SPIRV-Headers::SPIRV-Headers
 )
