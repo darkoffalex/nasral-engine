@@ -382,6 +382,7 @@ namespace nasral::gfx
         // Алиасы компонентов
         using Spatial   = scn::SpatialComponent;
         using UniformId = UniformIndexComponent;
+        using Shadow    = ShadowSettingsComponent;
         using Render    = RenderComponent;
         using Dirty     = DirtyUnformComponent;
 
@@ -390,7 +391,7 @@ namespace nasral::gfx
         // - Uniform index
         // - Рендеринг
         // - Грязный (не обновленный) UBO
-        for (const auto& [e, sp, ui, r_tag, d_tag] : engine()->ecs()->view<Spatial, UniformId, Render, Dirty>())
+        for (const auto& [e, sp, sh, ui, r_tag, d_tag] : engine()->ecs()->view<Spatial, Shadow, UniformId, Render, Dirty>())
         {
             // Вычислить матрицы
             uniforms::Object uniforms = {};
@@ -411,8 +412,8 @@ namespace nasral::gfx
             {
                 model,
                 std::nullopt,
+                sh.cast_shadow ? 0xFF : 0x00,
                 ui.index,
-                0xFF
             }, ui.index);
 
             // Обновлено
@@ -425,6 +426,7 @@ namespace nasral::gfx
         // Алиасы компонентов
         using Spatial   = scn::SpatialComponent;
         using UniformId = UniformIndexComponent;
+        using Shadow    = ShadowSettingsComponent;
         using State     = UniformStateComponent;
         using Render    = RenderComponent;
 
@@ -433,7 +435,7 @@ namespace nasral::gfx
         // - Uniform index
         // - Состояние UBO
         // - Рендеринг
-        for (auto&& [e, sp, ui, state, r_tag] : engine()->ecs()->view<Spatial, UniformId, State, Render>())
+        for (auto&& [e, sp, ui, sh, state, r_tag] : engine()->ecs()->view<Spatial, UniformId, Shadow, State, Render>())
         {
             if (!state.is_dirty) continue;
 
@@ -456,8 +458,8 @@ namespace nasral::gfx
             {
                 model,
                 std::nullopt,
+                sh.cast_shadow ? 0xFF : 0x00,
                 ui.index,
-                0xFF
             }, ui.index);
 
             // Обновлено
@@ -502,8 +504,8 @@ namespace nasral::gfx
                 {
                     std::nullopt,
                     mh.mesh.blas_device_address,
+                    std::nullopt,
                     ui.index,
-                    0xFF
                 }, ui.index);
             }
             else{

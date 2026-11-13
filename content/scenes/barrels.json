@@ -28,7 +28,8 @@
       },
       "mesh": {
         "mesh_path": "meshes/floor/floor.obj",
-        "materials": [[0, 2], [0, 3]]
+        "materials": [[0, 2], [0, 3]],
+        "cast_shadow" : true
       }
     },
     {
@@ -42,7 +43,8 @@
       },
       "mesh": {
         "mesh_path": "meshes/barrel/barrel.obj",
-        "materials": [[0, 4]]
+        "materials": [[0, 4]],
+        "cast_shadow" : true
       }
     },
     {
@@ -56,7 +58,24 @@
       },
       "mesh": {
         "mesh_path": "meshes/barrel/barrel.obj",
-        "materials": [[0, 4]]
+        "materials": [[0, 4]],
+        "cast_shadow" : true
+      }
+    },
+    {
+      "name": "LightSphere",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [-3.0, 1.5, 3.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [0.2, 0.2, 0.2]
+      },
+      "mesh": {
+        "mesh_path": "builtin:mesh/sphere",
+        "materials": [[0, 11]],
+        "cast_shadow" : false,
+        "dynamic" : true
       }
     },
     {

@@ -50,6 +50,7 @@ namespace nasral::scn
             desc.mesh.dynamic = mesh.value("dynamic", desc.mesh.dynamic);
             desc.mesh.materials = mesh.value("materials", desc.mesh.materials);
             desc.mesh.mesh_path = mesh.value("mesh_path", desc.mesh.mesh_path);
+            desc.mesh.cast_shadow = mesh.value("cast_shadow", desc.mesh.cast_shadow);
         }
     }
 
@@ -83,7 +84,8 @@ namespace nasral::scn
             {"mesh", {
                 {"dynamic", desc.mesh.dynamic},
                 {"materials", desc.mesh.materials},
-                {"mesh_path", desc.mesh.mesh_path}
+                {"mesh_path", desc.mesh.mesh_path},
+                {"cast_shadow", desc.mesh.cast_shadow}
             }}
         };
     }

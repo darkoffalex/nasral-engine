@@ -375,8 +375,8 @@ namespace nasral::gfx
     {
         std::optional<glm::mat4> transform = glm::mat4(1.0f);
         std::optional<vk::DeviceAddress> blas_address = 0;
+        std::optional<uint8_t> mask = 0xFF;
         uint32_t index = 0; // Совпадает с uniform_idx объекта
-        uint8_t mask = 0xFF;
     };
 
     struct Config

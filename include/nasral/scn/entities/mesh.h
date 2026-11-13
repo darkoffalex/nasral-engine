@@ -13,6 +13,7 @@
     gfx::MeshHandlesComponent, \
     gfx::UniformIndexComponent, \
     gfx::DirtyHandlesComponent, \
+    gfx::ShadowSettingsComponent, \
     gfx::RenderComponent
 
 #define SCN_MESH_STATIC_COMPONENTS \
@@ -41,10 +42,12 @@ namespace nasral::scn
         [[nodiscard]] const res::ResourceId& mesh_resource() const;
         [[nodiscard]] const res::Status& mesh_resource_status() const;
         [[nodiscard]] bool is_dynamic() const;
+        [[nodiscard]] bool casts_shadow() const;
 
         void set_position(const glm::vec3& position) const;
         void set_rotation(const glm::vec3& rotation) const;
         void set_scale(const glm::vec3& scale) const;
+        void set_shadow(bool casts);
         void set_material(const ecs::EntityId& material, size_t index = 0) const;
         void set_mesh_resource(const res::ResourceId& resource_id) const;
         void reset_materials() const;

@@ -48,6 +48,7 @@ namespace nasral::ecs
         gfx::DirtyUnformComponent,
         gfx::DirtyTexturesComponent,
         gfx::DirtyHandlesComponent,
+        gfx::ShadowSettingsComponent,
 
         // Сцена
         scn::NodeComponent,

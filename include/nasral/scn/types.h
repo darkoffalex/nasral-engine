@@ -102,6 +102,7 @@ namespace nasral::scn
         struct
         {
             bool dynamic = false;
+            bool cast_shadow = false;
             std::vector<UniqueId> materials;
             std::string mesh_path = {};
         } mesh = {};

@@ -216,13 +216,13 @@ namespace nasral::gfx
 
             // Установить основное
             instance.setInstanceCustomIndex(desc.index);
-            instance.setMask(desc.mask);
             instance.setInstanceShaderBindingTableRecordOffset(0);
             instance.setFlags(vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable);
 
             // Установить опциональное
             if (desc.transform.has_value()) instance.setTransform(to_vk_transform(desc.transform.value()));
             if (desc.blas_address.has_value()) instance.setAccelerationStructureReference(desc.blas_address.value());
+            if (desc.mask.has_value()) instance.setMask(desc.mask.value());
         }
 
         // Требуется перестроение/обновление TLAS

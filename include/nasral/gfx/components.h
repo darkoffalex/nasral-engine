@@ -46,6 +46,11 @@ namespace nasral::gfx
         bool is_dirty = false;
     };
 
+    struct ShadowSettingsComponent
+    {
+        bool cast_shadow = false;
+    };
+
     struct DirtyUnformComponent{};
 
     struct DirtyHandlesComponent{};

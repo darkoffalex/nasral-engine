@@ -42,7 +42,8 @@ namespace nasral::scn
                 ubo_c,
                 gfx::DirtyHandlesComponent{},
                 gfx::RenderComponent{},
-                gfx::UniformStateComponent{true} // Динамический тег
+                gfx::UniformStateComponent{true}, // Динамический тег
+                gfx::ShadowSettingsComponent{desc.mesh.cast_shadow} // Отбрасывает тень
             );
         } else {
             ecs->add_components_immediate(id,
@@ -52,7 +53,8 @@ namespace nasral::scn
                 ubo_c,
                 gfx::DirtyHandlesComponent{},
                 gfx::RenderComponent{},
-                gfx::DirtyUnformComponent{} // Статический тег
+                gfx::DirtyUnformComponent{}, // Статический тег
+                gfx::ShadowSettingsComponent{desc.mesh.cast_shadow} // Отбрасывает тень
             );
         }
 
@@ -80,6 +82,11 @@ namespace nasral::scn
         return subsystem()->has<gfx::UniformStateComponent>(id());
     }
 
+    bool MeshView::casts_shadow() const
+    {
+        return get<gfx::ShadowSettingsComponent>().cast_shadow;
+    }
+
     void MeshView::set_position(const glm::vec3& position) const{
         if (auto spatial = as_view<SpatialView>(); spatial.has_value()){
             spatial->set_position(position);
@@ -99,6 +106,11 @@ namespace nasral::scn
             spatial->set_scale(scale);
             invalidate_ubo();
         }
+    }
+
+    void MeshView::set_shadow(const bool casts){
+        get<gfx::ShadowSettingsComponent>().cast_shadow = casts;
+        invalidate_ubo();
     }
 
     void MeshView::set_material(const ecs::EntityId& material, const size_t index) const
