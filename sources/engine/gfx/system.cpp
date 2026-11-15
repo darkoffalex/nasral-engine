@@ -600,10 +600,23 @@ namespace nasral::gfx
 
     void System::update_sp_debug_settings() const
     {
-        // Переключение AO прохода (AO + размытия)
+        // Переключение AO прохода
         if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e1)) {
-            const std::array<ecs::EntityId, 3> ao_passes_e = {
+            const std::array<ecs::EntityId, 1> ao_passes_e = {
                 engine()->gfx()->find_screen_pass({2,1}),
+            };
+
+            for (const auto& ao_pass_e : ao_passes_e) {
+                if (ao_pass_e != ecs::EntityId::invalid()) {
+                    const auto ao_blur_pass = engine()->ecs()->as_view<ScreenPassView>(ao_pass_e);
+                    ao_blur_pass->switch_activity();
+                }
+            }
+        }
+
+        // Переключение прохода AO размытия
+        if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e2)) {
+            const std::array<ecs::EntityId, 2> ao_passes_e = {
                 engine()->gfx()->find_screen_pass({2,2}),
                 engine()->gfx()->find_screen_pass({2,3})
             };
@@ -617,7 +630,7 @@ namespace nasral::gfx
         }
 
         // Переключение размытия Bloom
-        if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e2)) {
+        if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e3)) {
             const std::array<ecs::EntityId, 2> bloom_blur_passes_e = {
                 engine()->gfx()->find_screen_pass({2,4}),
                 engine()->gfx()->find_screen_pass({2,5})

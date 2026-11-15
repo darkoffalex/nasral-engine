@@ -46,9 +46,9 @@ FragmentOutput fragmentMain(VertexOutput input)
     {
         uint width;
         uint height;
-        t_color.GetDimensions(width, height);
+        t_ao.GetDimensions(width, height);
         float2 texel_size = 1.0 / float2(width, height);
-        ao = box_gaussian_blur(t_ao, input.uv, texel_size, 1.0);
+        ao = box_blur(t_ao, input.uv, texel_size, 1.0);
     }
 
     // Композиция в линейном HDR-пространстве с учетом экспозиции
