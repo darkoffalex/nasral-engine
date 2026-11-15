@@ -8,7 +8,7 @@
 [ForceInline]
 float3 fetch_world_normal(Sampler2D normal_tex, float2 uv)
 {
-    float3 n = normal_tex.Sample(uv).xyz * 2.0 - 1.0;
+    float3 n = normal_tex.SampleLevel(uv, 0.0).xyz * 2.0 - 1.0;
     return normalize(n);
 }
 
@@ -16,7 +16,7 @@ float3 fetch_world_normal(Sampler2D normal_tex, float2 uv)
 [ForceInline]
 float3 fetch_view_normal(Sampler2D normal_tex, float2 uv, float4x4 view_matrix)
 {
-    float3 world_normal = normal_tex.Sample(uv).xyz * 2.0 - 1.0;
+    float3 world_normal = normal_tex.SampleLevel(uv, 0.0).xyz * 2.0 - 1.0;
     // Отсекаем перенос (translation), приводя к float3x3
     float3 view_normal = mul((float3x3)view_matrix, world_normal);
     return normalize(view_normal);
@@ -48,7 +48,7 @@ float3 debug_linear_depth(float d, float n, float f)
 [ForceInline]
 float fetch_linear_depth(Sampler2D depth_tex, float2 uv, float4x4 proj_matrix)
 {
-    float depth_sample = depth_tex.Sample(uv).r;
+    float depth_sample = depth_tex.SampleLevel(uv, 0.0).r;
     return linearize_depth(depth_sample, proj_matrix);
 }
 
@@ -56,7 +56,7 @@ float fetch_linear_depth(Sampler2D depth_tex, float2 uv, float4x4 proj_matrix)
 [ForceInline]
 float3 reconstruct_view_pos_fast(Sampler2D depth_tex, float2 uv, float4x4 proj_matrix)
 {
-    float depth_sample = depth_tex.Sample(uv).r;
+    float depth_sample = depth_tex.SampleLevel(uv, 0.0).r;
     float linear_z = linearize_depth(depth_sample, proj_matrix);
 
     // Vulkan UV -> NDC [-1..1]
@@ -72,7 +72,7 @@ float3 reconstruct_view_pos_fast(Sampler2D depth_tex, float2 uv, float4x4 proj_m
 [ForceInline]
 float3 fetch_view_pos(Sampler2D depth_tex, float2 uv, float4x4 proj_inverse_matrix)
 {
-    float depth_sample = depth_tex.Sample(uv).r;
+    float depth_sample = depth_tex.SampleLevel(uv, 0.0).r;
 
     // Vulkan ZO: X в [-1..1], Y в [-1..1], Z в [0..1]
     float4 ndc = float4(

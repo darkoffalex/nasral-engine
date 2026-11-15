@@ -303,6 +303,31 @@ namespace nasral::gfx
 
         is_pass_started_ = true;
 
+        // Область вида (динамическое состояние конвейера)
+        auto viewport = vk::Viewport()
+            .setX(0.0f)
+            .setWidth(static_cast<float>(extent.width))
+            .setMinDepth(0.0f)
+            .setMaxDepth(1.0f);
+
+        // Совместимость координат с OpenGL
+        if (config().opengl_compatible){
+            viewport.setY(static_cast<float>(extent.height));
+            viewport.setHeight(-static_cast<float>(extent.height));
+        }else{
+            viewport.setY(0.0f);
+            viewport.setHeight(static_cast<float>(extent.height));
+        }
+
+        // Ножницы (динамическое состояние конвейера)
+        auto scissor = vk::Rect2D()
+            .setOffset(vk::Offset2D(0, 0))
+            .setExtent(extent);
+
+        // Запись команд. Привязать динамические состояния
+        vk_command_buffer().setViewport(0, {viewport});
+        vk_command_buffer().setScissor(0, {scissor});
+
         const auto& pipeline_layout = vk_uniform_layout(ShaderProgramType::eRasterization).vk_pipeline_layout();
         const std::array descriptor_sets{
             vk_rendering_d_sets_[UniformRasterDSetType::eViewUBO].get(),
@@ -384,7 +409,9 @@ namespace nasral::gfx
         vk_last_rasterization_pipeline_ = VK_NULL_HANDLE;
     }
 
-    void Renderer::cmd_begin_screen_pass(const EnumMask<FrameAttachmentType> input, const EnumMask<FrameAttachmentType> output)
+    void Renderer::cmd_begin_screen_pass(
+        const EnumMask<FrameAttachmentType> input,
+        const EnumMask<FrameAttachmentType> output)
     {
         ENSURE_COMMANDS
         ENSURE_NO_PASS
@@ -420,7 +447,8 @@ namespace nasral::gfx
         // Проверки пройдены успешно — начинаем проход
         is_pass_started_ = true;
 
-        const auto extent = rendering_resolution();
+        const bool output_pass = output.test(FrameAttachmentType::eCompositing);
+        const auto extent = output_pass ? rendering_resolution() : screen_fx_resolution();
         last_screen_pass_output_attachments_ = output;
 
         // Массивы на стеке без динамических аллокаций
@@ -484,6 +512,31 @@ namespace nasral::gfx
         rendering_info.setPColorAttachments(color_attachments.data());
         rendering_info.setColorAttachmentCount(static_cast<uint32_t>(attachment_count));
         vk_command_buffer().beginRendering(rendering_info, vk_loader_);
+
+        // Область вида (динамическое состояние конвейера)
+        auto viewport = vk::Viewport()
+            .setX(0.0f)
+            .setWidth(static_cast<float>(extent.width))
+            .setMinDepth(0.0f)
+            .setMaxDepth(1.0f);
+
+        // Совместимость координат с OpenGL
+        if (config().opengl_compatible){
+            viewport.setY(static_cast<float>(extent.height));
+            viewport.setHeight(-static_cast<float>(extent.height));
+        }else{
+            viewport.setY(0.0f);
+            viewport.setHeight(static_cast<float>(extent.height));
+        }
+
+        // Ножницы (динамическое состояние конвейера)
+        auto scissor = vk::Rect2D()
+            .setOffset(vk::Offset2D(0, 0))
+            .setExtent(extent);
+
+        // Запись команд. Привязать динамические состояния
+        vk_command_buffer().setViewport(0, {viewport});
+        vk_command_buffer().setScissor(0, {scissor});
 
         // 5. Привязать наборы дескрипторов экранного прохода
         const auto& pipeline_layout = vk_uniform_layout(ShaderProgramType::eScreenPass).vk_pipeline_layout();
@@ -555,30 +608,6 @@ namespace nasral::gfx
         ENSURE_COMMANDS
         ENSURE_PASS
 
-        // Текущее разрешение рендеринга
-        const auto extent = rendering_resolution();
-
-        // Область вида (динамическое состояние конвейера)
-        auto viewport = vk::Viewport()
-            .setX(0.0f)
-            .setWidth(static_cast<float>(extent.width))
-            .setMinDepth(0.0f)
-            .setMaxDepth(1.0f);
-
-        // Совместимость координат с OpenGL
-        if (config().opengl_compatible){
-            viewport.setY(static_cast<float>(extent.height));
-            viewport.setHeight(-static_cast<float>(extent.height));
-        }else{
-            viewport.setY(0.0f);
-            viewport.setHeight(static_cast<float>(extent.height));
-        }
-
-        // Ножницы (динамическое состояние конвейера)
-        auto scissor = vk::Rect2D()
-            .setOffset(vk::Offset2D(0, 0))
-            .setExtent(extent);
-
         // Если конвейер сменился - привязать
         if (vk_last_rasterization_pipeline_ != handles.pipeline){
             vk_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, handles.pipeline);
@@ -586,10 +615,6 @@ namespace nasral::gfx
 
         // Обновить последний привязанный конвейер
         vk_last_rasterization_pipeline_ = handles.pipeline;
-
-        // Запись команд. Привязать динамические состояния
-        vk_command_buffer().setViewport(0, {viewport});
-        vk_command_buffer().setScissor(0, {scissor});
     }
 
     void Renderer::cmd_bind_mesh_geometry(const handles::Mesh &handles) const
@@ -826,6 +851,11 @@ namespace nasral::gfx
     vk::Extent2D Renderer::rendering_resolution() const noexcept
     {
         return config().rendering_resolution;
+    }
+
+    vk::Extent2D Renderer::screen_fx_resolution() const noexcept
+    {
+        return config().screen_fx_resolution;
     }
 
     vk::Extent2D Renderer::output_resolution() const noexcept

@@ -280,8 +280,10 @@ namespace nasral::gfx
 
         // Убеждаемся, что разрешение рендеринга не равно нулю
         const auto rendering_extent = rendering_resolution();
+        const auto screen_fx_extent = screen_fx_resolution();
         const auto present_extent = output_resolution();
-        if (rendering_extent.width == 0 || rendering_extent.height == 0)
+        if (rendering_extent.width == 0 || rendering_extent.height == 0 ||
+            screen_fx_extent.width == 0 || screen_fx_extent.height == 0)
         {
             throw std::runtime_error("Rendering and output resolution must be non-zero");
         }
@@ -314,12 +316,22 @@ namespace nasral::gfx
             // Как используется вложение кадра
             auto usage = is_depth ? depth_usage : color_usage;
 
+            const bool is_screen_fx = (
+                type == FrameAttachmentType::eBloom ||
+                type == FrameAttachmentType::eAO ||
+                type == FrameAttachmentType::eShadows ||
+                type == FrameAttachmentType::eReflections ||
+                type == FrameAttachmentType::eTemp1 ||
+                type == FrameAttachmentType::eTemp2
+            );
+            const auto extent = is_screen_fx ? screen_fx_extent : rendering_extent;
+
             // Создание изображения для вложения кадра
             vk_offscreen_images_[type][FRAME] = std::make_unique<vk::utils::Image>(
                 vk_device_.get(),
                 vk::utils::Image::Type::e2D,
                 format,
-                vk::Extent3D(rendering_extent.width, rendering_extent.height, 1),
+                vk::Extent3D(extent.width, extent.height, 1),
                 usage,
                 vk::ImageTiling::eOptimal,
                 aspect,
@@ -703,7 +715,9 @@ namespace nasral::gfx
             auto& write = pp_writes[static_cast<uint32_t>(type)];
 
             const auto sampler_type =
-                type == FrameAttachmentType::eDepth ? TextureSamplerType::eNearestClamp : TextureSamplerType::eLinearClamp;
+                (type == FrameAttachmentType::eDepth || type == FrameAttachmentType::eNormal)
+                    ? TextureSamplerType::eNearestClamp
+                    : TextureSamplerType::eLinearClamp;
 
             info = vk::DescriptorImageInfo()
                     .setSampler(vk_texture_samplers_[sampler_type].get())

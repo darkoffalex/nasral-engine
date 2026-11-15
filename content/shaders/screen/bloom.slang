@@ -29,7 +29,7 @@ FragmentOutput fragmentMain(VertexOutput input)
     float3 blurred;
     if (settings.pass_index == 0)
     {
-        t_emission.GetDimensions(width, height);
+        t_temp1.GetDimensions(width, height);
         float2 texel_size = 1.0 / float2(width, height);
 
         blurred = linear_blur(
@@ -65,7 +65,7 @@ FragmentOutput fragmentMain(VertexOutput input)
     }
     else
     {
-        t_temp1.GetDimensions(width, height);
+        t_bloom.GetDimensions(width, height);
         float2 texel_size = 1.0 / float2(width, height);
 
         blurred = linear_blur(

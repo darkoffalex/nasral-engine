@@ -97,9 +97,12 @@ namespace nasral::gfx
         eDepth,
         eEmission,
         eAttenuation,
-        eAO,
-        eReflections,
         eCompositing,
+
+        eBloom,
+        eAO,
+        eShadows,
+        eReflections,
         eTemp1,
         eTemp2,
         TOTAL
@@ -377,6 +380,7 @@ namespace nasral::gfx
         glm::vec4 clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);                  // Цвет очистки
         PFN_vkGetInstanceProcAddr pfn_vk_get_proc_addr;                             // Функция получения адресов функций
         vk::Extent2D rendering_resolution = {1024, 768};                            // Разрешение кадрового буфера рендеринга
+        vk::Extent2D screen_fx_resolution = {1024, 768};                            // Разрешение рендеринга экранных эффектов
         vk::Format offscreen_color_format = vk::Format::eR16G16B16A16Sfloat;        // Формат цветовых вложений кадрового буфера рендеринга
         vk::Format offscreen_depth_format = vk::Format::eD32SfloatS8Uint;           // Формат вложений глубины и трафарета (буфер рендеринга)
         vk::Format present_color_format = vk::Format::eB8G8R8A8Unorm;               // Формат цветовых вложений презентации (показа)
