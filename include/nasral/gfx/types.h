@@ -292,7 +292,12 @@ namespace nasral::gfx
             glm::float32 exposure = 1.0f;
         };
 
-        using ScreenPass = std::variant<ScreenPassAo, ScreenPassBlur, ScreenPassCompositing>;
+        struct ScreenPassEffects
+        {
+            glm::float32 bright_threshold = 1.0f;
+        };
+
+        using ScreenPass = std::variant<ScreenPassAo, ScreenPassBlur, ScreenPassCompositing, ScreenPassEffects>;
 
         static_assert(sizeof(Camera) % 16 == 0, "Camera size must be multiple of 16 bytes");
     }
@@ -370,6 +375,11 @@ namespace nasral::gfx
             glm::float32 gamma = 2.2f;
             glm::float32 exposure = 1.0f;
         } compositing_settings;
+
+        struct
+        {
+            glm::float32 bright_threshold = 1.0f;
+        } effects_settings;
     };
 
     struct Config

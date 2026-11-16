@@ -164,6 +164,10 @@ namespace nasral::gfx
                 desc.compositing_settings.gamma = s.value("gamma", desc.compositing_settings.gamma);
                 desc.compositing_settings.exposure = s.value("exposure", desc.compositing_settings.exposure);
             }
+            else if (desc.type == ScreenPassType::eEffects)
+            {
+                desc.effects_settings.bright_threshold = s.value("bright_threshold", desc.effects_settings.bright_threshold);
+            }
         }
     }
 
@@ -216,6 +220,12 @@ namespace nasral::gfx
                 {"bloom_intensity", desc.compositing_settings.bloom_intensity},
                 {"gamma", desc.compositing_settings.gamma},
                 {"exposure", desc.compositing_settings.exposure}
+            };
+        }
+        else if (desc.type == ScreenPassType::eEffects)
+        {
+            j["settings"] = {
+                {"bright_threshold", desc.effects_settings.bright_threshold}
             };
         }
     }

@@ -1,13 +1,17 @@
 #include "_common.slang"
 
-// Константы
-static const float BRIGHT_THRESHOLD = 0.5;
-
 // Выходные цветовые вложения
 struct FragmentOutput
 {
     [[vk::location(0)]] float4 color    : SV_Target0;
     [[vk::location(1)]] float4 emission : SV_Target1;
+};
+
+// Параметры экранного прохода (set = 2, binding = 0)
+// Структура соответствует gfx::uniforms::ScreenPassEffects в C++ коде движка
+struct ScreenPassSettings
+{
+    float bright_threshold;
 };
 
 // ============================================================================
@@ -16,6 +20,9 @@ struct FragmentOutput
 [shader("fragment")]
 FragmentOutput fragmentMain(VertexOutput input)
 {
+    // Получить настройки экранного прохода
+    ScreenPassSettings settings = s_screen_passes.Load<ScreenPassSettings>(pc_push.pass_index * pc_push.pass_stride);
+
     // Получить цвет геометрии (без затухания) и общее затухание в точке
     float4 geometry    = t_geometry.SampleLevel(input.uv, 0.0);
     float3 attenuation = t_attenuation.SampleLevel(input.uv, 0.0).rgb;
@@ -24,7 +31,7 @@ FragmentOutput fragmentMain(VertexOutput input)
     float3 hdr_color = geometry.rgb * attenuation;
 
     // Наиболее яркие области (яркость выше порога)
-    float3 bright_color = max(hdr_color - float3(BRIGHT_THRESHOLD), float3(0.0));
+    float3 bright_color = max(hdr_color - float3(settings.bright_threshold), float3(0.0));
 
     // Вывод во вложения (eColor и eEmission)
     FragmentOutput output;

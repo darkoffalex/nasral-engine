@@ -72,7 +72,10 @@
       "input_attachments" : ["eGeometry", "eAttenuation"],
       "output_attachments" : ["eColor", "eEmission"],
       "shader_program_path" : "shaders/screen/gpass.slang.spv",
-      "next" : [2, 2]
+      "next" : [2, 2],
+      "settings": {
+        "bright_threshold" : 0.5
+      }
     },
     {
       "uid" : [2, 2],
