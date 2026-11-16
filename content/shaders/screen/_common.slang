@@ -17,26 +17,21 @@
 #define ATTACHMENT_TEMP2        13
 
 // Битовые маски стадий пост-обработки (должны совпадать с порядком проходов в project.json)
-#define STAGE_AO            (1u << 0)
-#define STAGE_AO_BLUR_H     (1u << 1)
-#define STAGE_AO_BLUR_V     (1u << 2)
+#define STAGE_GPASS         (1u << 0)
+#define STAGE_AO            (1u << 1)
+#define STAGE_AO_BLUR_H     (1u << 2)
+#define STAGE_AO_BLUR_V     (1u << 3)
 #define STAGE_AO_BLUR       (STAGE_AO_BLUR_H | STAGE_AO_BLUR_V)
-#define STAGE_BLOOM_BLUR_H  (1u << 3)
-#define STAGE_BLOOM_BLUR_V  (1u << 4)
+#define STAGE_BLOOM_BLUR_H  (1u << 4)
+#define STAGE_BLOOM_BLUR_V  (1u << 5)
 #define STAGE_BLOOM_BLUR    (STAGE_BLOOM_BLUR_H | STAGE_BLOOM_BLUR_V)
-#define STAGE_COMPOSITING   (1u << 5)
+#define STAGE_COMPOSITING   (1u << 6)
 
 // Выход вершинного шейдера -> Вход фрагментного шейдера
 struct VertexOutput
 {
     float4 clipPosition : SV_Position;
     [[vk::location(0)]] float2 uv : TEXCOORD0;
-};
-
-// Выходные цветовые вложения
-struct FragmentOutput
-{
-    [[vk::location(0)]] float4 color : SV_Target0;
 };
 
 // ============================================================================

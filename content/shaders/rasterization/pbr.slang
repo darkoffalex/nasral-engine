@@ -2,8 +2,6 @@
 
 // Константы
 static const float PI = 3.14159265359;
-static const float3 LUMINANCE_VECTOR = float3(0.2126, 0.7152, 0.0722);
-static const float BRIGHT_THRESHOLD = 0.5;
 
 // PBR параметры материала (set = 2, binding = 0)
 struct MaterialSettings
@@ -85,8 +83,9 @@ FragmentOutput fragmentMain(GeometryOutput input)
     normal = normalize(normal);
     normal = normalize(mul(input.TBN, normal));
 
-    // Суммарная освещенность точки
+    // Суммарная освещенность и затухание точки
     float3 Lo = float3(0.0);
+    float total_attenuation = 0.0;
 
     // Цикл по активным источникам света
     for (uint i = 0; i < s_light_indices[0].count; ++i)
@@ -101,7 +100,8 @@ FragmentOutput fragmentMain(GeometryOutput input)
 
         // Затухание
         float attenuation = 1.0 / (1.0 + light.quadratic * dist * dist);
-        float3 radiance   = light.color.rgb * attenuation * light.intensity;
+        // Освещенность
+        float3 radiance = light.color.rgb * light.intensity;
 
         // Векторы и скалярные произведения
         float3 V   = normalize(u_camera.position.xyz - input.position);
@@ -124,21 +124,19 @@ FragmentOutput fragmentMain(GeometryOutput input)
         // Диффузная часть (энергосбережение Lambertian)
         float3 diffuse = albedo * (1.0 - metallic) * (1.0 - F) / PI;
 
-        // Накопление освещенности
+        // Накопление освещенности и затухания
         Lo += (diffuse + specular) * NoL * radiance * tex_ao;
+        total_attenuation += attenuation;
     }
 
     // Применить emissive (светящиеся поверхности)
     // Если свечение ярче освещенности - мы увидим свечение, в противном случае - освещенность
     Lo = max(Lo, float3(emission));
 
-    // Буфер свечения (яркость выше порога)
-    float3 bright_pbr = max( Lo - float3(BRIGHT_THRESHOLD), float3(0.0));
-
     // Вывод во вложения GBuffer
-    output.color    = float4(Lo, alpha);
-    output.normal   = float4(normal * 0.5 + 0.5, 1.0);
-    output.emissive = float4(bright_pbr, 1.0);
+    output.geometry    = float4(Lo, alpha);
+    output.normal      = float4(normal * 0.5 + 0.5, 1.0);
+    output.attenuation = float4(float3(total_attenuation), 1.0);
 
     return output;
 }

@@ -214,9 +214,9 @@ namespace nasral::gfx
         const auto extent = rendering_resolution();
 
         constexpr std::array color_types{
-            FrameAttachmentType::eColor,
+            FrameAttachmentType::eGeometry,
             FrameAttachmentType::eNormal,
-            FrameAttachmentType::eEmission
+            FrameAttachmentType::eAttenuation
         };
 
         // Размещаем массив барьеров на стеке без динамических аллокаций
@@ -248,7 +248,7 @@ namespace nasral::gfx
                     .setBaseArrayLayer(0)
                     .setLayerCount(1));
 
-            const auto attachment_clear = type == FrameAttachmentType::eColor
+            const auto attachment_clear = type == FrameAttachmentType::eGeometry
                 ? as_vk_clear_color(config().clear_color)
                 : vk::ClearColorValue(0.0f, 0.0f, 0.0f, 0.0f);
 
@@ -347,9 +347,9 @@ namespace nasral::gfx
         vk_command_buffer().endRendering();
 
         constexpr std::array color_types{
-            FrameAttachmentType::eColor,
+            FrameAttachmentType::eGeometry,
             FrameAttachmentType::eNormal,
-            FrameAttachmentType::eEmission
+            FrameAttachmentType::eAttenuation
         };
 
         constexpr size_t kMaxBarriers = color_types.size() + 1;
@@ -422,9 +422,9 @@ namespace nasral::gfx
             return;
         }
 
-        // На текущий момент поддерживается только один цветовой выходной буфер.
-        if (output.bitset.count() > 1) {
-            log_error("Screen pass currently supports a single color output attachment.");
+        // На текущий момент поддерживается не более kMaxScreenAttachments цветовых выходных буферов.
+        if (output.bitset.count() > kMaxScreenAttachments) {
+            log_error("Screen pass currently supports at most two color output attachments.");
             return;
         }
 
@@ -447,7 +447,7 @@ namespace nasral::gfx
         // Проверки пройдены успешно — начинаем проход
         is_pass_started_ = true;
 
-        const bool output_pass = output.test(FrameAttachmentType::eCompositing);
+        const bool output_pass = output.test(FrameAttachmentType::eCompositing) || output.test(FrameAttachmentType::eColor);
         const auto extent = output_pass ? rendering_resolution() : screen_fx_resolution();
         last_screen_pass_output_attachments_ = output;
 

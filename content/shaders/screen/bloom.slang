@@ -1,6 +1,12 @@
 #include "_common.slang"
 #include "_blur.slang"
 
+// Выходное цветовое вложение
+struct FragmentOutput
+{
+    [[vk::location(0)]] float4 color : SV_Target0;
+};
+
 // Параметры экранного прохода (set = 2, binding = 0)
 struct ScreenPassSettings
 {

@@ -5,6 +5,7 @@
     {"type" : "eShaderProgram", "path" : "shaders/rasterization/unlit.slang.spv", "load_params": {"type": "eRasterization"}},
     {"type" : "eShaderProgram", "path" : "shaders/rasterization/phong.slang.spv", "load_params": {"type": "eRasterization"}},
     {"type" : "eShaderProgram", "path" : "shaders/rasterization/pbr.slang.spv", "load_params": {"type": "eRasterization"}},
+    {"type" : "eShaderProgram", "path" : "shaders/screen/gpass.slang.spv", "load_params": {"type": "eScreenPass"}},
     {"type" : "eShaderProgram", "path" : "shaders/screen/final.slang.spv", "load_params": {"type": "eScreenPass"}},
     {"type" : "eShaderProgram", "path" : "shaders/screen/bloom.slang.spv", "load_params": {"type": "eScreenPass"}},
     {"type" : "eShaderProgram", "path" : "shaders/screen/ao.slang.spv", "load_params": {"type": "eScreenPass"}},
@@ -66,12 +67,22 @@
   "screen_passes": [
     {
       "uid" : [2, 1],
+      "name" : "G-Pass",
+      "type" : "eEffects",
+      "input_attachments" : ["eGeometry", "eAttenuation"],
+      "output_attachments" : ["eColor", "eEmission"],
+      "shader_program_path" : "shaders/screen/gpass.slang.spv",
+      "next" : [2, 2]
+    },
+    {
+      "uid" : [2, 2],
       "name" : "AmbientOcclusion",
       "type" : "eAO",
       "input_attachments" : ["eNormal", "eDepth"],
       "output_attachments" : ["eAO"],
       "shader_program_path" : "shaders/screen/ao.slang.spv",
-      "next" : [2, 2],
+      "previous" : [2, 1],
+      "next" : [2, 3],
       "settings": {
         "type" : 0,
         "samples" : 2,
@@ -82,14 +93,14 @@
       }
     },
     {
-      "uid" : [2, 2],
+      "uid" : [2, 3],
       "name" : "AOBlurH",
       "type" : "eBlur",
       "input_attachments" : ["eAO", "eDepth", "eNormal"],
       "output_attachments" : ["eTemp1"],
       "shader_program_path" : "shaders/screen/ao_blur.slang.spv",
-      "previous" : [2, 1],
-      "next" : [2, 3],
+      "previous" : [2, 2],
+      "next" : [2, 4],
       "settings": {
         "pass_index" : 0,
         "samples" : 12,
@@ -99,14 +110,14 @@
       }
     },
     {
-      "uid" : [2, 3],
+      "uid" : [2, 4],
       "name" : "AOBlurV",
       "type" : "eBlur",
       "input_attachments" : ["eTemp1", "eDepth", "eNormal"],
       "output_attachments" : ["eAO"],
       "shader_program_path" : "shaders/screen/ao_blur.slang.spv",
-      "previous" : [2, 2],
-      "next" : [2, 4],
+      "previous" : [2, 3],
+      "next" : [2, 5],
       "settings": {
         "pass_index" : 1,
         "samples" : 12,
@@ -116,14 +127,14 @@
       }
     },
     {
-      "uid" : [2, 4],
+      "uid" : [2, 5],
       "name" : "BloomBlurH",
       "type" : "eBlur",
       "input_attachments" : ["eEmission"],
       "output_attachments" : ["eTemp1"],
       "shader_program_path" : "shaders/screen/bloom.slang.spv",
-      "previous" : [2, 3],
-      "next" : [2, 5],
+      "previous" : [2, 4],
+      "next" : [2, 6],
       "settings": {
         "pass_index" : 0,
         "samples" : 10,
@@ -133,14 +144,14 @@
       }
     },
     {
-      "uid" : [2, 5],
+      "uid" : [2, 6],
       "name" : "BloomBlurV",
       "type" : "eBlur",
       "input_attachments" : ["eTemp1"],
       "output_attachments" : ["eBloom"],
       "shader_program_path" : "shaders/screen/bloom.slang.spv",
-      "previous" : [2, 4],
-      "next" : [2, 6],
+      "previous" : [2, 5],
+      "next" : [2, 7],
       "settings": {
         "pass_index" : 1,
         "samples" : 10,
@@ -150,13 +161,13 @@
       }
     },
     {
-      "uid" : [2, 6],
+      "uid" : [2, 7],
       "name" : "Final",
       "type" : "eCompositing",
       "input_attachments" : ["eColor", "eAO", "eBloom"],
       "output_attachments" : ["eCompositing"],
       "shader_program_path" : "shaders/screen/final.slang.spv",
-      "previous" : [2, 5],
+      "previous" : [2, 6],
       "settings": {
         "bloom_blur_lod" : 2.5,
         "bloom_intensity" : 1.0,

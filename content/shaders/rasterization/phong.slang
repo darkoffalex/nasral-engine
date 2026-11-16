@@ -76,9 +76,9 @@ FragmentOutput fragmentMain(GeometryOutput input)
     }
 
     // Формирование GBuffer вложений
-    output.color = float4(ambient + final_color, tex_color.a);
+    output.geometry = float4(ambient + final_color, tex_color.a);
     output.normal = float4(normal * 0.5 + 0.5, 1.0);
-    output.emissive = float4(0.0, 0.0, 0.0, 1.0);
+    output.attenuation = float4(1.0, 1.0, 1.0, 1.0);
 
     return output;
 }

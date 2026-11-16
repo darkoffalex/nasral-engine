@@ -106,7 +106,7 @@ namespace nasral::gfx
         }
 
         // Отправка вложения на показ
-        engine()->gfx()->renderer()->cmd_blit_to_screen(post_processed ? FrameAttachmentType::eCompositing : FrameAttachmentType::eColor);
+        engine()->gfx()->renderer()->cmd_blit_to_screen(post_processed ? FrameAttachmentType::eCompositing : FrameAttachmentType::eGeometry);
     }
 
     void System::update_mtl_ubo() const {
@@ -603,7 +603,7 @@ namespace nasral::gfx
         // Переключение AO прохода
         if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e1)) {
             const std::array<ecs::EntityId, 1> ao_passes_e = {
-                engine()->gfx()->find_screen_pass({2,1}),
+                engine()->gfx()->find_screen_pass({2,2}),
             };
 
             for (const auto& ao_pass_e : ao_passes_e) {
@@ -617,8 +617,8 @@ namespace nasral::gfx
         // Переключение прохода AO размытия
         if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e2)) {
             const std::array<ecs::EntityId, 2> ao_passes_e = {
-                engine()->gfx()->find_screen_pass({2,2}),
-                engine()->gfx()->find_screen_pass({2,3})
+                engine()->gfx()->find_screen_pass({2,3}),
+                engine()->gfx()->find_screen_pass({2,4})
             };
 
             for (const auto& ao_pass_e : ao_passes_e) {
@@ -632,8 +632,8 @@ namespace nasral::gfx
         // Переключение размытия Bloom
         if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e3)) {
             const std::array<ecs::EntityId, 2> bloom_blur_passes_e = {
-                engine()->gfx()->find_screen_pass({2,4}),
-                engine()->gfx()->find_screen_pass({2,5})
+                engine()->gfx()->find_screen_pass({2,5}),
+                engine()->gfx()->find_screen_pass({2,6})
             };
 
             for (const auto& bloom_blur_pass_e :  bloom_blur_passes_e) {
