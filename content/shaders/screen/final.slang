@@ -1,6 +1,12 @@
 #include "_common.slang"
 #include "_blur.slang"
 
+// Выходное цветовое вложение
+struct FragmentOutput
+{
+    [[vk::location(0)]] float4 color : SV_Target0;
+};
+
 // Параметры экранного прохода (set = 2, binding = 0)
 struct ScreenPassSettings
 {
@@ -31,13 +37,13 @@ FragmentOutput fragmentMain(VertexOutput input)
     ScreenPassSettings compositing = s_screen_passes.Load<ScreenPassSettings>(pc_push.pass_index * pc_push.pass_stride);
 
     // Получить основной цвет сцены (HDR)
-    float4 col = t_color.Sample(input.uv);
+    float4 col = t_color.SampleLevel(input.uv, 0.0);
 
     // Получить bloom (если стадии размытия bloom задействованы)
     float3 bloom = float3(0.0);
     if (is_stages_active(STAGE_BLOOM_BLUR))
     {
-        bloom = t_emission.Sample(input.uv).rgb * compositing.bloom_intensity;
+        bloom = t_bloom.SampleLevel(input.uv, 0.0).rgb * compositing.bloom_intensity;
     }
 
     // Получить AO (если стадия AO задействована)
@@ -48,7 +54,7 @@ FragmentOutput fragmentMain(VertexOutput input)
         uint height;
         t_ao.GetDimensions(width, height);
         float2 texel_size = 1.0 / float2(width, height);
-        ao = box_gaussian_blur(t_ao, input.uv, texel_size, 1.0);
+        ao = box_blur(t_ao, input.uv, texel_size, 1.0);
     }
 
     // Композиция в линейном HDR-пространстве с учетом экспозиции

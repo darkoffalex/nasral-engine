@@ -14,8 +14,8 @@ FragmentOutput fragmentMain(GeometryOutput input)
     // Выборка цвета из массива текстур по индексу материала
     float4 tex_color = t_color[pc_push.mat_index].Sample(input.uv);
 
-    output.color = float4(tex_color.rgb, 1.0);
-    output.emissive = float4(0.0, 0.0, 0.0, 1.0);
+    output.geometry = float4(tex_color.rgb, 1.0);
+    output.attenuation = float4(1.0, 1.0, 1.0, 1.0);
     output.normal = float4(input.normal * 0.5 + 0.5, 1.0);
 
     return output;

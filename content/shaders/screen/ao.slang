@@ -2,6 +2,12 @@
 #include "_utils.slang"
 #include "_ao_kernels.slang"
 
+// Выходное цветовое вложение
+struct FragmentOutput
+{
+    [[vk::location(0)]] float4 color : SV_Target0;
+};
+
 // Параметры экранного прохода AO (set = 2, binding = 0)
 // Структура соответствует gfx::uniforms::ScreenPassAo в C++ коде движка
 struct ScreenPassSettings

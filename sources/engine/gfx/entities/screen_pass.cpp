@@ -52,6 +52,10 @@ namespace nasral::gfx
                 desc.compositing_settings.gamma,
                 desc.compositing_settings.exposure
             };
+        }else if (desc.type == ScreenPassType::eEffects){
+            settings = uniforms::ScreenPassEffects{
+                desc.effects_settings.bright_threshold
+            };
         }
 
         EnumMask<FrameAttachmentType> input_attachments = {};

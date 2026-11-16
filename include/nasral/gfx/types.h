@@ -98,9 +98,12 @@ namespace nasral::gfx
         eDepth,
         eEmission,
         eAttenuation,
-        eAO,
-        eReflections,
         eCompositing,
+
+        eBloom,
+        eAO,
+        eShadows,
+        eReflections,
         eTemp1,
         eTemp2,
         TOTAL
@@ -291,7 +294,12 @@ namespace nasral::gfx
             glm::float32 exposure = 1.0f;
         };
 
-        using ScreenPass = std::variant<ScreenPassAo, ScreenPassBlur, ScreenPassCompositing>;
+        struct ScreenPassEffects
+        {
+            glm::float32 bright_threshold = 1.0f;
+        };
+
+        using ScreenPass = std::variant<ScreenPassAo, ScreenPassBlur, ScreenPassCompositing, ScreenPassEffects>;
 
         static_assert(sizeof(Camera) % 16 == 0, "Camera size must be multiple of 16 bytes");
     }
@@ -369,6 +377,11 @@ namespace nasral::gfx
             glm::float32 gamma = 2.2f;
             glm::float32 exposure = 1.0f;
         } compositing_settings;
+
+        struct
+        {
+            glm::float32 bright_threshold = 1.0f;
+        } effects_settings;
     };
 
     struct TlasInstanceDesc
@@ -387,6 +400,7 @@ namespace nasral::gfx
         glm::vec4 clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);                  // Цвет очистки
         PFN_vkGetInstanceProcAddr pfn_vk_get_proc_addr;                             // Функция получения адресов функций
         vk::Extent2D rendering_resolution = {1024, 768};                            // Разрешение кадрового буфера рендеринга
+        vk::Extent2D screen_fx_resolution = {1024, 768};                            // Разрешение рендеринга экранных эффектов
         vk::Format offscreen_color_format = vk::Format::eR16G16B16A16Sfloat;        // Формат цветовых вложений кадрового буфера рендеринга
         vk::Format offscreen_depth_format = vk::Format::eD32SfloatS8Uint;           // Формат вложений глубины и трафарета (буфер рендеринга)
         vk::Format present_color_format = vk::Format::eB8G8R8A8Unorm;               // Формат цветовых вложений презентации (показа)

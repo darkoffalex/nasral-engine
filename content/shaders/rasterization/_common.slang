@@ -45,9 +45,9 @@ struct GeometryOutput
 // Выходные цветовые вложения (GBuffer)
 struct FragmentOutput
 {
-    [[vk::location(0)]] float4 color    : SV_Target0;
-    [[vk::location(1)]] float4 normal   : SV_Target1;
-    [[vk::location(2)]] float4 emissive : SV_Target2;
+    [[vk::location(0)]] float4 geometry    : SV_Target0;
+    [[vk::location(1)]] float4 normal      : SV_Target1;
+    [[vk::location(2)]] float4 attenuation : SV_Target2;
 };
 
 // ============================================================================

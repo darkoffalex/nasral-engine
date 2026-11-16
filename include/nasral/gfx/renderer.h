@@ -49,6 +49,7 @@ namespace nasral::gfx
         void mark_tlas_dirty();
 
         [[nodiscard]] vk::Extent2D rendering_resolution() const noexcept;
+        [[nodiscard]] vk::Extent2D screen_fx_resolution() const noexcept;
         [[nodiscard]] vk::Extent2D output_resolution() const noexcept;
         [[nodiscard]] float aspect_ratio() const noexcept;
         [[nodiscard]] bool is_tlas_dirty(bool exchange = true) noexcept;

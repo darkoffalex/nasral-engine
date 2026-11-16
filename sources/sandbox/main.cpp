@@ -88,6 +88,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.gfx.clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
             config.gfx.pfn_vk_get_proc_addr = glfwGetInstanceProcAddress;
             config.gfx.rendering_resolution = config.gfx.surface_provider->framebuffer_extent();
+            config.gfx.screen_fx_resolution = vk::Extent2D{
+                config.gfx.rendering_resolution.width / 2,
+                config.gfx.rendering_resolution.height / 2
+            };
             config.gfx.offscreen_color_format = vk::Format::eR16G16B16A16Sfloat;
             config.gfx.offscreen_depth_format = vk::Format::eD32SfloatS8Uint;
             config.gfx.present_color_format = vk::Format::eB8G8R8A8Unorm;

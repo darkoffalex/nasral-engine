@@ -1,38 +1,37 @@
 #pragma once
 
 // Внимание! Должны совпадать с FrameAttachmentType из gfx::types
-#define ATTACHMENT_COLOR     0
-#define ATTACHMENT_GEOMETRY  1
-#define ATTACHMENT_MATERIAL  2
-#define ATTACHMENT_NORMAL    3
-#define ATTACHMENT_DEPTH     4
-#define ATTACHMENT_EMISSION  5
-#define ATTACHMENT_SHADOWS   6
-#define ATTACHMENT_AO        7
-#define ATTACHMENT_TEMP1     10
-#define ATTACHMENT_TEMP2     11
+#define ATTACHMENT_COLOR        0
+#define ATTACHMENT_GEOMETRY     1
+#define ATTACHMENT_MATERIAL     2
+#define ATTACHMENT_NORMAL       3
+#define ATTACHMENT_DEPTH        4
+#define ATTACHMENT_EMISSION     5
+#define ATTACHMENT_ATTENUATION  6
+
+#define ATTACHMENT_BLOOM        8
+#define ATTACHMENT_AO           9
+#define ATTACHMENT_SHADOWS      10
+#define ATTACHMENT_REFLECTIONS  11
+#define ATTACHMENT_TEMP1        12
+#define ATTACHMENT_TEMP2        13
 
 // Битовые маски стадий пост-обработки (должны совпадать с порядком проходов в project.json)
 #define STAGE_AO            (1u << 0)
 #define STAGE_AO_BLUR_H     (1u << 1)
 #define STAGE_AO_BLUR_V     (1u << 2)
 #define STAGE_AO_BLUR       (STAGE_AO_BLUR_H | STAGE_AO_BLUR_V)
-#define STAGE_BLOOM_BLUR_H  (1u << 3)
-#define STAGE_BLOOM_BLUR_V  (1u << 4)
+#define STAGE_GPASS         (1u << 3)
+#define STAGE_BLOOM_BLUR_H  (1u << 4)
+#define STAGE_BLOOM_BLUR_V  (1u << 5)
 #define STAGE_BLOOM_BLUR    (STAGE_BLOOM_BLUR_H | STAGE_BLOOM_BLUR_V)
-#define STAGE_COMPOSITING   (1u << 5)
+#define STAGE_COMPOSITING   (1u << 6)
 
 // Выход вершинного шейдера -> Вход фрагментного шейдера
 struct VertexOutput
 {
     float4 clipPosition : SV_Position;
     [[vk::location(0)]] float2 uv : TEXCOORD0;
-};
-
-// Выходные цветовые вложения
-struct FragmentOutput
-{
-    [[vk::location(0)]] float4 color : SV_Target0;
 };
 
 // ============================================================================
@@ -55,8 +54,11 @@ struct PushConstants
 [[vk::binding(ATTACHMENT_NORMAL, 0)]] Sampler2D t_normal;
 [[vk::binding(ATTACHMENT_DEPTH, 0)]] Sampler2D t_depth;
 [[vk::binding(ATTACHMENT_EMISSION, 0)]] Sampler2D t_emission;
-[[vk::binding(ATTACHMENT_SHADOWS, 0)]] Sampler2D t_shadows;
+[[vk::binding(ATTACHMENT_ATTENUATION, 0)]] Sampler2D t_attenuation;
+
+[[vk::binding(ATTACHMENT_BLOOM, 0)]] Sampler2D t_bloom;
 [[vk::binding(ATTACHMENT_AO, 0)]] Sampler2D t_ao;
+[[vk::binding(ATTACHMENT_SHADOWS, 0)]] Sampler2D t_shadows;
 [[vk::binding(ATTACHMENT_TEMP1, 0)]] Sampler2D t_temp1;
 [[vk::binding(ATTACHMENT_TEMP2, 0)]] Sampler2D t_temp2;
 

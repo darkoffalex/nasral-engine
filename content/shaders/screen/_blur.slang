@@ -23,7 +23,7 @@ float3 linear_blur(Sampler2D tex, float2 uv, float2 dir, float2 texel_size, uint
     float3 result = float3(0.0);
     for(int i = from; i <= to; ++i){
         float2 offset = float(i) * dir * texel_size * base_radius;
-        result += tex.Sample(uv + offset).rgb;
+        result += tex.SampleLevel(uv + offset, 0.0).rgb;
     }
 
     // 3. Усреднение (деление на вес, вес каждой выборки = 1)
@@ -72,7 +72,7 @@ float3 linear_depth_aware_blur(
     float3 result = float3(0.0);
     for(int i = from; i <= to; ++i){
         float2 offset = float(i) * dir * texel_size * dynamic_radius;
-        result += tex.Sample(uv + offset).rgb;
+        result += tex.SampleLevel(uv + offset, 0.0).rgb;
     }
 
     // 5. Усреднение (деление на вес, вес каждой выборки = 1)
@@ -155,7 +155,7 @@ float3 linear_bilateral_blur(
         float2 sample_uv = uv + offset;
 
         // Данные выборки (цвет, глубина, нормаль)
-        float3 sample_color = tex.Sample(sample_uv).rgb;
+        float3 sample_color = tex.SampleLevel(sample_uv, 0.0).rgb;
         float sample_depth = fetch_linear_depth(tex_depth, sample_uv,proj_matrix);
         float3 sample_normal  = fetch_world_normal(tex_normals, sample_uv);
 
@@ -202,7 +202,7 @@ float3 box_blur(Sampler2D tex, float2 uv, float2 texel_size, float base_radius =
         for (int x = -1; x <= 1; ++x)
         {
             float2 offset = float2(float(x), float(y)) * step;
-            result += tex.Sample(uv + offset).rgb;
+            result += tex.SampleLevel(uv + offset, 0.0).rgb;
         }
     }
 
@@ -242,7 +242,7 @@ float3 box_gaussian_blur(Sampler2D tex, float2 uv, float2 texel_size, float base
         {
             float2 offset = float2(float(x), float(y)) * step;
             float weight = WEIGHTS[y + 1][x + 1];
-            result += tex.Sample(uv + offset).rgb * weight;
+            result += tex.SampleLevel(uv + offset, 0.0).rgb * weight;
         }
     }
 
