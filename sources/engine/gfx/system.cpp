@@ -603,7 +603,7 @@ namespace nasral::gfx
         // Переключение AO прохода
         if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e1)) {
             const std::array<ecs::EntityId, 1> ao_passes_e = {
-                engine()->gfx()->find_screen_pass({2,2}),
+                engine()->gfx()->find_screen_pass({2,1}),
             };
 
             for (const auto& ao_pass_e : ao_passes_e) {
@@ -617,8 +617,8 @@ namespace nasral::gfx
         // Переключение прохода AO размытия
         if (engine()->inp()->is_key_just_pressed(inp::KeyCode::e2)) {
             const std::array<ecs::EntityId, 2> ao_passes_e = {
-                engine()->gfx()->find_screen_pass({2,3}),
-                engine()->gfx()->find_screen_pass({2,4})
+                engine()->gfx()->find_screen_pass({2,2}),
+                engine()->gfx()->find_screen_pass({2,3})
             };
 
             for (const auto& ao_pass_e : ao_passes_e) {
