@@ -1,0 +1,35 @@
+# Blender 5.3.0 MTL File: 'chess_set.blend'
+# www.blender.org
+
+newmtl chess_set_board
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd ../../textures/chess/chess_board_diff.png
+map_Ns ../../textures/chess/chess_board_rough.png
+map_bump -bm 1.000000 ../../textures/chess/chess_board_nor.png
+
+newmtl chess_set_pieces_black
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd ../../textures/chess/chess_pieces_black_diff.png
+map_Ns ../../textures/chess/chess_pieces_black_rough.png
+map_bump -bm 1.000000 ../../textures/chess/chess_pieces_black_nor.png
+
+newmtl chess_set_pieces_white
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd ../../textures/chess/chess_pieces_white_diff.png
+map_Ns ../../textures/chess/chess_pieces_white_rough.png
+map_bump -bm 1.000000 ../../textures/chess/chess_pieces_white_nor.png

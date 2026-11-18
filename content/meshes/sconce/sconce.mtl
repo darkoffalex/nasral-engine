@@ -1,0 +1,23 @@
+# Blender 5.3.0 MTL File: 'industrial_wall_sconce.blend'
+# www.blender.org
+
+newmtl industrial_wall_sconce
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 3
+map_Kd ../../textures/sconce/sconce_diff.png
+map_Ns ../../textures/sconce/sconce_rough.png
+map_bump -bm 1.000000 ../../textures/sconce/sconce_nor.png
+
+newmtl industrial_wall_sconce_bulb
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd ../../textures/sconce/sconce_bulb_diff.png
+map_Ns ../../textures/sconce/sconce_bulb_rough.png

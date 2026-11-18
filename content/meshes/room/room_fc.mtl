@@ -1,0 +1,54 @@
+# Blender 5.3.0 MTL File: 'None'
+# www.blender.org
+
+newmtl Ceiling
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl Floor
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl WallLower
+Ns 1000.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.180000 0.110000 0.050000
+Ks 0.200000 0.200000 0.200000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl WeatheredPlanks
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd ../../textures/planks/planks_diff.png
+map_Ns ../../textures/planks/planks_rough.png
+map_bump -bm 1.000000 ../../textures/planks/planks_nor.png
+
+newmtl YellowPlaster
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd ../../textures/plaster/plaster_diff.png
+map_Ns ../../textures/plaster/plaster_rough.png
+map_bump -bm 1.000000 ../../textures/plaster/plaster_nor.png
