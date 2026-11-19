@@ -254,9 +254,16 @@ namespace nasral::gfx
                     .setBaseArrayLayer(0)
                     .setLayerCount(1));
 
-            const auto attachment_clear = type == FrameAttachmentType::eGeometry
-                ? as_vk_clear_color(config().clear_color)
-                : vk::ClearColorValue(0.0f, 0.0f, 0.0f, 0.0f);
+            // Очистка по умолчанию
+            auto attachment_clear = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 0.0f);
+            // Для геометрии (цвета) - цвет из конфигурации
+            if (type == FrameAttachmentType::eGeometry){
+                attachment_clear = as_vk_clear_color(config().clear_color);
+            }
+            // Для затемнения - отсутствие затемнения
+            else if (type == FrameAttachmentType::eAttenuation){
+                attachment_clear = vk::ClearColorValue(1.0f, 1.0f, 1.0f, 1.0f);
+            }
 
             color_attachments[i] = vk::RenderingAttachmentInfo()
                 .setImageView(image->render_attachment_view())

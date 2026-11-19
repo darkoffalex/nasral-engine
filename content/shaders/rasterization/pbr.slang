@@ -146,15 +146,20 @@ FragmentOutput fragmentMain(GeometryOutput input)
         float attenuation = 1.0 / (1.0 + light.quadratic * dist * dist);
 
         // Для источника типа "прожектор"
+        float cutoff = 1.0f;
         if(light.type == LIGHT_TYPE_SPOT)
         {
+            // Косинус угла между направлением падения луча и направлением источника
             float l_cos = dot(light_dir, -light.direction.xyz);
+            // Косинус угла внешнего конуса
             float o_cos = cos(radians(light.cutoff_angle_out));
+            // Косинус угла внутреннего конуса
             float i_cos = cos(radians(light.cutoff_angle_in));
+            // Рассчитать затемнение
             if(l_cos < o_cos){
-                attenuation *= 0.0;
+                cutoff *= 0.0;
             }else if(l_cos < i_cos){
-                attenuation *= (1.0 - (i_cos - l_cos) / (i_cos - o_cos));
+                cutoff *= (1.0 - (i_cos - l_cos) / (i_cos - o_cos));
             }
         }
 
@@ -186,13 +191,18 @@ FragmentOutput fragmentMain(GeometryOutput input)
         float3 diffuse = albedo * (1.0 - metallic) * (1.0 - F) / PI;
 
         // Накопление освещенности и затухания
-        Lo += (diffuse + specular) * NoL * radiance * tex_ao;
-        total_attenuation += attenuation * shadow;
+        Lo += (diffuse + specular) * NoL * radiance * tex_ao * cutoff;
+        total_attenuation += attenuation * shadow * cutoff;
     }
 
     // Применить emissive (светящиеся поверхности)
     // Если свечение ярче освещенности - мы увидим свечение, в противном случае - освещенность
     Lo = max(Lo, float3(emission));
+
+    // Хот-фикс (сброс маски затемнения для emissive участков)
+    if(any(emission)){
+        total_attenuation = 1.0;
+    }
 
     // Вывод во вложения GBuffer
     output.geometry    = float4(Lo, alpha);
