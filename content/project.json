@@ -130,6 +130,12 @@
     {"type": "eTexture", "path": "textures/wood/wood_ao.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/wood/wood_disp.png", "load_params": {}},
 
+    {"type": "eTexture", "path": "textures/ceiling/ceiling_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/ceiling/ceiling_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/ceiling/ceiling_nor_gl.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/ceiling/ceiling_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/ceiling/ceiling_disp.png", "load_params": {}},
+
     {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/hallway/hallway.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/floor/floor.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
@@ -143,8 +149,7 @@
     {"type": "eMesh", "path": "meshes/chair1/chair1.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/room/room_fc.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
 
-    {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}},
-    {"type": "eScene", "path": "scenes/corridor.json", "load_params": {}},
+    {"type": "eScene", "path": "scenes/hallway.json", "load_params": {}},
     {"type": "eScene", "path": "scenes/barrels.json", "load_params": {}},
     {"type": "eScene", "path": "scenes/checkers.json", "load_params": {}},
     {"type": "eScene", "path": "scenes/room.json", "load_params": {}}
@@ -161,10 +166,10 @@
       "next" : [2, 2],
       "settings": {
         "type" : 0,
-        "samples" : 2,
-        "radius" : 0.4,
+        "samples" : 4,
+        "radius" : 0.3,
         "bias" : 0.02,
-        "multiplier" : 1.0,
+        "multiplier" : 1.5,
         "power" : 2.0
       }
     },
@@ -811,7 +816,7 @@
         "metallic": 1.0,
         "ao": 1.0,
         "emission": 0.0,
-        "normal_mul": 1.0
+        "normal_mul": 3.0
       },
       "textures": [{
         "type" : "eAlbedoColor",
@@ -916,7 +921,7 @@
         "metallic": 1.0,
         "ao": 1.0,
         "emission": 0.0,
-        "normal_mul": 1.0
+        "normal_mul": 3.0
       },
       "textures": [{
         "type" : "eAlbedoColor",
@@ -937,6 +942,37 @@
       }, {
         "type" : "eHeight",
         "path" : "textures/wood/wood_disp.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,25],
+      "name": "CeilingPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [0.7, 0.7, 0.7, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 3.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/ceiling/ceilig_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/ceiling/ceiling_nor_gl.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/ceiling/ceiling_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eHeight",
+        "path" : "textures/ceiling/ceiling_disp.png",
         "filter" : "eLinear"
       }]
     }
