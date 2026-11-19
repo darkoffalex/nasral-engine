@@ -29,7 +29,7 @@
       },
       "mesh": {
         "mesh_path": "meshes/room/room_fc.obj",
-        "materials": [[0, 23], [0, 23], [0, 24], [0, 21], [0, 22]],
+        "materials": [[0, 25], [0, 23], [0, 24], [0, 21], [0, 22]],
         "cast_shadow" : true
       }
     },
@@ -151,17 +151,20 @@
       "type": "eLight",
       "uid": "auto",
       "spatial": {
-        "position": [0.65, 1.65, -2.1],
-        "rotation": [0.0, 0.0, 0.0],
+        "position": [0.65, 1.67, -2.1],
+        "rotation": [-90.0, 0.0, 0.0],
         "scale": [1.0, 1.0, 1.0]
       },
       "light": {
+        "is_active" : true,
         "dynamic" : true,
-        "type": "ePointLight",
-        "intensity": 5.0,
+        "type": "eSpotLight",
+        "intensity": 7.0,
         "radius": 1.0,
         "quadratic": 2.0,
-        "color": [1.0, 1.0, 0.9, 1.0]
+        "color": [1.0, 0.8, 0.7, 1.0],
+        "cutoff_angle_in" : 50.0,
+        "cutoff_angle_out" : 60.0
       }
     },
 
@@ -170,17 +173,40 @@
       "type": "eLight",
       "uid": "auto",
       "spatial": {
-        "position": [-0.65, 1.65, -2.1],
+        "position": [-0.65, 1.67, -2.1],
+        "rotation": [-90.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "light": {
+        "is_active" : true,
+        "dynamic" : true,
+        "type": "eSpotLight",
+        "intensity": 7.0,
+        "radius": 1.0,
+        "quadratic": 2.0,
+        "color": [1.0, 0.8, 0.7, 1.0],
+        "cutoff_angle_in" : 50.0,
+        "cutoff_angle_out" : 60.0
+      }
+    },
+
+    {
+      "name": "Light3",
+      "type": "eLight",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 1.5, 1.0],
         "rotation": [0.0, 0.0, 0.0],
         "scale": [1.0, 1.0, 1.0]
       },
       "light": {
-        "dynamic" : true,
+        "is_active" : true,
+        "dynamic" : false,
         "type": "ePointLight",
-        "intensity": 5.0,
+        "intensity": 6.0,
         "radius": 1.0,
         "quadratic": 2.0,
-        "color": [1.0, 1.0, 0.9, 1.0]
+        "color": [1.0, 0.8, 0.7, 1.0]
       }
     }
   ]

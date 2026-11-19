@@ -85,7 +85,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char * argv[])
             config.gfx.app_name = "Nasral Sandbox";
             config.gfx.engine_name = "Nasral Engine";
             config.gfx.surface_provider = std::make_shared<utils::GlfwSurfaceProvider>(window);
-            config.gfx.clear_color = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+            config.gfx.clear_color = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
             config.gfx.pfn_vk_get_proc_addr = glfwGetInstanceProcAddress;
             config.gfx.rendering_resolution = config.gfx.surface_provider->framebuffer_extent();
             config.gfx.screen_fx_resolution = vk::Extent2D{
