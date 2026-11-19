@@ -97,6 +97,8 @@ namespace nasral::scn
             glm::float32_t radius = 1.0f;
             glm::float32 quadratic = 0.1f;
             glm::vec4 color = glm::vec4(1.0f);
+            glm::float32 cutoff_angle_in = 40.0f;
+            glm::float32 cutoff_angle_out = 45.0f;
         } light = {};
 
         struct

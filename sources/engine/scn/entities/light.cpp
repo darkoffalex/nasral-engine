@@ -17,7 +17,9 @@ namespace nasral::scn
             desc.light.intensity,
             desc.light.radius,
             desc.light.quadratic,
-            desc.light.color
+            desc.light.color,
+            desc.light.cutoff_angle_in,
+            desc.light.cutoff_angle_out
         };
 
         gfx::UniformIndexComponent ubo_c{gfx->acquire_light_id()};
@@ -135,6 +137,18 @@ namespace nasral::scn
     void LightView::set_light_quadratic(const float quadratic) const {
         auto &settings = engine()->ecs()->get_component<LightComponent>(id());
         settings.quadratic = quadratic;
+        invalidate_ubo();
+    }
+
+    void LightView::set_cutoff_angle_in(const float angle) const{
+        auto &settings = engine()->ecs()->get_component<LightComponent>(id());
+        settings.cutoff_angle_in = angle;
+        invalidate_ubo();
+    }
+
+    void LightView::set_cutoff_angle_out(const float angle) const{
+        auto &settings = engine()->ecs()->get_component<LightComponent>(id());
+        settings.cutoff_angle_out = angle;
         invalidate_ubo();
     }
 

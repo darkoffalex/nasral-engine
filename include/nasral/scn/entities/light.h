@@ -58,6 +58,10 @@ namespace nasral::scn
 
         void set_light_quadratic(float quadratic) const;
 
+        void set_cutoff_angle_in(float angle) const;
+
+        void set_cutoff_angle_out(float angle) const;
+
         void set_active(bool active = true) const;
 
     protected:
