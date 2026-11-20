@@ -11,3 +11,4 @@ CMakeUserPresets.json
 
 !.gitignore
 !.gitkeep
+!.agents
