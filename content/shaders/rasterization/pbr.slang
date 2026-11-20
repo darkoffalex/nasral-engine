@@ -119,9 +119,6 @@ FragmentOutput fragmentMain(GeometryOutput input)
             }
         }
 
-        // Расчет коэффициента тени через Ray Query
-        float shadow = compute_shadow(input.position, light.position.xyz, normal);
-
         // Освещенность
         float3 radiance = light.color.rgb * light.intensity;
 
@@ -148,7 +145,7 @@ FragmentOutput fragmentMain(GeometryOutput input)
 
         // Накопление освещенности и затухания
         Lo += (diffuse + specular) * NoL * radiance * tex_ao * cutoff;
-        total_attenuation += attenuation * shadow * cutoff;
+        total_attenuation += attenuation * cutoff;
     }
 
     // Применить emissive (светящиеся поверхности)
