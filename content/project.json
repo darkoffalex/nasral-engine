@@ -166,7 +166,7 @@
       "next" : [2, 2],
       "settings": {
         "type" : 0,
-        "samples" : 4,
+        "samples" : 2,
         "radius" : 0.3,
         "bias" : 0.02,
         "multiplier" : 1.5,

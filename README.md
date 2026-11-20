@@ -6,7 +6,7 @@
 
 > **Note**: This project is currently in active development. Many features are experimental or in progress.
 
-![screenshot](README_files/screenshot.png)
+![screenshot](README_files/screenshot3.jpg)
 
 ### Key Features
 
