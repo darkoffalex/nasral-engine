@@ -100,6 +100,23 @@ FragmentOutput fragmentMain(GeometryOutput input)
 
         // Затухание
         float attenuation = 1.0 / (1.0 + light.quadratic * dist * dist);
+
+        // Для источника типа "прожектор"
+        if(light.type == LIGHT_TYPE_SPOT)
+        {
+            float l_cos = dot(light_dir, -light.direction.xyz);
+            float o_cos = cos(radians(light.cutoff_angle_out));
+            float i_cos = cos(radians(light.cutoff_angle_in));
+            if(l_cos < o_cos){
+                attenuation *= 0.0;
+            }else if(l_cos < i_cos){
+                attenuation *= (1.0 - (i_cos - l_cos) / (i_cos - o_cos));
+            }
+        }
+
+        // Расчет коэффициента тени через Ray Query
+        float shadow = compute_shadow(input.position, light.position.xyz, normal);
+
         // Освещенность
         float3 radiance = light.color.rgb * light.intensity;
 

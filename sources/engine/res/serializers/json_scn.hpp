@@ -42,6 +42,8 @@ namespace nasral::scn
             desc.light.radius = light.value("radius", desc.light.radius);
             desc.light.quadratic = light.value("quadratic", desc.light.quadratic);
             desc.light.color = light.value("color", desc.light.color);
+            desc.light.cutoff_angle_in = light.value("cutoff_angle_in", desc.light.cutoff_angle_in);
+            desc.light.cutoff_angle_out = light.value("cutoff_angle_out", desc.light.cutoff_angle_out);
         }
 
         if (j.contains("mesh") && j.at("mesh").is_object())
@@ -78,7 +80,9 @@ namespace nasral::scn
                 {"intensity", desc.light.intensity},
                 {"radius", desc.light.radius},
                 {"quadratic", desc.light.quadratic},
-                {"color", desc.light.color}
+                {"color", desc.light.color},
+                {"cutoff_angle_in", desc.light.cutoff_angle_in},
+                {"cutoff_angle_out", desc.light.cutoff_angle_out}
             }},
             {"mesh", {
                 {"dynamic", desc.mesh.dynamic},

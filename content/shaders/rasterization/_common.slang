@@ -1,5 +1,11 @@
 #pragma once
 
+// Внимание! Должны совпадать с LightType из gfx::types
+#define LIGHT_TYPE_POINT 0
+#define LIGHT_TYPE_SPOT 1
+#define LIGHT_TYPE_DIRECTINAL 2
+#define LIGHT_TYPE_AREA 3
+
 // Константы
 static const uint MAX_OBJECTS = 1024;
 static const uint MAX_MATERIALS = 128;
@@ -95,6 +101,9 @@ struct LightSource
     float    quadratic;
     float    radius;
     float    intensity;
+    float    cutoff_angle_in;
+    float    cutoff_angle_out;
+    uint     type;
 };
 [[vk::binding(0, 4)]] StructuredBuffer<LightSource> s_lights;
 

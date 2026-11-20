@@ -495,14 +495,26 @@ namespace nasral::gfx
         // Пройти по всем сущностям с компонентами:
         for (const auto& [e, sp, l, ui, d_tag] : engine()->ecs()->view<Spatial, Light, UniformId, Dirty>())
         {
+            // Вычислять вектор направления для направленных источников и прожекторов
+            auto transform = glm::identity<glm::mat4>();
+            auto direction = glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
+            if (l.type == LightType::eSpotLight || l.type == LightType::eDirectionalLight){
+                transform = glm::rotate(transform, glm::radians(sp.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+                transform = glm::rotate(transform, glm::radians(sp.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+                transform = glm::rotate(transform, glm::radians(sp.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+                direction = glm::normalize(transform * direction);
+            }
+
             // Параметры источника
             uniforms::LightSettings uniforms = {};
             uniforms.position = {sp.position.x, sp.position.y, sp.position.z, 1.0f};
-            uniforms.direction = {sp.rotation.x, sp.rotation.y, sp.rotation.z, 0.0f};
+            uniforms.direction = {direction.x, direction.y, direction.z, 0.0f};
             uniforms.color = l.color;
             uniforms.type = static_cast<uint32_t>(l.type);
             uniforms.intensity = l.intensity;
             uniforms.quadratic = l.quadratic;
+            uniforms.cutoff_angle_in = l.cutoff_angle_in;
+            uniforms.cutoff_angle_out = l.cutoff_angle_out;
             uniforms.radius = l.radius;
 
             // Обновить параметры источника
@@ -530,14 +542,26 @@ namespace nasral::gfx
         {
             if (!state.is_dirty) continue;
 
+            // Вычислять вектор направления для направленных источников и прожекторов
+            auto transform = glm::identity<glm::mat4>();
+            auto direction = glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
+            if (l.type == LightType::eSpotLight || l.type == LightType::eDirectionalLight){
+                transform = glm::rotate(transform, glm::radians(sp.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+                transform = glm::rotate(transform, glm::radians(sp.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+                transform = glm::rotate(transform, glm::radians(sp.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+                direction = glm::normalize(transform * direction);
+            }
+
             // Параметры источника
             uniforms::LightSettings uniforms = {};
             uniforms.position  = {sp.position.x, sp.position.y, sp.position.z, 1.0f};
-            uniforms.direction = {sp.rotation.x, sp.rotation.y, sp.rotation.z, 0.0f};
+            uniforms.direction = {direction.x, direction.y, direction.z, 0.0f};
             uniforms.color     = l.color;
             uniforms.type      = static_cast<uint32_t>(l.type);
             uniforms.intensity = l.intensity;
             uniforms.quadratic = l.quadratic;
+            uniforms.cutoff_angle_in = l.cutoff_angle_in;
+            uniforms.cutoff_angle_out = l.cutoff_angle_out;
             uniforms.radius    = l.radius;
 
             // Обновить параметры источника

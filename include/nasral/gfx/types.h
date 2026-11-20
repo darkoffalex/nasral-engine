@@ -256,6 +256,8 @@ namespace nasral::gfx
             glm::float32 quadratic = 0.1f;
             glm::float32 radius = 0.0f;
             glm::float32 intensity = 1.0f;
+            glm::float32 cutoff_angle_in = 40.0f;
+            glm::float32 cutoff_angle_out = 45.0f;
             glm::uint32 type = 0;
         };
 
