@@ -1,0 +1,187 @@
+{
+  "nodes": [
+    {
+      "name": "Main camera",
+      "type": "eCamera",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 2.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "camera": {
+        "type": "ePerspective",
+        "fov": 90.0,
+        "aspect": 1.0,
+        "near": 0.1,
+        "far": 1000.0
+      }
+    },
+
+    {
+      "name": "Room",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "mesh": {
+        "mesh_path": "meshes/room/room_fc.obj",
+        "materials": [[0, 23], [0, 23], [0, 24], [0, 21], [0, 22]],
+        "cast_shadow" : true
+      }
+    },
+
+    {
+      "name": "Table",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 0.0, -1.7],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.2, 1.2, 1.2]
+      },
+      "mesh": {
+        "mesh_path": "meshes/table/table.obj",
+        "materials": [[0, 13]],
+        "cast_shadow" : true
+      }
+    },
+
+    {
+      "name": "Chess",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 0.9, -1.7],
+        "rotation": [0.0, 90.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "mesh": {
+        "mesh_path": "meshes/chess/chess.obj",
+        "materials": [[0, 17], [0, 18], [0, 19]],
+        "cast_shadow" : true
+      }
+    },
+
+    {
+      "name": "Mirror",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.0, 1.9, -2.25],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [2.2, 2.2, 2.2]
+      },
+      "mesh": {
+        "mesh_path": "meshes/mirror/mirror.obj",
+        "materials": [[0, 14]],
+        "cast_shadow" : true
+      }
+    },
+
+    {
+      "name": "Chair1",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [-0.8, 0.0, -1.8],
+        "rotation": [0.0, 75.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "mesh": {
+        "mesh_path": "meshes/chair1/chair1.obj",
+        "materials": [[0, 20]],
+        "cast_shadow" : true
+      }
+    },
+
+    {
+      "name": "Chair2",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.8, 0.0, -1.8],
+        "rotation": [0.0, -89.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "mesh": {
+        "mesh_path": "meshes/chair1/chair1.obj",
+        "materials": [[0, 20]],
+        "cast_shadow" : true
+      }
+    },
+
+    {
+      "name": "Lamp1",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.65, 1.65, -2.25],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.2, 1.2, 1.2]
+      },
+      "mesh": {
+        "mesh_path": "meshes/sconce/sconce.obj",
+        "materials": [[0, 15], [0, 11]],
+        "cast_shadow" : true
+      }
+    },
+
+    {
+      "name": "Lamp2",
+      "type": "eMesh",
+      "uid": "auto",
+      "spatial": {
+        "position": [-0.65, 1.65, -2.25],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.2, 1.2, 1.2]
+      },
+      "mesh": {
+        "mesh_path": "meshes/sconce/sconce.obj",
+        "materials": [[0, 15], [0, 11]],
+        "cast_shadow" : true
+      }
+    },
+
+    {
+      "name": "Light1",
+      "type": "eLight",
+      "uid": "auto",
+      "spatial": {
+        "position": [0.65, 1.65, -2.1],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "light": {
+        "dynamic" : true,
+        "type": "ePointLight",
+        "intensity": 5.0,
+        "radius": 1.0,
+        "quadratic": 2.0,
+        "color": [1.0, 1.0, 0.9, 1.0]
+      }
+    },
+
+    {
+      "name": "Light2",
+      "type": "eLight",
+      "uid": "auto",
+      "spatial": {
+        "position": [-0.65, 1.65, -2.1],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "light": {
+        "dynamic" : true,
+        "type": "ePointLight",
+        "intensity": 5.0,
+        "radius": 1.0,
+        "quadratic": 2.0,
+        "color": [1.0, 1.0, 0.9, 1.0]
+      }
+    }
+  ]
+}

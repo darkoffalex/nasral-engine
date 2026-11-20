@@ -35,6 +35,12 @@
     {"type": "eTexture", "path": "textures/chair/chair_rough_1k.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/chair/chair_ao_1k.png", "load_params": {}},
 
+    {"type": "eTexture", "path": "textures/chair1/chair1_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chair1/chair1_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chair1/chair1_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair1/chair1_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chair1/chair1_ao.png", "load_params": {}},
+
     {"type": "eTexture", "path": "textures/hallway/floor_base_color.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
     {"type": "eTexture", "path": "textures/hallway/floor_base_color.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
     {"type": "eTexture", "path": "textures/hallway/floor_metallic.png", "load_params": {}},
@@ -51,17 +57,97 @@
     {"type": "eTexture", "path": "textures/hallway/room-02_normal.png", "load_params": {}},
     {"type": "eTexture", "path": "textures/hallway/room-02_roughness.png", "load_params": {}},
 
+    {"type": "eTexture", "path": "textures/table/table_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/table/table_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/table/table_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/table/table_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/table/table_metallic.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/table/table_ao.png", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/mirror/mirror_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/mirror/mirror_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/mirror/mirror_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/mirror/mirror_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/mirror/mirror_metallic.png", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/sconce/sconce_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_metallic.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_ao.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_disp.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_bulb_diff.png", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_bulb_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_bulb_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_bulb_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_bulb_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/sconce/sconce_bulb_ao.png", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/chess/chess_board_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chess/chess_board_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chess/chess_board_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chess/chess_board_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chess/chess_board_ao.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_black_diff.png", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_black_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_black_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_black_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_black_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_black_ao.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_white_diff.png", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_white_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_white_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_white_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_white_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/chess/chess_pieces_white_ao.png", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/planks/planks_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/planks/planks_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/planks/planks_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/planks/planks_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/planks/planks_ao.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/planks/planks_disp.png", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/plaster/plaster_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/plaster/plaster_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/plaster/plaster_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/plaster/plaster_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/plaster/plaster_ao.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/plaster/plaster_disp.png", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/tiles/tiles_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/tiles/tiles_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/tiles/tiles_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles/tiles_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles/tiles_ao.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/tiles/tiles_disp.png", "load_params": {}},
+
+    {"type": "eTexture", "path": "textures/wood/wood_diff.png:v0", "load_params": {"srgb": false, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/wood/wood_diff.png:v1", "load_params": {"srgb": true, "generate_mipmaps": true}},
+    {"type": "eTexture", "path": "textures/wood/wood_nor.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/wood/wood_rough.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/wood/wood_ao.png", "load_params": {}},
+    {"type": "eTexture", "path": "textures/wood/wood_disp.png", "load_params": {}},
+
     {"type": "eMesh", "path": "meshes/chair/chair.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/hallway/hallway.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/floor/floor.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/barrel/barrel.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/checkers/checkers.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
     {"type": "eMesh", "path": "meshes/checkers/lines.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/table/table.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/mirror/mirror.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/sconce/sconce.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/chess/chess.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/chair1/chair1.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
+    {"type": "eMesh", "path": "meshes/room/room_fc.obj", "load_params": {"generate_tangents": false, "generate_normals": false, "winding_order_ccw": false}},
 
     {"type": "eScene", "path": "scenes/chairs.json", "load_params": {}},
     {"type": "eScene", "path": "scenes/corridor.json", "load_params": {}},
     {"type": "eScene", "path": "scenes/barrels.json", "load_params": {}},
-    {"type": "eScene", "path": "scenes/checkers.json", "load_params": {}}
+    {"type": "eScene", "path": "scenes/checkers.json", "load_params": {}},
+    {"type": "eScene", "path": "scenes/room.json", "load_params": {}}
   ],
 
   "screen_passes": [
@@ -94,8 +180,8 @@
       "settings": {
         "pass_index" : 0,
         "samples" : 12,
-        "base_tex_radius" : 6,
-        "base_kernel_radius" : 6,
+        "base_tex_radius" : 3,
+        "base_kernel_radius" : 3,
         "direction" : [1.0, 0.0]
       }
     },
@@ -111,8 +197,8 @@
       "settings": {
         "pass_index" : 1,
         "samples" : 12,
-        "base_tex_radius" : 6,
-        "base_kernel_radius" : 6,
+        "base_tex_radius" : 3,
+        "base_kernel_radius" : 3,
         "direction" : [0.0, 1.0]
       }
     },
@@ -453,6 +539,406 @@
         "ao": 1.0,
         "emission": 0.0
       }
+    },
+    {
+      "uid" : [0,13],
+      "name": "TablePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/table/table_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/table/table_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/table/table_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eMetalOrReflect",
+        "path" : "textures/table/table_metallic.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/table/table_ao.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,14],
+      "name": "MirrorPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/mirror/mirror_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/mirror/mirror_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/mirror/mirror_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eMetalOrReflect",
+        "path" : "textures/mirror/mirror_metallic.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,15],
+      "name": "SconcePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/sconce/sconce_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/sconce/sconce_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/sconce/sconce_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eMetalOrReflect",
+        "path" : "textures/sconce/sconce_metallic.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/sconce/sconce_ao.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eHeight",
+        "path" : "textures/sconce/sconce_disp.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,16],
+      "name": "SconceBulbPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 1.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/sconce/sconce_bulb_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/sconce/sconce_bulb_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/sconce/sconce_bulb_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/sconce/sconce_bulb_ao.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,17],
+      "name": "ChessBoardPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/chess/chess_board_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/chess/chess_board_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/chess/chess_board_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/chess/chess_board_ao.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,18],
+      "name": "ChessPiecesBlackPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/chess/chess_pieces_black_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/chess/chess_pieces_black_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/chess/chess_pieces_black_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/chess/chess_pieces_black_ao.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,19],
+      "name": "ChessPiecesWhitePBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/chess/chess_pieces_white_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/chess/chess_pieces_white_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/chess/chess_pieces_white_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/chess/chess_pieces_white_ao.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,20],
+      "name": "Chair1PBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/chair1/chair1_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/chair1/chair1_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/chair1/chair1_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/chair1/chair1_ao.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,21],
+      "name": "PlanksPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/planks/planks_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/planks/planks_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/planks/planks_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/planks/planks_ao.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eHeight",
+        "path" : "textures/planks/planks_disp.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,22],
+      "name": "PlasterPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/plaster/plaster_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/plaster/plaster_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/plaster/plaster_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/plaster/plaster_ao.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eHeight",
+        "path" : "textures/plaster/plaster_disp.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,23],
+      "name": "TilesPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/tiles/tiles_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/tiles/tiles_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/tiles/tiles_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/tiles/tiles_ao.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eHeight",
+        "path" : "textures/tiles/tiles_disp.png",
+        "filter" : "eLinear"
+      }]
+    },
+    {
+      "uid" : [0,24],
+      "name": "WoodPBR",
+      "shader_program_path" : "shaders/rasterization/pbr.slang.spv",
+      "type" : "ePBR",
+      "settings": {
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "roughness": 1.0,
+        "metallic": 1.0,
+        "ao": 1.0,
+        "emission": 0.0,
+        "normal_mul": 1.0
+      },
+      "textures": [{
+        "type" : "eAlbedoColor",
+        "path" : "textures/wood/wood_diff.png:v1",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eNormal",
+        "path" : "textures/wood/wood_nor.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eRoughOrSpec",
+        "path" : "textures/wood/wood_rough.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eAO",
+        "path" : "textures/wood/wood_ao.png",
+        "filter" : "eLinear"
+      }, {
+        "type" : "eHeight",
+        "path" : "textures/wood/wood_disp.png",
+        "filter" : "eLinear"
+      }]
     }
   ],
 
@@ -469,5 +955,5 @@
     ]
   },
 
-  "initial_scene": "scenes/barrels.json"
+  "initial_scene": "scenes/room.json"
 }
