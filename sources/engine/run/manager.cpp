@@ -22,6 +22,11 @@ namespace nasral::run
             evt::Type::eMaterialRegistryChanged,
             evt::bind(this, &Manager::on_mat_registry_changed));
 
+        evl_res_mdt_ = evt::Listener::reg(
+            engine()->events(),
+            evt::Type::eMandatoryResourcesLoaded,
+            evt::bind(this, &Manager::on_res_mandatory_loaded));
+
         evl_res_reg_ = evt::Listener::reg(
             engine()->events(),
             evt::Type::eResourceRegistryChanged,
@@ -38,8 +43,12 @@ namespace nasral::run
     void Manager::on_update([[maybe_unused]] float delta)
     {
         // Если регистр ресурсов и материалов сформирован, и если сеанс еще не начат
-        if (state_.has(StateFlags::eResourcesReady, StateFlags::eMaterialsReady, StateFlags::eKeuBindingsReady) &&
-            state_.has_no(StateFlags::eRunning))
+        if (state_.has(
+            StateFlags::eResourcesListReady,
+            StateFlags::eMaterialsListReady,
+            StateFlags::eKeuBindingsReady,
+            StateFlags::eMandatoryResourcesLoaded)
+            && state_.has_no(StateFlags::eRunning))
         {
             // Смена состояния (запущено)
             state_.set(StateFlags::eRunning);
@@ -61,7 +70,7 @@ namespace nasral::run
         {
         case evt::ChangeReason::eInitial:
             {
-                state_.set(StateFlags::eResourcesReady);
+                state_.set(StateFlags::eResourcesListReady);
                 log_info("Resource registry initialized");
                 break;
             }
@@ -69,12 +78,17 @@ namespace nasral::run
         }
     }
 
+    void Manager::on_res_mandatory_loaded(const evt::Arg& arg){
+        state_.set(StateFlags::eMandatoryResourcesLoaded);
+        log_info("Mandatory resources loaded");
+    }
+
     void Manager::on_mat_registry_changed(const evt::Arg& arg){
         switch (evt::from_arg<evt::ChangeReason>(arg).value_or(evt::ChangeReason::eInitial))
         {
         case evt::ChangeReason::eInitial:
             {
-                state_.set(StateFlags::eMaterialsReady);
+                state_.set(StateFlags::eMaterialsListReady);
                 log_info("Material registry initialized");
             }
         default:{}
