@@ -7,6 +7,7 @@
 
 #include <nasral/common/subsystem.h>
 #include <nasral/common/index_pool.h>
+#include <nasral/common/progress_tracker.h>
 #include <nasral/log/loggable.h>
 #include <nasral/res/types.h>
 #include <nasral/gfx/types.h>
@@ -34,7 +35,7 @@ namespace nasral::res
             struct Refs{
                 std::atomic<size_t> count = 0;
                 std::atomic<bool> has_unhandled{false};
-                std::vector<std::function<void(Resource*)>> unhandled = {};
+                std::vector<std::tuple<std::function<void(Resource*)>, ProgressTracker*>> unhandled = {};
                 std::mutex mutex;
             } refs;
 
@@ -46,8 +47,8 @@ namespace nasral::res
 
             void clean();
             void init(const ResourceDesc& desc);
-            void request(std::function<void(Resource*)> callback);
-            void request_unsafe(std::function<void(Resource*)> callback);
+            void request(std::function<void(Resource*)> callback, ProgressTracker* tracker = nullptr);
+            void request_unsafe(std::function<void(Resource*)> callback, ProgressTracker* tracker = nullptr);
             void release();
         };
 
@@ -61,7 +62,7 @@ namespace nasral::res
         void remove(const ResourceId& id);
         void remove_all();
 
-        void request(ResourceId id, std::function<void(Resource*)> callback = nullptr);
+        void request(ResourceId id, std::function<void(Resource*)> callback = nullptr, ProgressTracker* tracker = nullptr);
         void release(ResourceId id);
 
         [[nodiscard]] std::optional<ResourceId> find(const std::string_view& path) const;
@@ -108,6 +109,8 @@ namespace nasral::res
         evt::Listener::Ptr evl_on_proj_load_;
         /// ECS-система
         System::Ptr ecs_system_;
+        /// Трекер загрузки обязательных ресурсов
+        ProgressTracker mandatory_res_tracker_;
     };
 }
 

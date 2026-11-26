@@ -162,7 +162,7 @@ namespace nasral::res
         active_slots_.clear();
     }
 
-    void Manager::request(const ResourceId id, std::function<void(Resource*)> callback)
+    void Manager::request(const ResourceId id, std::function<void(Resource*)> callback, ProgressTracker* tracker)
     {
         const auto slot_idx = static_cast<size_t>(id);
         if (slot_idx >= slots_.size()){
@@ -171,7 +171,7 @@ namespace nasral::res
         }
 
         auto& slot = slots_[slot_idx];
-        slot.request(std::move(callback));
+        slot.request(std::move(callback), tracker);
     }
 
     void Manager::release(const ResourceId id)
@@ -300,9 +300,12 @@ namespace nasral::res
             {
                 slot.refs.has_unhandled.store(false, std::memory_order_release);
                 if (!slot.refs.unhandled.empty()){
-                    for (auto& callback : slot.refs.unhandled){
+                    for (auto& [callback, tracker] : slot.refs.unhandled){
                         if (callback){
                             callback(slot.resource.get());
+                        }
+                        if (tracker){
+                            tracker->inc_completed(1);
                         }
                     }
                     slot.refs.unhandled.clear();
@@ -517,16 +520,23 @@ namespace nasral::res
             kBuiltinMeshSphere.data()
         };
 
+        // 2. Отслеживать готовность загруженных ресурсов (включая файл проекта)
+        mandatory_res_tracker_.set_total(static_cast<uint32_t>(paths.size()) + 1);
+        mandatory_res_tracker_.set_on_finished([&]{
+            engine()->events()->send(evt::Type::eMandatoryResourcesLoaded, evt::kNullArg);
+        });
+
+        // 3. Запросить встроенные ресурсы
         for (const auto& path : paths){
             auto id = find(path);
             assert(id.has_value());
 
             if (id.has_value()){
-                request(id.value());
+                request(id.value(), nullptr, &mandatory_res_tracker_);
             }
         }
 
-        // 2. Запросить ресурс проекта (либо из initial, либо из builtin)
+        // 4. Запросить ресурс проекта (либо из initial, либо из builtin)
         const std::optional<ResourceId> project_rid = find_project();
         assert(project_rid.has_value());
         request(project_rid.value(), [this](Resource* res){
@@ -535,7 +545,7 @@ namespace nasral::res
             }
             assert(res->status() == Status::eLoaded);
             engine()->events()->send_deferred(evt::Type::eProjectFileLoaded, res);
-        });
+        }, &mandatory_res_tracker_);
     }
 
     void Manager::release_mandatory()
@@ -634,18 +644,18 @@ namespace nasral::res
         loading.task = {};
     }
 
-    void Manager::Slot::request(std::function<void(Resource*)> callback)
+    void Manager::Slot::request(std::function<void(Resource*)> callback, ProgressTracker* tracker)
     {
         std::lock_guard lock(refs.mutex);
-        request_unsafe(std::move(callback));
+        request_unsafe(std::move(callback), tracker);
     }
 
-    void Manager::Slot::request_unsafe(std::function<void(Resource*)> callback)
+    void Manager::Slot::request_unsafe(std::function<void(Resource*)> callback, ProgressTracker* tracker)
     {
         assert(used && "Resource slot is not used");
         refs.count.fetch_add(1, std::memory_order_acq_rel);
-        if (callback){
-            refs.unhandled.emplace_back(std::move(callback));
+        if (callback || tracker){
+            refs.unhandled.emplace_back(callback ? std::move(callback) : nullptr, tracker);
             refs.has_unhandled.store(true, std::memory_order_release);
         }
     }

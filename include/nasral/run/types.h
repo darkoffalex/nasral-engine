@@ -11,9 +11,10 @@ namespace nasral::run
     {
         eRunning = 0,
         ePaused,
-        eResourcesReady,
-        eMaterialsReady,
+        eResourcesListReady,
+        eMaterialsListReady,
         eKeuBindingsReady,
+        eMandatoryResourcesLoaded,
         TOTAL
     };
 
